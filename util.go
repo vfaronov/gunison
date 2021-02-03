@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"unicode/utf8"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -37,4 +38,23 @@ func mustGetObject(b *gtk.Builder, name string) glib.IObject {
 	obj, err := b.GetObject(name)
 	mustf(err, "GetObject(%#v)", name)
 	return obj
+}
+
+// fitText sets text on obj, proactively ellipsizing it so that it fits into obj's size request
+// and thus doesn't cause it to grow.
+func fitText(obj TextFitter, text string) {
+	w, _ := obj.GetSizeRequest()
+	// TODO: measure actual size of text with Pango instead of this arbitrary and crude approximation
+	// (better yet, find a way to achieve the desired look without this crutch).
+	maxChars := w / 12
+	if chars := utf8.RuneCountInString(text); chars > maxChars {
+		runes := []rune(text)
+		text = string(runes[:maxChars/2]) + "…" + string(runes[chars-maxChars/2:])
+	}
+	obj.SetText(text)
+}
+
+type TextFitter interface {
+	GetSizeRequest() (int, int)
+	SetText(string)
 }

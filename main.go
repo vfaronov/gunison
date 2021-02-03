@@ -126,7 +126,7 @@ func recvExit(e error) {
 func update(upd Update) {
 	statusLabel.SetText(engine.Status)
 
-	progressbar.SetText(engine.Current)
+	fitText(progressbar, engine.Current)
 	if upd.Progressed {
 		progressbar.SetVisible(true)
 		progressbar.Pulse()
