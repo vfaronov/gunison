@@ -20,11 +20,9 @@ var (
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
 
-	statusbar   *gtk.Statusbar
+	statusLabel *gtk.Label
 	spinner     *gtk.Spinner
 	progressbar *gtk.ProgressBar
-
-	statusbarContextID uint
 
 	success = errors.New("success")
 )
@@ -101,8 +99,7 @@ func setupWidgets() {
 	mustf(err, "load GtkBuilder")
 	window := mustGetObject(builder, "window").(*gtk.Window)
 	shouldConnect(window, "destroy", gtk.MainQuit)
-	statusbar = mustGetObject(builder, "statusbar").(*gtk.Statusbar)
-	statusbarContextID = statusbar.GetContextId("main")
+	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
 	spinner = mustGetObject(builder, "spinner").(*gtk.Spinner)
 	progressbar = mustGetObject(builder, "progressbar").(*gtk.ProgressBar)
 	update(Update{})
@@ -128,10 +125,7 @@ func recvExit(e error) {
 }
 
 func update(upd Update) {
-	statusbar.RemoveAll(statusbarContextID)
-	if engine.Status != "" {
-		statusbar.Push(statusbarContextID, engine.Status)
-	}
+	statusLabel.SetText(engine.Status)
 
 	progressbar.SetText(engine.Current)
 	if upd.Progressed {
