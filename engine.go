@@ -34,17 +34,20 @@ func (e *Engine) RecvOutput(d []byte) Update {
 		return Update{}
 	}
 	e.buf.Write(d)
-	output := e.buf.String()
 	var update Update
-	if i := strings.IndexByte(output, '\n'); i >= 0 {
-		line := output[:i]
-		e.buf.Next(i)
+	for {
+		unparsed := e.buf.String()
+		i := strings.IndexByte(unparsed, '\n')
+		if i < 0 {
+			return update
+		}
+		line := unparsed[:i]
+		e.buf.Next(i + 1)
 		update.Progressed = true
 		e.Current = line
 		_ = json.Unmarshal([]byte(line), e)
 		_ = json.Unmarshal([]byte(line), &update)
 	}
-	return update
 }
 
 func (e *Engine) RecvExit(err error) Update {
