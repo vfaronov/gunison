@@ -19,9 +19,13 @@ var (
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
 
+	window      *gtk.Window
 	statusLabel *gtk.Label
 	spinner     *gtk.Spinner
 	progressbar *gtk.ProgressBar
+	killButton  *gtk.Button
+
+	wantQuit bool
 
 	success = errors.New("success")
 )
@@ -96,11 +100,14 @@ func watchExit() {
 func setupWidgets() {
 	builder, err := gtk.BuilderNewFromFile("/home/vasiliy/cur/gunison/gunison/gunison.glade") // +FIXME
 	mustf(err, "load GtkBuilder")
-	window := mustGetObject(builder, "window").(*gtk.Window)
+	window = mustGetObject(builder, "window").(*gtk.Window)
+	shouldConnect(window, "delete-event", onWindowDeleteEvent)
 	shouldConnect(window, "destroy", gtk.MainQuit)
 	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
 	spinner = mustGetObject(builder, "spinner").(*gtk.Spinner)
 	progressbar = mustGetObject(builder, "progressbar").(*gtk.ProgressBar)
+	killButton = mustGetObject(builder, "kill-button").(*gtk.Button)
+	shouldConnect(killButton, "clicked", onKillButtonClicked)
 	update(Update{})
 	window.ShowAll()
 }
@@ -124,24 +131,28 @@ func recvExit(e error) {
 }
 
 func update(upd Update) {
+	if wantQuit && engine.Finished {
+		window.Destroy()
+		return
+	}
+
 	statusLabel.SetText(engine.Status)
 
-	FitText(progressbar, engine.Current)
-	if upd.Progressed {
-		progressbar.SetVisible(true)
+	progressbar.SetVisible(engine.Progress != "")
+	FitText(progressbar, engine.Progress)
+	if engine.ProgressFraction >= 0 {
+		progressbar.SetFraction(engine.ProgressFraction)
+	} else if upd.Progressed {
 		progressbar.Pulse()
-	}
-	if engine.Progress >= 0 {
-		progressbar.SetVisible(true)
-		progressbar.SetFraction(engine.Progress)
 	}
 
 	if engine.Busy {
 		spinner.Start()
 	} else {
 		spinner.Stop()
-		progressbar.Hide()
 	}
+
+	killButton.SetVisible(engine.OfferKill)
 
 	if len(upd.Input) > 0 {
 		log.Printf("unison input: %#v", upd.Input)
@@ -149,4 +160,49 @@ func update(upd Update) {
 			recvError(err)
 		}
 	}
+
+	if upd.Interrupt {
+		log.Print("interrupting unison")
+		if err := unison.Process.Signal(os.Interrupt); err != nil {
+			resp := Dialog(gtk.MESSAGE_QUESTION,
+				fmt.Sprintf("Failed to interrupt Unison: %v\nForce it to stop?", err),
+				DialogOption{Text: "_Keep working", Response: gtk.RESPONSE_NO},
+				DialogOption{Text: "_Force stop", Response: gtk.RESPONSE_YES},
+			)
+			if resp == gtk.RESPONSE_YES {
+				update(engine.Kill())
+			}
+		}
+	}
+
+	if upd.Kill {
+		log.Printf("killing unison")
+		if err := unison.Process.Kill(); err != nil {
+			recvError(err)
+		}
+	}
+}
+
+func onWindowDeleteEvent() bool {
+	if engine.Finished {
+		return handleDefault
+	}
+	if engine.CanQuit {
+		wantQuit = true
+		update(engine.Quit())
+	} else {
+		resp := Dialog(gtk.MESSAGE_QUESTION, "Interrupt Unison?",
+			DialogOption{Text: "_Keep working", Response: gtk.RESPONSE_NO},
+			DialogOption{Text: "_Interrupt", Response: gtk.RESPONSE_YES},
+		)
+		if resp == gtk.RESPONSE_YES {
+			wantQuit = true
+			update(engine.Interrupt())
+		}
+	}
+	return blockDefault
+}
+
+func onKillButtonClicked() {
+	update(engine.Kill())
 }

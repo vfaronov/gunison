@@ -14,24 +14,26 @@ func mustf(err error, format string, args ...interface{}) {
 	}
 }
 
-func shouldf(err error, format string, args ...interface{}) {
+func shouldf(err error, format string, args ...interface{}) bool {
 	if err != nil {
 		log.Printf("failed to "+format+": %s", append(args, err))
+		return false
 	}
+	return true
 }
 
 type Connector interface {
 	Connect(string, interface{}, ...interface{}) (glib.SignalHandle, error)
 }
 
-func shouldConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) {
+func shouldConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) bool {
 	_, err := obj.Connect(detailedSignal, f, userData...)
-	shouldf(err, "Connect(%#v, %#v)", detailedSignal, f)
+	return shouldf(err, "Connect(%#v, %#v)", detailedSignal, f)
 }
 
-func shouldIdleAdd(f interface{}, args ...interface{}) {
+func shouldIdleAdd(f interface{}, args ...interface{}) bool {
 	_, err := glib.IdleAdd(f, args...)
-	shouldf(err, "IdleAdd(%#v)", f)
+	return shouldf(err, "IdleAdd(%#v)", f)
 }
 
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {
@@ -58,3 +60,31 @@ type TextFitter interface {
 	GetSizeRequest() (int, int)
 	SetText(string)
 }
+
+func Dialog(mType gtk.MessageType, msg string, options ...DialogOption) gtk.ResponseType {
+	dlg := gtk.MessageDialogNew(window, gtk.DIALOG_DESTROY_WITH_PARENT, mType, gtk.BUTTONS_NONE, "%s", msg)
+	defer dlg.Destroy()
+	for _, opt := range options {
+		_, err := dlg.AddButton(opt.Text, opt.Response)
+		if !shouldf(err, "add button %q", opt.Text) {
+			return options[0].Response
+		}
+		if opt.IsDefault {
+			dlg.SetDefaultResponse(opt.Response)
+		}
+	}
+	return dlg.Run()
+}
+
+type DialogOption struct {
+	Text      string
+	Response  gtk.ResponseType
+	IsDefault bool
+	// TODO: also mark button with suggested-action/destructive-action
+}
+
+// More readable than "return true" / "return false".
+const (
+	handleDefault = false
+	blockDefault  = true
+)
