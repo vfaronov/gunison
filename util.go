@@ -40,9 +40,9 @@ func mustGetObject(b *gtk.Builder, name string) glib.IObject {
 	return obj
 }
 
-// fitText sets text on obj, proactively ellipsizing it so that it fits into obj's size request
+// FitText sets text on obj, proactively ellipsizing it so that it fits into obj's size request
 // and thus doesn't cause it to grow.
-func fitText(obj TextFitter, text string) {
+func FitText(obj TextFitter, text string) {
 	w, _ := obj.GetSizeRequest()
 	// TODO: measure actual size of text with Pango instead of this arbitrary and crude approximation
 	// (better yet, find a way to achieve the desired look without this crutch).

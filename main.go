@@ -126,7 +126,7 @@ func recvExit(e error) {
 func update(upd Update) {
 	statusLabel.SetText(engine.Status)
 
-	fitText(progressbar, engine.Current)
+	FitText(progressbar, engine.Current)
 	if upd.Progressed {
 		progressbar.SetVisible(true)
 		progressbar.Pulse()
@@ -136,15 +136,16 @@ func update(upd Update) {
 		progressbar.SetFraction(engine.Progress)
 	}
 
-	if engine.Working {
+	if engine.Busy {
 		spinner.Start()
 	} else {
 		spinner.Stop()
-		progressbar.SetVisible(false)
+		progressbar.Hide()
 	}
 
-	if len(upd.Send) > 0 {
-		if _, err := unisonW.Write(upd.Send); err != nil {
+	if len(upd.Input) > 0 {
+		log.Printf("unison input: %#v", upd.Input)
+		if _, err := unisonW.Write(upd.Input); err != nil {
 			recvError(err)
 		}
 	}

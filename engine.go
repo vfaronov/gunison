@@ -5,30 +5,30 @@ import (
 )
 
 type Engine struct {
+	Finished bool
+	Busy     bool
 	Status   string
-	Current  string
-	Working  bool
 	Progress float64 // fraction of 1, or -1 for "not applicable"
+	Current  string
 
-	buf      bytes.Buffer
-	finished bool
+	buf bytes.Buffer
 }
 
 type Update struct {
 	Progressed bool
-	Send       []byte
+	Input      []byte
 }
 
 func NewEngine() *Engine {
 	return &Engine{
-		Status:   "Starting up",
-		Working:  true,
+		Busy:     true,
+		Status:   "Starting Unison...",
 		Progress: -1,
 	}
 }
 
 func (e *Engine) ProcOutput(d []byte) Update {
-	if e.finished {
+	if e.Finished {
 		return Update{}
 	}
 	e.buf.Write(d)
@@ -37,22 +37,19 @@ func (e *Engine) ProcOutput(d []byte) Update {
 }
 
 func (e *Engine) ProcExit(err error) Update {
-	if e.finished {
-		return Update{}
-	}
+	e.Finished = true
+	e.Busy = false
 	if err == nil {
-		e.Status = "Completed"
+		e.Status = "Finished successfully"
 	} else {
-		e.Status = err.Error()
+		e.Status = "Unison finished with error: " + err.Error()
 	}
-	e.Working = false
 	e.Progress = -1
-	e.finished = true
 	return Update{Progressed: true}
 }
 
 func (e *Engine) ProcError(err error) Update {
-	if e.finished {
+	if e.Finished {
 		return Update{}
 	}
 	e.Status = err.Error()
