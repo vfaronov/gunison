@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
-	"strings"
 )
 
 type Engine struct {
@@ -34,20 +32,8 @@ func (e *Engine) ProcOutput(d []byte) Update {
 		return Update{}
 	}
 	e.buf.Write(d)
-	var update Update
-	for {
-		unparsed := e.buf.String()
-		i := strings.IndexByte(unparsed, '\n')
-		if i < 0 {
-			return update
-		}
-		line := unparsed[:i]
-		e.buf.Next(i + 1)
-		update.Progressed = true
-		e.Current = line
-		_ = json.Unmarshal([]byte(line), e)
-		_ = json.Unmarshal([]byte(line), &update)
-	}
+	e.Current = string(d)
+	return Update{Progressed: true}
 }
 
 func (e *Engine) ProcExit(err error) Update {
