@@ -29,7 +29,7 @@ func NewEngine() *Engine {
 	}
 }
 
-func (e *Engine) RecvOutput(d []byte) Update {
+func (e *Engine) ProcOutput(d []byte) Update {
 	if e.finished {
 		return Update{}
 	}
@@ -50,7 +50,7 @@ func (e *Engine) RecvOutput(d []byte) Update {
 	}
 }
 
-func (e *Engine) RecvExit(err error) Update {
+func (e *Engine) ProcExit(err error) Update {
 	if e.finished {
 		return Update{}
 	}
@@ -65,7 +65,7 @@ func (e *Engine) RecvExit(err error) Update {
 	return Update{Progressed: true}
 }
 
-func (e *Engine) RecvError(err error) Update {
+func (e *Engine) ProcError(err error) Update {
 	if e.finished {
 		return Update{}
 	}

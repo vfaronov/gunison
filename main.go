@@ -45,14 +45,14 @@ func startUnison(args ...string) {
 
 	unisonW, err = unison.StdinPipe()
 	if err != nil {
-		engine.RecvExit(fmt.Errorf("failed to create input pipe: %w", err))
+		engine.ProcExit(fmt.Errorf("failed to create input pipe: %w", err))
 		return
 	}
 
 	var pipeW *os.File
 	unisonR, pipeW, err = os.Pipe()
 	if err != nil {
-		engine.RecvExit(fmt.Errorf("failed to create output pipe: %w", err))
+		engine.ProcExit(fmt.Errorf("failed to create output pipe: %w", err))
 		return
 	}
 	unison.Stdout = pipeW
@@ -60,15 +60,15 @@ func startUnison(args ...string) {
 
 	log.Printf("starting %v", unison)
 	if err := unison.Start(); err != nil {
-		engine.RecvExit(fmt.Errorf("failed to start unison: %w", err))
+		engine.ProcExit(fmt.Errorf("failed to start unison: %w", err))
 		return
 	}
 	shouldf(pipeW.Close(), "close pipeW")
-	go consumeOutput()
-	go consumeExit()
+	go watchOutput()
+	go watchExit()
 }
 
-func consumeOutput() {
+func watchOutput() {
 	var buf [4096]byte
 	for {
 		n, err := unisonR.Read(buf[:])
@@ -84,7 +84,7 @@ func consumeOutput() {
 	shouldf(unisonR.Close(), "close unisonR pipe")
 }
 
-func consumeExit() {
+func watchExit() {
 	e := unison.Wait()
 	log.Println("unison exit:", e)
 	if e == nil {
@@ -107,12 +107,12 @@ func setupWidgets() {
 
 func recvOutput(d []byte) {
 	log.Printf("receiving %d bytes of output", len(d))
-	update(engine.RecvOutput(d))
+	update(engine.ProcOutput(d))
 }
 
 func recvError(err error) {
 	log.Println("receiving unison I/O error:", err)
-	update(engine.RecvError(err))
+	update(engine.ProcError(err))
 }
 
 func recvExit(e error) {
@@ -120,7 +120,7 @@ func recvExit(e error) {
 		e = nil
 	}
 	log.Println("receiving unison exit:", e)
-	update(engine.RecvExit(e))
+	update(engine.ProcExit(e))
 }
 
 func update(upd Update) {
