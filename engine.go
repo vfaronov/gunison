@@ -15,6 +15,7 @@ type Engine struct {
 
 	Sync      func(Plan) Update
 	Quit      func() Update
+	Abort     func() Update
 	Interrupt func() Update
 	Kill      func() Update
 
@@ -81,6 +82,7 @@ func (e *Engine) doSync(Plan) Update {
 	e.ProgressFraction = -1
 	e.Sync = nil
 	e.Quit = nil
+	e.Abort = e.Interrupt
 	return Update{}
 }
 
@@ -89,6 +91,7 @@ func (e *Engine) doQuit() Update {
 	e.Busy = true
 	e.Progress = ""
 	e.Quit = nil
+	e.Abort = nil
 	return Update{Input: []byte("q\n")}
 }
 
@@ -97,6 +100,7 @@ func (e *Engine) doInterrupt() Update {
 	e.Busy = true
 	e.Progress = ""
 	e.Quit = nil
+	e.Abort = nil
 	e.Interrupt = nil
 	return Update{Interrupt: true}
 }
@@ -106,6 +110,7 @@ func (e *Engine) doKill() Update {
 	e.Busy = true
 	e.Progress = ""
 	e.Quit = nil
+	e.Abort = nil
 	e.Interrupt = nil
 	e.Kill = nil
 	return Update{Kill: true}

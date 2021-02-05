@@ -27,5 +27,8 @@ func (e *Engine) ProcBackdoor(line string) Update {
 	data := []byte(line)
 	shouldf(json.Unmarshal(data, e), "unmarshal backdoor command into Engine")
 	shouldf(json.Unmarshal(data, &upd), "unmarshal backdoor command into Update")
+	if e.Status == "Ready to sync" {
+		e.Sync = e.doSync
+	}
 	return upd
 }

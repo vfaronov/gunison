@@ -54,7 +54,7 @@
               </object>
               <packing>
                 <property name="pack_type">end</property>
-                <property name="position">2</property>
+                <property name="position">3</property>
               </packing>
             </child>
             <child>
@@ -66,6 +66,21 @@
                 <property name="use_underline">True</property>
                 <style>
                   <class name="suggested-action"/>
+                </style>
+              </object>
+              <packing>
+                <property name="pack_type">end</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="abort-button">
+                <property name="label" translatable="yes">_Abort</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_underline">True</property>
+                <style>
+                  <class name="destructive-action"/>
                 </style>
               </object>
               <packing>

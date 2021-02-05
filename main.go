@@ -25,6 +25,7 @@ var (
 	spinner     *gtk.Spinner
 	progressbar *gtk.ProgressBar
 	syncButton  *gtk.Button
+	abortButton *gtk.Button
 	killButton  *gtk.Button
 
 	wantQuit bool
@@ -118,6 +119,9 @@ func setupWidgets() {
 	syncButton = mustGetObject(builder, "sync-button").(*gtk.Button)
 	shouldConnect(syncButton, "clicked", onSyncButtonClicked)
 
+	abortButton = mustGetObject(builder, "abort-button").(*gtk.Button)
+	shouldConnect(abortButton, "clicked", onAbortButtonClicked)
+
 	killButton = mustGetObject(builder, "kill-button").(*gtk.Button)
 	shouldConnect(killButton, "clicked", onKillButtonClicked)
 
@@ -165,6 +169,7 @@ func update(upd Update) {
 	}
 
 	syncButton.SetVisible(engine.Sync != nil)
+	abortButton.SetVisible(engine.Abort != nil)
 	killButton.SetVisible(wantQuit && engine.Kill != nil)
 
 	if len(upd.Input) > 0 {
@@ -222,10 +227,20 @@ func onWindowDeleteEvent() bool {
 	return blockDefault
 }
 
-func onKillButtonClicked() {
-	update(engine.Kill())
-}
-
 func onSyncButtonClicked() {
 	update(engine.Sync(0))
+}
+
+func onAbortButtonClicked() {
+	resp := Dialog(gtk.MESSAGE_QUESTION, "Abort the operation?",
+		DialogOption{Text: "_Keep running", Response: gtk.RESPONSE_NO},
+		DialogOption{Text: "_Abort", Response: gtk.RESPONSE_YES},
+	)
+	if resp == gtk.RESPONSE_YES {
+		update(engine.Abort())
+	}
+}
+
+func onKillButtonClicked() {
+	update(engine.Kill())
 }
