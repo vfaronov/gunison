@@ -24,6 +24,7 @@ var (
 	statusLabel *gtk.Label
 	spinner     *gtk.Spinner
 	progressbar *gtk.ProgressBar
+	syncButton  *gtk.Button
 	killButton  *gtk.Button
 
 	wantQuit bool
@@ -101,16 +102,27 @@ func watchExit() {
 func setupWidgets() {
 	builder, err := gtk.BuilderNewFromFile("/home/vasiliy/cur/gunison/gunison/gunison.glade") // +FIXME
 	mustf(err, "load GtkBuilder")
+
 	window = mustGetObject(builder, "window").(*gtk.Window)
 	shouldConnect(window, "delete-event", onWindowDeleteEvent)
 	shouldConnect(window, "destroy", gtk.MainQuit)
+
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
+
 	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
+
 	spinner = mustGetObject(builder, "spinner").(*gtk.Spinner)
+
 	progressbar = mustGetObject(builder, "progressbar").(*gtk.ProgressBar)
+
+	syncButton = mustGetObject(builder, "sync-button").(*gtk.Button)
+	shouldConnect(syncButton, "clicked", onSyncButtonClicked)
+
 	killButton = mustGetObject(builder, "kill-button").(*gtk.Button)
 	shouldConnect(killButton, "clicked", onKillButtonClicked)
+
 	update(Update{})
+
 	window.ShowAll()
 }
 
@@ -158,6 +170,7 @@ func update(upd Update) {
 		spinner.Stop()
 	}
 
+	syncButton.SetVisible(engine.Sync != nil)
 	killButton.SetVisible(wantQuit && engine.Kill != nil)
 
 	if len(upd.Input) > 0 {
@@ -217,4 +230,8 @@ func onWindowDeleteEvent() bool {
 
 func onKillButtonClicked() {
 	update(engine.Kill())
+}
+
+func onSyncButtonClicked() {
+	update(engine.Sync(0))
 }

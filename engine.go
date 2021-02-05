@@ -10,8 +10,10 @@ type Engine struct {
 	Status           string
 	Progress         string  // empty string iff not progressing
 	ProgressFraction float64 // 0 to 1; or -1 for unknown
-	Left, Right      string
 
+	Left, Right string
+
+	Sync      func(Plan) Update
 	Quit      func() Update
 	Interrupt func() Update
 	Kill      func() Update
@@ -25,6 +27,8 @@ type Update struct {
 	Interrupt  bool
 	Kill       bool
 }
+
+type Plan interface{}
 
 func NewEngine() *Engine {
 	e := &Engine{
@@ -67,6 +71,16 @@ func (e *Engine) ProcError(err error) Update {
 		return Update{}
 	}
 	e.Status = err.Error()
+	return Update{}
+}
+
+func (e *Engine) doSync(Plan) Update {
+	e.Busy = true
+	e.Status = "Synchronizing..."
+	e.Progress = ""
+	e.ProgressFraction = -1
+	e.Sync = nil
+	e.Quit = nil
 	return Update{}
 }
 
