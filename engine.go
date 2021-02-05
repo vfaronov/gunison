@@ -12,6 +12,7 @@ type Engine struct {
 	ProgressFraction float64 // 0 to 1; or -1 for unknown
 	CanQuit          bool
 	OfferKill        bool
+	Left, Right      string
 
 	buf bytes.Buffer
 }

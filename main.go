@@ -20,6 +20,7 @@ var (
 	unisonW io.WriteCloser
 
 	window      *gtk.Window
+	headerbar   *gtk.HeaderBar
 	statusLabel *gtk.Label
 	spinner     *gtk.Spinner
 	progressbar *gtk.ProgressBar
@@ -103,6 +104,7 @@ func setupWidgets() {
 	window = mustGetObject(builder, "window").(*gtk.Window)
 	shouldConnect(window, "delete-event", onWindowDeleteEvent)
 	shouldConnect(window, "destroy", gtk.MainQuit)
+	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
 	spinner = mustGetObject(builder, "spinner").(*gtk.Spinner)
 	progressbar = mustGetObject(builder, "progressbar").(*gtk.ProgressBar)
@@ -134,6 +136,10 @@ func update(upd Update) {
 	if wantQuit && engine.Finished {
 		window.Destroy()
 		return
+	}
+
+	if engine.Left != "" && engine.Right != "" {
+		headerbar.SetSubtitle(engine.Left + " → " + engine.Right) // TODO: is it always '→'?
 	}
 
 	statusLabel.SetText(engine.Status)
