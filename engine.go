@@ -10,9 +10,11 @@ type Engine struct {
 	Status           string
 	Progress         string  // empty string iff not progressing
 	ProgressFraction float64 // 0 to 1; or -1 for unknown
-	CanQuit          bool
-	OfferKill        bool
 	Left, Right      string
+
+	Quit      func() Update
+	Interrupt func() Update
+	Kill      func() Update
 
 	buf bytes.Buffer
 }
@@ -25,11 +27,15 @@ type Update struct {
 }
 
 func NewEngine() *Engine {
-	return &Engine{
+	e := &Engine{
 		Busy:             true,
 		Status:           "Starting Unison...",
 		ProgressFraction: -1,
 	}
+	e.Quit = e.doQuit
+	e.Interrupt = e.doInterrupt
+	e.Kill = e.doKill
+	return e
 }
 
 func (e *Engine) ProcOutput(d []byte) Update {
@@ -50,8 +56,9 @@ func (e *Engine) ProcExit(err error) Update {
 		e.Status = "Unison finished with error: " + err.Error()
 	}
 	e.Progress = ""
-	e.CanQuit = false
-	e.OfferKill = false
+	e.Quit = nil
+	e.Interrupt = nil
+	e.Kill = nil
 	return Update{}
 }
 
@@ -63,40 +70,29 @@ func (e *Engine) ProcError(err error) Update {
 	return Update{}
 }
 
-func (e *Engine) Quit() Update {
-	if e.Finished {
-		return Update{}
-	}
-	if !e.CanQuit {
-		return Update{} // FIXME
-	}
+func (e *Engine) doQuit() Update {
 	e.Status = "Quitting Unison..."
 	e.Busy = true
 	e.Progress = ""
-	e.CanQuit = false
+	e.Quit = nil
 	return Update{Input: []byte("q\n")}
 }
 
-func (e *Engine) Interrupt() Update {
-	if e.Finished {
-		return Update{}
-	}
+func (e *Engine) doInterrupt() Update {
 	e.Status = "Interrupting Unison..."
 	e.Busy = true
 	e.Progress = ""
-	e.CanQuit = false
-	e.OfferKill = true
+	e.Quit = nil
+	e.Interrupt = nil
 	return Update{Interrupt: true}
 }
 
-func (e *Engine) Kill() Update {
-	if e.Finished {
-		return Update{}
-	}
+func (e *Engine) doKill() Update {
 	e.Status = "Killing Unison..."
 	e.Busy = true
 	e.Progress = ""
-	e.CanQuit = false
-	e.OfferKill = false
+	e.Quit = nil
+	e.Interrupt = nil
+	e.Kill = nil
 	return Update{Kill: true}
 }

@@ -158,7 +158,7 @@ func update(upd Update) {
 		spinner.Stop()
 	}
 
-	killButton.SetVisible(engine.OfferKill)
+	killButton.SetVisible(wantQuit && engine.Kill != nil)
 
 	if len(upd.Input) > 0 {
 		log.Printf("unison input: %#v", upd.Input)
@@ -170,14 +170,7 @@ func update(upd Update) {
 	if upd.Interrupt {
 		log.Print("interrupting unison")
 		if err := unison.Process.Signal(os.Interrupt); err != nil {
-			resp := Dialog(gtk.MESSAGE_QUESTION,
-				fmt.Sprintf("Failed to interrupt Unison: %v\nForce it to stop?", err),
-				DialogOption{Text: "_Keep working", Response: gtk.RESPONSE_NO},
-				DialogOption{Text: "_Force stop", Response: gtk.RESPONSE_YES},
-			)
-			if resp == gtk.RESPONSE_YES {
-				update(engine.Kill())
-			}
+			recvError(err)
 		}
 	}
 
@@ -190,22 +183,35 @@ func update(upd Update) {
 }
 
 func onWindowDeleteEvent() bool {
-	if engine.Finished {
+	switch {
+	case engine.Finished:
 		return handleDefault
-	}
-	if engine.CanQuit {
+
+	case engine.Quit != nil:
 		wantQuit = true
 		update(engine.Quit())
-	} else {
+
+	case engine.Interrupt != nil:
 		resp := Dialog(gtk.MESSAGE_QUESTION, "Interrupt Unison?",
-			DialogOption{Text: "_Keep working", Response: gtk.RESPONSE_NO},
+			DialogOption{Text: "_Keep running", Response: gtk.RESPONSE_NO},
 			DialogOption{Text: "_Interrupt", Response: gtk.RESPONSE_YES},
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
 			update(engine.Interrupt())
 		}
+
+	case engine.Kill != nil:
+		resp := Dialog(gtk.MESSAGE_QUESTION, "Unison is still running. Force it to stop?",
+			DialogOption{Text: "_Keep running", Response: gtk.RESPONSE_NO},
+			DialogOption{Text: "_Force stop", Response: gtk.RESPONSE_YES},
+		)
+		if resp == gtk.RESPONSE_YES {
+			wantQuit = true
+			update(engine.Kill())
+		}
 	}
+
 	return blockDefault
 }
 

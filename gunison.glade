@@ -63,6 +63,7 @@
                 <property name="label" translatable="yes">_Force stop</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">Send a KILL signal to the Unison process</property>
                 <property name="use_underline">True</property>
                 <style>
                   <class name="destructive-action"/>
