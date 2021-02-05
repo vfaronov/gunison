@@ -28,8 +28,8 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkSpinner" id="spinner">
-                <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="active">True</property>
               </object>
               <packing>
                 <property name="position">0</property>
@@ -48,7 +48,6 @@
             <child>
               <object class="GtkProgressBar" id="progressbar">
                 <property name="width_request">200</property>
-                <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="valign">center</property>
                 <property name="show_text">True</property>
@@ -61,7 +60,6 @@
             <child>
               <object class="GtkButton" id="sync-button">
                 <property name="label" translatable="yes">_Sync</property>
-                <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="tooltip_text" translatable="yes">Start synchronization according to the above plan</property>

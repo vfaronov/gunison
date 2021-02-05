@@ -154,20 +154,14 @@ func update(upd Update) {
 		headerbar.SetSubtitle(engine.Left + " → " + engine.Right) // TODO: is it always '→'?
 	}
 
+	spinner.SetVisible(engine.Busy)
 	statusLabel.SetText(engine.Status)
-
 	progressbar.SetVisible(engine.Progress != "")
 	FitText(progressbar, engine.Progress)
 	if engine.ProgressFraction >= 0 {
 		progressbar.SetFraction(engine.ProgressFraction)
 	} else if upd.Progressed {
 		progressbar.Pulse()
-	}
-
-	if engine.Busy {
-		spinner.Start()
-	} else {
-		spinner.Stop()
 	}
 
 	syncButton.SetVisible(engine.Sync != nil)
