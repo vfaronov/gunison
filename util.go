@@ -9,12 +9,18 @@ import (
 )
 
 func mustf(err error, format string, args ...interface{}) {
+	if false { // enable govet printf checking
+		log.Panicf(format, args...)
+	}
 	if err != nil {
 		log.Panicf("failed to "+format+": %s", append(args, err))
 	}
 }
 
 func shouldf(err error, format string, args ...interface{}) bool {
+	if false { // enable govet printf checking
+		log.Printf(format, args...)
+	}
 	if err != nil {
 		log.Printf("failed to "+format+": %s", append(args, err))
 		return false
@@ -26,12 +32,12 @@ type Connector interface {
 	Connect(string, interface{}, ...interface{}) (glib.SignalHandle, error)
 }
 
-func shouldConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) bool {
+func shouldConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) bool { //nolint:unparam
 	_, err := obj.Connect(detailedSignal, f, userData...)
 	return shouldf(err, "Connect(%#v, %#v)", detailedSignal, f)
 }
 
-func shouldIdleAdd(f interface{}, args ...interface{}) bool {
+func shouldIdleAdd(f interface{}, args ...interface{}) bool { //nolint:unparam
 	_, err := glib.IdleAdd(f, args...)
 	return shouldf(err, "IdleAdd(%#v)", f)
 }
