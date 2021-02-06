@@ -27,6 +27,7 @@ var (
 	syncButton  *gtk.Button
 	abortButton *gtk.Button
 	killButton  *gtk.Button
+	closeButton *gtk.Button
 
 	wantQuit bool
 
@@ -125,6 +126,9 @@ func setupWidgets() {
 	killButton = mustGetObject(builder, "kill-button").(*gtk.Button)
 	shouldConnect(killButton, "clicked", onKillButtonClicked)
 
+	closeButton = mustGetObject(builder, "close-button").(*gtk.Button)
+	shouldConnect(closeButton, "clicked", onCloseButtonClicked)
+
 	update(Update{})
 
 	window.ShowAll()
@@ -171,6 +175,7 @@ func update(upd Update) {
 	syncButton.SetVisible(engine.Sync != nil)
 	abortButton.SetVisible(engine.Abort != nil)
 	killButton.SetVisible(wantQuit && engine.Kill != nil)
+	closeButton.SetVisible(engine.Finished)
 
 	if len(upd.Input) > 0 {
 		log.Printf("unison input: %#v", upd.Input)
@@ -243,4 +248,8 @@ func onAbortButtonClicked() {
 
 func onKillButtonClicked() {
 	update(engine.Kill())
+}
+
+func onCloseButtonClicked() {
+	window.Destroy()
 }
