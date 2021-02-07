@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	engine = NewEngine()
+	core = NewCore()
 
 	unison  *exec.Cmd
 	unisonR io.ReadCloser
@@ -53,14 +53,14 @@ func startUnison(args ...string) {
 
 	unisonW, err = unison.StdinPipe()
 	if err != nil {
-		engine.ProcExit(fmt.Errorf("failed to create input pipe: %w", err))
+		core.ProcExit(fmt.Errorf("failed to create input pipe: %w", err))
 		return
 	}
 
 	var pipeW *os.File
 	unisonR, pipeW, err = os.Pipe()
 	if err != nil {
-		engine.ProcExit(fmt.Errorf("failed to create output pipe: %w", err))
+		core.ProcExit(fmt.Errorf("failed to create output pipe: %w", err))
 		return
 	}
 	unison.Stdout = pipeW
@@ -68,7 +68,7 @@ func startUnison(args ...string) {
 
 	log.Printf("starting %v", unison)
 	if err := unison.Start(); err != nil {
-		engine.ProcExit(fmt.Errorf("failed to start unison: %w", err))
+		core.ProcExit(fmt.Errorf("failed to start unison: %w", err))
 		return
 	}
 	shouldf(pipeW.Close(), "close pipeW")
@@ -136,12 +136,12 @@ func setupWidgets() {
 
 func recvOutput(d []byte) {
 	log.Printf("receiving %d bytes of output", len(d))
-	update(engine.ProcOutput(d))
+	update(core.ProcOutput(d))
 }
 
 func recvError(err error) {
 	log.Println("receiving unison I/O error:", err)
-	update(engine.ProcError(err))
+	update(core.ProcError(err))
 }
 
 func recvExit(e error) {
@@ -149,33 +149,33 @@ func recvExit(e error) {
 		e = nil
 	}
 	log.Println("receiving unison exit:", e)
-	update(engine.ProcExit(e))
+	update(core.ProcExit(e))
 }
 
 func update(upd Update) {
-	if wantQuit && engine.Finished {
+	if wantQuit && core.Finished {
 		window.Destroy()
 		return
 	}
 
-	if engine.Left != "" && engine.Right != "" {
-		headerbar.SetSubtitle(engine.Left + " → " + engine.Right) // TODO: is it always '→'?
+	if core.Left != "" && core.Right != "" {
+		headerbar.SetSubtitle(core.Left + " → " + core.Right) // TODO: is it always '→'?
 	}
 
-	spinner.SetVisible(engine.Busy)
-	statusLabel.SetText(engine.Status)
-	progressbar.SetVisible(engine.Progress != "")
-	FitText(progressbar, engine.Progress)
-	if engine.ProgressFraction >= 0 {
-		progressbar.SetFraction(engine.ProgressFraction)
+	spinner.SetVisible(core.Busy)
+	statusLabel.SetText(core.Status)
+	progressbar.SetVisible(core.Progress != "")
+	FitText(progressbar, core.Progress)
+	if core.ProgressFraction >= 0 {
+		progressbar.SetFraction(core.ProgressFraction)
 	} else if upd.Progressed {
 		progressbar.Pulse()
 	}
 
-	syncButton.SetVisible(engine.Sync != nil)
-	abortButton.SetVisible(engine.Abort != nil)
-	killButton.SetVisible(wantQuit && engine.Kill != nil)
-	closeButton.SetVisible(engine.Finished)
+	syncButton.SetVisible(core.Sync != nil)
+	abortButton.SetVisible(core.Abort != nil)
+	killButton.SetVisible(wantQuit && core.Kill != nil)
+	closeButton.SetVisible(core.Finished)
 
 	if len(upd.Input) > 0 {
 		log.Printf("unison input: %#v", upd.Input)
@@ -201,31 +201,31 @@ func update(upd Update) {
 
 func onWindowDeleteEvent() bool {
 	switch {
-	case engine.Finished:
+	case core.Finished:
 		return handleDefault
 
-	case engine.Quit != nil:
+	case core.Quit != nil:
 		wantQuit = true
-		update(engine.Quit())
+		update(core.Quit())
 
-	case engine.Interrupt != nil:
+	case core.Interrupt != nil:
 		resp := Dialog(gtk.MESSAGE_QUESTION, "Interrupt Unison?",
 			DialogOption{Text: "_Keep running", Response: gtk.RESPONSE_NO},
 			DialogOption{Text: "_Interrupt", Response: gtk.RESPONSE_YES},
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
-			update(engine.Interrupt())
+			update(core.Interrupt())
 		}
 
-	case engine.Kill != nil:
+	case core.Kill != nil:
 		resp := Dialog(gtk.MESSAGE_QUESTION, "Unison is still running. Force it to stop?",
 			DialogOption{Text: "_Keep running", Response: gtk.RESPONSE_NO},
 			DialogOption{Text: "_Force stop", Response: gtk.RESPONSE_YES},
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
-			update(engine.Kill())
+			update(core.Kill())
 		}
 	}
 
@@ -233,7 +233,7 @@ func onWindowDeleteEvent() bool {
 }
 
 func onSyncButtonClicked() {
-	update(engine.Sync(0))
+	update(core.Sync(0))
 }
 
 func onAbortButtonClicked() {
@@ -242,12 +242,12 @@ func onAbortButtonClicked() {
 		DialogOption{Text: "_Abort", Response: gtk.RESPONSE_YES},
 	)
 	if resp == gtk.RESPONSE_YES {
-		update(engine.Abort())
+		update(core.Abort())
 	}
 }
 
 func onKillButtonClicked() {
-	update(engine.Kill())
+	update(core.Kill())
 }
 
 func onCloseButtonClicked() {

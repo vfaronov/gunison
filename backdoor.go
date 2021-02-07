@@ -19,16 +19,16 @@ func watchBackdoor() {
 }
 
 func recvBackdoor(line string) {
-	update(engine.ProcBackdoor(line))
+	update(core.ProcBackdoor(line))
 }
 
-func (e *Engine) ProcBackdoor(line string) Update {
+func (c *Core) ProcBackdoor(line string) Update {
 	var upd Update
 	data := []byte(line)
-	shouldf(json.Unmarshal(data, e), "unmarshal backdoor command into Engine")
+	shouldf(json.Unmarshal(data, c), "unmarshal backdoor command into Core")
 	shouldf(json.Unmarshal(data, &upd), "unmarshal backdoor command into Update")
-	if e.Status == "Ready to sync" {
-		e.Sync = e.doSync
+	if c.Status == "Ready to sync" {
+		c.Sync = c.doSync
 	}
 	return upd
 }
