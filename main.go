@@ -36,8 +36,8 @@ var (
 
 func main() {
 	gtk.Init(nil)
-	startUnison(os.Args[1:]...)
 	setupWidgets()
+	startUnison(os.Args[1:]...)
 	log.Print("starting main loop")
 	gtk.Main()
 }
@@ -53,14 +53,14 @@ func startUnison(args ...string) {
 
 	unisonW, err = unison.StdinPipe()
 	if err != nil {
-		core.ProcExit(fmt.Errorf("failed to create input pipe: %w", err))
+		recvError(fmt.Errorf("failed to create input pipe: %w", err))
 		return
 	}
 
 	var pipeW *os.File
 	unisonR, pipeW, err = os.Pipe()
 	if err != nil {
-		core.ProcExit(fmt.Errorf("failed to create output pipe: %w", err))
+		recvError(fmt.Errorf("failed to create output pipe: %w", err))
 		return
 	}
 	unison.Stdout = pipeW
@@ -68,12 +68,17 @@ func startUnison(args ...string) {
 
 	log.Printf("starting %v", unison)
 	if err := unison.Start(); err != nil {
-		core.ProcExit(fmt.Errorf("failed to start unison: %w", err))
+		recvError(fmt.Errorf("failed to start unison: %w", err))
 		return
 	}
 	shouldf(pipeW.Close(), "close pipeW")
 	go watchOutput()
 	go watchExit()
+	if core.ProcStart != nil {
+		update(core.ProcStart())
+	} else {
+		log.Println("core is not ready to process unison start")
+	}
 }
 
 func watchOutput() {
@@ -135,12 +140,18 @@ func setupWidgets() {
 }
 
 func recvOutput(d []byte) {
-	log.Printf("receiving %d bytes of output", len(d))
+	if core.ProcOutput == nil {
+		return
+	}
+	log.Printf("processing %d bytes of output", len(d))
 	update(core.ProcOutput(d))
 }
 
 func recvError(err error) {
-	log.Println("receiving unison I/O error:", err)
+	if core.ProcError == nil {
+		return
+	}
+	log.Println("processing unison I/O error:", err)
 	update(core.ProcError(err))
 }
 
@@ -148,12 +159,19 @@ func recvExit(e error) {
 	if e == success {
 		e = nil
 	}
-	log.Println("receiving unison exit:", e)
-	update(core.ProcExit(e))
+	if core.ProcExit == nil {
+		return
+	}
+	log.Println("processing unison exit:", e)
+	code := -1
+	if ee, ok := e.(*exec.ExitError); ok {
+		code = ee.ExitCode()
+	}
+	update(core.ProcExit(code, e))
 }
 
 func update(upd Update) {
-	if wantQuit && core.Finished {
+	if wantQuit && !core.Running {
 		window.Destroy()
 		return
 	}
@@ -175,11 +193,12 @@ func update(upd Update) {
 	syncButton.SetVisible(core.Sync != nil)
 	abortButton.SetVisible(core.Abort != nil)
 	killButton.SetVisible(wantQuit && core.Kill != nil)
-	closeButton.SetVisible(core.Finished)
+	closeButton.SetVisible(!core.Running)
 
 	if len(upd.Input) > 0 {
 		log.Printf("unison input: %#v", upd.Input)
 		if _, err := unisonW.Write(upd.Input); err != nil {
+			log.Printf("failed to write to unison: %v", err)
 			recvError(err)
 		}
 	}
@@ -187,6 +206,7 @@ func update(upd Update) {
 	if upd.Interrupt {
 		log.Print("interrupting unison")
 		if err := unison.Process.Signal(os.Interrupt); err != nil {
+			log.Printf("failed to interrupt unison: %v", err)
 			recvError(err)
 		}
 	}
@@ -194,6 +214,7 @@ func update(upd Update) {
 	if upd.Kill {
 		log.Printf("killing unison")
 		if err := unison.Process.Kill(); err != nil {
+			log.Printf("failed to kill unison: %v", err)
 			recvError(err)
 		}
 	}
@@ -201,7 +222,7 @@ func update(upd Update) {
 
 func onWindowDeleteEvent() bool {
 	switch {
-	case core.Finished:
+	case !core.Running:
 		return handleDefault
 
 	case core.Quit != nil:
@@ -233,7 +254,7 @@ func onWindowDeleteEvent() bool {
 }
 
 func onSyncButtonClicked() {
-	update(core.Sync(0))
+	update(core.Sync())
 }
 
 func onAbortButtonClicked() {
