@@ -42,9 +42,13 @@ func main() {
 	}
 	profile := flag.Arg(0)
 	left := flag.Arg(1)
+	right := flag.Arg(2)
+	if profile == "" || left == "" || right == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
 	left, err = filepath.Abs(left)
 	must(err)
-	right := flag.Arg(2)
 	right, err = filepath.Abs(right)
 	must(err)
 	if rootLeft == "" {
