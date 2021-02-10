@@ -19,8 +19,12 @@ var (
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
 
+	plan = make(map[string]Action)
+
 	window      *gtk.Window
 	headerbar   *gtk.HeaderBar
+	treeview    *gtk.TreeView
+	treestore   *gtk.TreeStore
 	statusLabel *gtk.Label
 	spinner     *gtk.Spinner
 	progressbar *gtk.ProgressBar
@@ -116,6 +120,9 @@ func setupWidgets() {
 
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 
+	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
+	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
+
 	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
 
 	spinner = mustGetObject(builder, "spinner").(*gtk.Spinner)
@@ -178,6 +185,11 @@ func update(upd Update) {
 
 	if core.Left != "" && core.Right != "" {
 		headerbar.SetSubtitle(core.Left + " → " + core.Right) // TODO: is it always '→'?
+	}
+
+	if upd.Items != nil {
+		displayItems(upd.Items)
+		treeview.SetVisible(true)
 	}
 
 	spinner.SetVisible(core.Busy)
