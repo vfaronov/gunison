@@ -12,7 +12,6 @@ type Core struct {
 	ProgressFraction float64 // 0 to 1; or -1 for unknown
 
 	Left, Right string
-	Plan        []Item
 
 	ProcStart  func() Update
 	ProcOutput func([]byte) Update
@@ -30,6 +29,7 @@ type Core struct {
 
 type Update struct {
 	Progressed bool
+	Items      []Item
 	Input      []byte
 	Interrupt  bool
 	Kill       bool
@@ -52,7 +52,7 @@ type Type byte
 const (
 	Absent Type = 1 + iota
 	File
-	Dir
+	Directory
 	Symlink
 )
 
@@ -69,12 +69,10 @@ const (
 type Action int
 
 const (
-	Error Action = 1 + iota
-	Conflict
+	Conflict Action = 1 + iota
 	LeftToRight
 	MaybeLeftToRight
 	RightToLeft
 	MaybeRightToLeft
 	Merge
-	Mixed
 )
