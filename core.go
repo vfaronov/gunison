@@ -12,6 +12,8 @@ type Core struct {
 	ProgressFraction float64 // 0 to 1; or -1 for unknown
 
 	Left, Right string
+	Items       []Item
+	Plan        map[string]Action
 
 	ProcStart  func() Update
 	ProcOutput func([]byte) Update
@@ -29,7 +31,6 @@ type Core struct {
 
 type Update struct {
 	Progressed bool
-	Items      []Item
 	Input      []byte
 	Interrupt  bool
 	Kill       bool

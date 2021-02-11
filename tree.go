@@ -12,9 +12,8 @@ const (
 	colRightProps
 )
 
-func displayItems(items []Item) {
-	for _, item := range items {
-		plan[item.Path] = item.Action
+func displayItems() {
+	for _, item := range core.Items {
 		iter := treestore.Append(nil)
 		mustf(treestore.SetValue(iter, colPath, item.Path), "set path column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")

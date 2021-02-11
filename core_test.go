@@ -51,6 +51,9 @@ func TestMinimal(t *testing.T) {
 	upd = c.ProcOutput([]byte("left         : changed file       modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--\n"))
 	assert.Zero(t, upd)
 	upd = c.ProcOutput([]byte("changed  ---->            one  [f] "))
+	assert.Zero(t, upd)
+	assert.Equal(t, "Ready to synchronize", c.Status)
+	assert.False(t, c.Busy)
 	expectedItems := []Item{
 		{
 			Path:   "one",
@@ -59,9 +62,7 @@ func TestMinimal(t *testing.T) {
 			Action: LeftToRight,
 		},
 	}
-	assert.Equal(t, Update{Items: expectedItems}, upd)
-	assert.Equal(t, "Ready to synchronize", c.Status)
-	assert.False(t, c.Busy)
+	assert.Equal(t, expectedItems, c.Items)
 	require.NotNil(t, c.Sync)
 	assert.NotNil(t, c.Quit)
 

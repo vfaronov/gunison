@@ -19,8 +19,6 @@ var (
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
 
-	plan = make(map[string]Action)
-
 	window      *gtk.Window
 	headerbar   *gtk.HeaderBar
 	treeview    *gtk.TreeView
@@ -187,8 +185,8 @@ func update(upd Update) {
 		headerbar.SetSubtitle(core.Left + " → " + core.Right) // TODO: is it always '→'?
 	}
 
-	if upd.Items != nil {
-		displayItems(upd.Items)
+	if core.Items != nil && !treeview.GetVisible() {
+		displayItems()
 		treeview.SetVisible(true)
 	}
 
