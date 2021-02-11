@@ -7,7 +7,10 @@ import (
 )
 
 func main() {
+	fmt.Println("c := NewCore()")
 	fmt.Println("var upd Update")
+	fmt.Println("upd = c.ProcStart()")
+	fmt.Println("assert.Zero(t, upd)")
 	scanner := bufio.NewScanner(os.Stdin)
 	var output string
 	for scanner.Scan() {
@@ -50,7 +53,7 @@ func main() {
 			output += out
 
 		case in != "":
-			fmt.Printf("assert.Equal(t, []byte(%q), upd.Input)\n", in)
+			fmt.Printf("assert.Equal(t, Update{Input: []byte(%q)}, upd)\n", in)
 
 		case interrupt:
 			fmt.Print("assert.Equal(t, Update{Interrupt: true}, upd)\n")
@@ -59,7 +62,7 @@ func main() {
 			fmt.Print("assert.Equal(t, Update{Kill: true}, upd)\n")
 
 		case exit:
-			fmt.Printf("upd = c.ProcExit(%d)\n", code)
+			fmt.Printf("upd = c.ProcExit(%d, nil)\n", code)
 			fmt.Print("assert.Zero(t, upd)\n")
 		}
 	}
