@@ -143,7 +143,7 @@ func setupWidgets() {
 
 	update(Update{})
 
-	window.ShowAll()
+	window.Show()
 }
 
 func recvOutput(d []byte) {
