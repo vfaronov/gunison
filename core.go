@@ -68,7 +68,7 @@ const (
 	Deleted
 )
 
-type Action int
+type Action byte
 
 const (
 	Conflict Action = 1 + iota
