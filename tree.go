@@ -62,12 +62,12 @@ func describeContent(c Content) string {
 }
 
 var describeAction = map[Action]string{
-	Conflict:         "◀─?─▶",
-	LeftToRight:      "────▶",
-	MaybeLeftToRight: "──?─▶",
-	RightToLeft:      "◀────",
-	MaybeRightToLeft: "◀─?──",
-	Merge:            "◀─M─▶",
+	Conflict:         "←?→",
+	LeftToRight:      "→",
+	MaybeLeftToRight: "?→",
+	RightToLeft:      "←",
+	MaybeRightToLeft: "←?",
+	Merge:            "←M→",
 }
 
 func iconName(item Item) string {

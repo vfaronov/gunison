@@ -25,6 +25,8 @@ var (
 	infobarLabel *gtk.Label
 	treeview     *gtk.TreeView
 	treestore    *gtk.TreeStore
+	leftColumn   *gtk.TreeViewColumn
+	rightColumn  *gtk.TreeViewColumn
 	statusLabel  *gtk.Label
 	spinner      *gtk.Spinner
 	progressbar  *gtk.ProgressBar
@@ -126,6 +128,12 @@ func setupWidgets() {
 
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
+	leftColumn = mustGetObject(builder, "left-column").(*gtk.TreeViewColumn)
+	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
+
+	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
+	// the XML file upon saving.
+	mustf(mustGetObject(builder, "action-renderer").(*gtk.CellRendererText).Set("xalign", 0.5), "set xalign")
 
 	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
 
@@ -188,7 +196,9 @@ func update(upd Update) {
 	}
 
 	if core.Left != "" && core.Right != "" {
-		headerbar.SetSubtitle(core.Left + " → " + core.Right) // TODO: is it always '→'?
+		headerbar.SetSubtitle(core.Left + " — " + core.Right)
+		leftColumn.SetTitle(core.Left)
+		rightColumn.SetTitle(core.Right)
 	}
 
 	if upd.Message.Text != "" {
