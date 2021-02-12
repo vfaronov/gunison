@@ -31,6 +31,7 @@ type Core struct {
 
 type Update struct {
 	Progressed bool
+	PlanReady  bool
 	Input      []byte
 	Interrupt  bool
 	Kill       bool

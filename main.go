@@ -185,7 +185,7 @@ func update(upd Update) {
 		headerbar.SetSubtitle(core.Left + " → " + core.Right) // TODO: is it always '→'?
 	}
 
-	if core.Items != nil && !treeview.GetVisible() {
+	if upd.PlanReady {
 		displayItems()
 		treeview.SetVisible(true)
 	}
