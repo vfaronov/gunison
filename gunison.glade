@@ -103,6 +103,7 @@
             <child>
               <object class="GtkTreeViewColumn">
                 <property name="resizable">True</property>
+                <property name="spacing">6</property>
                 <property name="sizing">fixed</property>
                 <property name="fixed_width">350</property>
                 <property name="title" translatable="yes">Path</property>
@@ -110,7 +111,7 @@
                 <property name="reorderable">True</property>
                 <child>
                   <object class="GtkCellRendererPixbuf" id="icon-renderer">
-                    <property name="stock_size">3</property>
+                    <property name="stock_size">5</property>
                   </object>
                   <attributes>
                     <attribute name="icon-name">4</attribute>

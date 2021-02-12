@@ -1,6 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"mime"
+	"path"
+	"strings"
+)
 
 const (
 	colPath = iota
@@ -72,11 +77,24 @@ func iconName(item Item) string {
 	}
 	switch content.Type {
 	case File:
-		return "text-x-generic" // TODO: determine from file extension
+		switch typ := mime.TypeByExtension(path.Ext(item.Path)); {
+		case strings.HasPrefix(typ, "audio/"):
+			return "audio-x-generic"
+		case strings.HasPrefix(typ, "font/"):
+			return "font-x-generic"
+		case strings.HasPrefix(typ, "image/"):
+			return "image-x-generic"
+		case strings.HasPrefix(typ, "text/html"):
+			return "text-html"
+		case strings.HasPrefix(typ, "video/"):
+			return "video-x-generic"
+		default:
+			return "text-x-generic"
+		}
 	case Directory:
 		return "folder"
 	case Symlink:
-		return "emblem-symbolic-link" // TODO
+		return "emblem-symbolic-link"
 	default:
 		return ""
 	}
