@@ -8,9 +8,7 @@ import (
 
 func main() {
 	fmt.Println("c := NewCore()")
-	fmt.Println("var upd Update")
-	fmt.Println("upd = c.ProcStart()")
-	fmt.Println("assert.Zero(t, upd)")
+	fmt.Println("assert.Zero(t, c.ProcStart())")
 	scanner := bufio.NewScanner(os.Stdin)
 	var output string
 	for scanner.Scan() {
@@ -39,31 +37,29 @@ func main() {
 		}
 
 		if out == "" && output != "" {
-			fmt.Printf("upd = c.ProcOutput([]byte(%q))\n", output)
+			fmt.Printf("assert.Zero(t, c.ProcOutput([]byte(%q)))\n", output)
 			output = ""
 		}
 
 		switch {
 		case out != "":
 			if output != "" && len(out) >= 5 {
-				fmt.Printf("upd = c.ProcOutput([]byte(%q))\n", output)
-				fmt.Print("assert.Zero(t, upd)\n")
+				fmt.Printf("assert.Zero(t, c.ProcOutput([]byte(%q)))\n", output)
 				output = ""
 			}
 			output += out
 
 		case in != "":
-			fmt.Printf("assert.Equal(t, Update{Input: []byte(%q)}, upd)\n", in)
+			fmt.Printf("assertEqual(t, ?,\n\tUpdate{Input: []byte(%q)})\n", in)
 
 		case interrupt:
-			fmt.Print("assert.Equal(t, Update{Interrupt: true}, upd)\n")
+			fmt.Print("assertEqual(t, ?,\n\tUpdate{Interrupt: true})\n")
 
 		case kill:
-			fmt.Print("assert.Equal(t, Update{Kill: true}, upd)\n")
+			fmt.Print("assertEqual(t, ?,\n\tUpdate{Kill: true})\n")
 
 		case exit:
-			fmt.Printf("upd = c.ProcExit(%d, nil)\n", code)
-			fmt.Print("assert.Zero(t, upd)\n")
+			fmt.Printf("assert.Zero(t, c.ProcExit(%d, nil))\n", code)
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -71,7 +67,6 @@ func main() {
 	}
 
 	if output != "" {
-		fmt.Printf("upd = c.ProcOutput([]byte(%q))\n", output)
-		fmt.Print("assert.Zero(t, upd)\n")
+		fmt.Printf("assert.Zero(c.ProcOutput([]byte(%q)))\n", output)
 	}
 }
