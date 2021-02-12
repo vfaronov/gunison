@@ -274,3 +274,22 @@ func TestProgressPropagatingUpdates(t *testing.T) {
 	assert.Equal(t, "94%  00:01 ETA", c.Progress)
 	assert.Equal(t, 0.94, c.ProgressFraction)
 }
+
+func TestNonexistentProfile(t *testing.T) {
+	c := NewCore()
+	var upd Update
+	c.ProcStart()
+	upd = c.ProcOutput([]byte("Usage: unison [options]\n    or unison root1 root2 [options]\n    or unison profilename [options]\n\nFor a list of options, type \"unison -help\".\nFor a tutorial on basic usage, type \"unison -doc tutorial\".\nFor other documentation, type \"unison -doc topics\".\n\nProfile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist\n"))
+	assert.Zero(t, upd)
+	assert.True(t, c.Busy)
+	assert.Equal(t, "Starting unison", c.Status)
+	upd = c.ProcExit(1, nil)
+	expectedMessage := Message{
+		Text:       "Unison exited, saying:\nUsage: unison [options]\n[...] Profile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist",
+		Importance: Error,
+	}
+	assert.Equal(t, Update{Message: expectedMessage}, upd)
+	assert.False(t, c.Busy)
+	assert.Equal(t, "Unison exited unexpectedly", c.Status)
+	assert.Nil(t, c.Interrupt)
+}

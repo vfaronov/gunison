@@ -19,17 +19,19 @@ var (
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
 
-	window      *gtk.Window
-	headerbar   *gtk.HeaderBar
-	treeview    *gtk.TreeView
-	treestore   *gtk.TreeStore
-	statusLabel *gtk.Label
-	spinner     *gtk.Spinner
-	progressbar *gtk.ProgressBar
-	syncButton  *gtk.Button
-	abortButton *gtk.Button
-	killButton  *gtk.Button
-	closeButton *gtk.Button
+	window       *gtk.Window
+	headerbar    *gtk.HeaderBar
+	infobar      *gtk.InfoBar
+	infobarLabel *gtk.Label
+	treeview     *gtk.TreeView
+	treestore    *gtk.TreeStore
+	statusLabel  *gtk.Label
+	spinner      *gtk.Spinner
+	progressbar  *gtk.ProgressBar
+	syncButton   *gtk.Button
+	abortButton  *gtk.Button
+	killButton   *gtk.Button
+	closeButton  *gtk.Button
 
 	wantQuit bool
 
@@ -115,6 +117,11 @@ func setupWidgets() {
 	shouldConnect(window, "delete-event", onWindowDeleteEvent)
 	shouldConnect(window, "destroy", gtk.MainQuit)
 
+	infobar = mustGetObject(builder, "infobar").(*gtk.InfoBar)
+	shouldConnect(infobar, "response", onInfobarResponse)
+
+	infobarLabel = mustGetObject(builder, "infobar-label").(*gtk.Label)
+
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
@@ -182,6 +189,19 @@ func update(upd Update) {
 
 	if core.Left != "" && core.Right != "" {
 		headerbar.SetSubtitle(core.Left + " → " + core.Right) // TODO: is it always '→'?
+	}
+
+	if upd.Message.Text != "" {
+		infobarLabel.SetText(upd.Message.Text)
+		switch upd.Message.Importance {
+		case Info:
+			infobar.SetMessageType(gtk.MESSAGE_INFO)
+		case Warning:
+			infobar.SetMessageType(gtk.MESSAGE_WARNING)
+		case Error:
+			infobar.SetMessageType(gtk.MESSAGE_ERROR)
+		}
+		shouldf(infobar.Set("revealed", true), "reveal infobar")
 	}
 
 	if upd.PlanReady {
@@ -260,6 +280,10 @@ func onWindowDeleteEvent() bool {
 	}
 
 	return blockDefault
+}
+
+func onInfobarResponse() {
+	shouldf(infobar.Set("revealed", false), "occlude infobar")
 }
 
 func onSyncButtonClicked() {

@@ -35,6 +35,7 @@ type Update struct {
 	Input      []byte
 	Interrupt  bool
 	Kill       bool
+	Message    Message
 }
 
 type Item struct {
@@ -77,4 +78,17 @@ const (
 	RightToLeft
 	MaybeRightToLeft
 	Merge
+)
+
+type Message struct {
+	Text       string
+	Importance Importance
+}
+
+type Importance byte
+
+const (
+	Info Importance = 1 + iota
+	Warning
+	Error
 )
