@@ -133,11 +133,14 @@ func onTreeSelectionChanged() {
 
 func updateMenuItems() {
 	nsel := treeSelection.CountSelectedRows()
+
 	allowAction := core.Sync != nil && nsel > 0
 	leftToRightMenuItem.SetSensitive(allowAction)
 	rightToLeftMenuItem.SetSensitive(allowAction)
 	mergeMenuItem.SetSensitive(allowAction)
 	skipMenuItem.SetSensitive(allowAction)
+
+	diffMenuItem.SetSensitive(core.Diff != nil && nsel == 1)
 }
 
 func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
@@ -146,6 +149,19 @@ func onMergeMenuItemActivate()       { setAction(Merge) }
 func onSkipMenuItemActivate()        { setAction(Skip) }
 
 func setAction(act Action) {
+	forEachSelectedPath(func(iter *gtk.TreeIter, path string) {
+		core.Plan[path] = act
+		displayItemAction(iter, act)
+	})
+}
+
+func onDiffMenuItemActivate() {
+	forEachSelectedPath(func(_ *gtk.TreeIter, path string) {
+		update(core.Diff(path))
+	})
+}
+
+func forEachSelectedPath(f func(*gtk.TreeIter, string)) {
 	treeSelection.SelectedForEach(gtk.TreeSelectionForeachFunc(
 		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter, _ ...interface{}) {
 			pathv, err := treestore.GetValue(iter, colPath)
@@ -156,8 +172,7 @@ func setAction(act Action) {
 			if !shouldf(err, "get path string") {
 				return
 			}
-			core.Plan[path] = act
-			displayItemAction(iter, act)
+			f(iter, path)
 		},
 	))
 }

@@ -20,6 +20,7 @@ type Core struct {
 	ProcExit   func(int, error) Update
 	ProcError  func(error) Update
 
+	Diff      func(string) Update
 	Sync      func() Update
 	Quit      func() Update
 	Abort     func() Update
@@ -32,6 +33,7 @@ type Core struct {
 type Update struct {
 	Progressed bool
 	PlanReady  bool
+	Diff       []byte
 	Input      []byte
 	Interrupt  bool
 	Kill       bool

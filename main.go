@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"syscall"
 
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/skratchdot/open-golang/open"
 )
 
 var (
@@ -33,6 +35,7 @@ var (
 	rightToLeftMenuItem *gtk.MenuItem
 	mergeMenuItem       *gtk.MenuItem
 	skipMenuItem        *gtk.MenuItem
+	diffMenuItem        *gtk.MenuItem
 	statusLabel         *gtk.Label
 	spinner             *gtk.Spinner
 	progressbar         *gtk.ProgressBar
@@ -152,6 +155,8 @@ func setupWidgets() {
 	shouldConnect(mergeMenuItem, "activate", onMergeMenuItemActivate)
 	skipMenuItem = mustGetObject(builder, "skip-menuitem").(*gtk.MenuItem)
 	shouldConnect(skipMenuItem, "activate", onSkipMenuItemActivate)
+	diffMenuItem = mustGetObject(builder, "diff-menuitem").(*gtk.MenuItem)
+	shouldConnect(diffMenuItem, "activate", onDiffMenuItemActivate)
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
@@ -215,6 +220,10 @@ func update(upd Update) {
 	if wantQuit && !core.Running {
 		window.Destroy()
 		return
+	}
+
+	if upd.Diff != nil {
+		displayDiff(upd.Diff)
 	}
 
 	if core.Left != "" && core.Right != "" {
@@ -283,6 +292,18 @@ func update(upd Update) {
 	}
 }
 
+func displayDiff(diff []byte) {
+	f, err := ioutil.TempFile("", "gunison-*.diff")
+	if !checkf(err, "write diff to temporary file") {
+		return
+	}
+	_, err = f.Write(diff)
+	if !checkf(err, "write diff to temporary file") {
+		return
+	}
+	checkf(open.Start(f.Name()), "display diff file")
+}
+
 func onWindowDeleteEvent() bool {
 	switch {
 	case !core.Running:
@@ -340,4 +361,17 @@ func onKillButtonClicked() {
 
 func onCloseButtonClicked() {
 	window.Destroy()
+}
+
+func checkf(err error, format string, args ...interface{}) bool { // TODO: vs. shouldf
+	if false { // enable govet printf checking
+		log.Printf(format, args...)
+	}
+	if err != nil {
+		infobarLabel.SetText(fmt.Sprintf("Failed to "+format+": %s", append(args, err)...))
+		infobar.SetMessageType(gtk.MESSAGE_ERROR)
+		shouldf(infobar.Set("revealed", true), "reveal infobar")
+		return false
+	}
+	return true
 }
