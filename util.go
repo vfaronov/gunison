@@ -13,7 +13,7 @@ func mustf(err error, format string, args ...interface{}) {
 		log.Panicf(format, args...)
 	}
 	if err != nil {
-		log.Panicf("failed to "+format+": %s", append(args, err))
+		log.Panicf("failed to "+format+": %s", append(args, err)...)
 	}
 }
 
@@ -22,7 +22,7 @@ func shouldf(err error, format string, args ...interface{}) bool {
 		log.Printf(format, args...)
 	}
 	if err != nil {
-		log.Printf("failed to "+format+": %s", append(args, err))
+		log.Printf("failed to "+format+": %s", append(args, err)...)
 		return false
 	}
 	return true
