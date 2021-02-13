@@ -170,6 +170,19 @@ var templates = map[string]template{
 		},
 	},
 
+	"several": {
+		create: func(root string) {
+			for i := 1; i <= 3; i++ {
+				put(p(root, fmt.Sprintf("file%d", i)), smallText)
+			}
+		},
+		changeLeft: func(root string) {
+			for i := 1; i <= 3; i++ {
+				tweak(p(root, fmt.Sprintf("file%d", i)), 50*i)
+			}
+		},
+	},
+
 	"unchanged": {
 		create: func(root string) {
 			put(p(root, "one"), smallText)
