@@ -62,7 +62,7 @@ func describeContent(c Content) string {
 }
 
 var describeAction = map[Action]string{
-	Conflict:         "←?→",
+	Skip:             "←?→",
 	LeftToRight:      "→",
 	MaybeLeftToRight: "?→",
 	RightToLeft:      "←",

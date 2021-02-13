@@ -72,7 +72,7 @@ const (
 type Action byte
 
 const (
-	Conflict Action = 1 + iota
+	Skip Action = 1 + iota
 	LeftToRight
 	MaybeLeftToRight
 	RightToLeft
