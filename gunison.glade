@@ -2,6 +2,41 @@
 <!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
+  <object class="GtkMenu" id="item-menu">
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="left-to-right-menuitem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Propagate from _left to right</property>
+        <property name="use_underline">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="right-to-left-menuitem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Propagate from _right to left</property>
+        <property name="use_underline">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="merge-menuitem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">_Merge the versions</property>
+        <property name="use_underline">True</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="skip-menuitem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">_Skip</property>
+        <property name="use_underline">True</property>
+      </object>
+    </child>
+  </object>
   <object class="GtkTreeStore" id="treestore">
     <columns>
       <!-- column-name path -->
@@ -97,7 +132,9 @@
             <property name="headers_clickable">False</property>
             <property name="enable_tree_lines">True</property>
             <child internal-child="selection">
-              <object class="GtkTreeSelection"/>
+              <object class="GtkTreeSelection" id="tree-selection">
+                <property name="mode">multiple</property>
+              </object>
             </child>
             <child>
               <object class="GtkTreeViewColumn">

@@ -19,21 +19,27 @@ var (
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
 
-	window       *gtk.Window
-	headerbar    *gtk.HeaderBar
-	infobar      *gtk.InfoBar
-	infobarLabel *gtk.Label
-	treeview     *gtk.TreeView
-	treestore    *gtk.TreeStore
-	leftColumn   *gtk.TreeViewColumn
-	rightColumn  *gtk.TreeViewColumn
-	statusLabel  *gtk.Label
-	spinner      *gtk.Spinner
-	progressbar  *gtk.ProgressBar
-	syncButton   *gtk.Button
-	abortButton  *gtk.Button
-	killButton   *gtk.Button
-	closeButton  *gtk.Button
+	window              *gtk.Window
+	headerbar           *gtk.HeaderBar
+	infobar             *gtk.InfoBar
+	infobarLabel        *gtk.Label
+	treeview            *gtk.TreeView
+	treeSelection       *gtk.TreeSelection
+	treestore           *gtk.TreeStore
+	leftColumn          *gtk.TreeViewColumn
+	rightColumn         *gtk.TreeViewColumn
+	itemMenu            *gtk.Menu
+	leftToRightMenuItem *gtk.MenuItem
+	rightToLeftMenuItem *gtk.MenuItem
+	mergeMenuItem       *gtk.MenuItem
+	skipMenuItem        *gtk.MenuItem
+	statusLabel         *gtk.Label
+	spinner             *gtk.Spinner
+	progressbar         *gtk.ProgressBar
+	syncButton          *gtk.Button
+	abortButton         *gtk.Button
+	killButton          *gtk.Button
+	closeButton         *gtk.Button
 
 	wantQuit bool
 
@@ -127,9 +133,25 @@ func setupWidgets() {
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
+	shouldConnect(treeview, "popup-menu", onTreeviewPopupMenu)
+	shouldConnect(treeview, "button-press-event", onTreeviewButtonPressEvent)
+
+	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
+	shouldConnect(treeSelection, "changed", onTreeSelectionChanged)
+
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
 	leftColumn = mustGetObject(builder, "left-column").(*gtk.TreeViewColumn)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
+
+	itemMenu = mustGetObject(builder, "item-menu").(*gtk.Menu)
+	leftToRightMenuItem = mustGetObject(builder, "left-to-right-menuitem").(*gtk.MenuItem)
+	shouldConnect(leftToRightMenuItem, "activate", onLeftToRightMenuItemActivate)
+	rightToLeftMenuItem = mustGetObject(builder, "right-to-left-menuitem").(*gtk.MenuItem)
+	shouldConnect(rightToLeftMenuItem, "activate", onRightToLeftMenuItemActivate)
+	mergeMenuItem = mustGetObject(builder, "merge-menuitem").(*gtk.MenuItem)
+	shouldConnect(mergeMenuItem, "activate", onMergeMenuItemActivate)
+	skipMenuItem = mustGetObject(builder, "skip-menuitem").(*gtk.MenuItem)
+	shouldConnect(skipMenuItem, "activate", onSkipMenuItemActivate)
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
@@ -218,6 +240,8 @@ func update(upd Update) {
 		displayItems()
 		treeview.SetVisible(true)
 	}
+
+	updateMenuItems()
 
 	spinner.SetVisible(core.Busy)
 	statusLabel.SetText(core.Status)

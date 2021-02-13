@@ -5,6 +5,9 @@ import (
 	"mime"
 	"path"
 	"strings"
+
+	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/gtk"
 )
 
 const (
@@ -23,11 +26,15 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colPath, item.Path), "set path column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
-		mustf(treestore.SetValue(iter, colAction, describeAction[item.Action]), "set action column")
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colLeftProps, item.Left.Props), "set left-props column")
 		mustf(treestore.SetValue(iter, colRightProps, item.Right.Props), "set right-props column")
+		displayItemAction(iter, item.Action)
 	}
+}
+
+func displayItemAction(iter *gtk.TreeIter, act Action) {
+	mustf(treestore.SetValue(iter, colAction, describeAction[act]), "set action column")
 }
 
 func describeContent(c Content) string {
@@ -98,4 +105,59 @@ func iconName(item Item) string {
 	default:
 		return ""
 	}
+}
+
+func onTreeviewPopupMenu() {
+	// TODO: position at the selected row
+	itemMenu.PopupAtWidget(treeview, gdk.GDK_GRAVITY_SOUTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
+}
+
+func onTreeviewButtonPressEvent(_ *gtk.TreeView, ev *gdk.Event) bool {
+	evb := gdk.EventButtonNewFromEvent(ev)
+	// TODO: use gdk_event_triggers_context_menu instead (not available in gotk3 at the moment)
+	if evb.Type() == gdk.EVENT_BUTTON_PRESS && evb.Button() == gdk.BUTTON_SECONDARY {
+		path, _, _, _, ok := treeview.GetPathAtPos(int(evb.X()), int(evb.Y()))
+		if ok && !treeSelection.PathIsSelected(path) {
+			treeSelection.UnselectAll()
+			treeSelection.SelectPath(path)
+		}
+		itemMenu.PopupAtPointer(ev)
+		return blockDefault // prevent default handler from messing with selection
+	}
+	return handleDefault
+}
+
+func onTreeSelectionChanged() {
+	updateMenuItems()
+}
+
+func updateMenuItems() {
+	nsel := treeSelection.CountSelectedRows()
+	allowAction := core.Sync != nil && nsel > 0
+	leftToRightMenuItem.SetSensitive(allowAction)
+	rightToLeftMenuItem.SetSensitive(allowAction)
+	mergeMenuItem.SetSensitive(allowAction)
+	skipMenuItem.SetSensitive(allowAction)
+}
+
+func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
+func onRightToLeftMenuItemActivate() { setAction(RightToLeft) }
+func onMergeMenuItemActivate()       { setAction(Merge) }
+func onSkipMenuItemActivate()        { setAction(Skip) }
+
+func setAction(act Action) {
+	treeSelection.SelectedForEach(gtk.TreeSelectionForeachFunc(
+		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter, _ ...interface{}) {
+			pathv, err := treestore.GetValue(iter, colPath)
+			if !shouldf(err, "get path value") {
+				return
+			}
+			path, err := pathv.GetString()
+			if !shouldf(err, "get path string") {
+				return
+			}
+			core.Plan[path] = act
+			displayItemAction(iter, act)
+		},
+	))
 }
