@@ -85,6 +85,8 @@ const (
 type Message struct {
 	Text       string
 	Importance Importance
+	Proceed    func() Update
+	Abort      func() Update
 }
 
 type Importance byte

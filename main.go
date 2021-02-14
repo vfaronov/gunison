@@ -232,19 +232,6 @@ func update(upd Update) {
 		rightColumn.SetTitle(core.Right)
 	}
 
-	if upd.Message.Text != "" {
-		infobarLabel.SetText(upd.Message.Text)
-		switch upd.Message.Importance {
-		case Info:
-			infobar.SetMessageType(gtk.MESSAGE_INFO)
-		case Warning:
-			infobar.SetMessageType(gtk.MESSAGE_WARNING)
-		case Error:
-			infobar.SetMessageType(gtk.MESSAGE_ERROR)
-		}
-		shouldf(infobar.Set("revealed", true), "reveal infobar")
-	}
-
 	if upd.PlanReady {
 		displayItems()
 		treeview.SetVisible(true)
@@ -290,6 +277,41 @@ func update(upd Update) {
 			recvError(err)
 		}
 	}
+
+	// This goes last because we better update everything before showing the dialog
+	// (which itself will, moreover, trigger another update).
+	if upd.Message.Text != "" {
+		if upd.Message.Proceed == nil && upd.Message.Abort == nil {
+			showMessageInfobar(upd.Message)
+		} else {
+			showMessageDialog(upd.Message)
+		}
+	}
+}
+
+func showMessageDialog(msg Message) {
+	resp := Dialog(importanceToMessageType[msg.Importance], msg.Text,
+		DialogOption{Text: "Abort", Response: gtk.RESPONSE_REJECT},
+		DialogOption{Text: "Proceed", Response: gtk.RESPONSE_ACCEPT},
+	)
+	switch {
+	case resp == gtk.RESPONSE_REJECT && msg.Abort != nil:
+		update(msg.Abort())
+	case resp == gtk.RESPONSE_ACCEPT && msg.Proceed != nil:
+		update(msg.Proceed())
+	}
+}
+
+func showMessageInfobar(msg Message) {
+	infobarLabel.SetText(msg.Text)
+	infobar.SetMessageType(importanceToMessageType[msg.Importance])
+	shouldf(infobar.Set("revealed", true), "reveal infobar")
+}
+
+var importanceToMessageType = map[Importance]gtk.MessageType{
+	Info:    gtk.MESSAGE_INFO,
+	Warning: gtk.MESSAGE_WARNING,
+	Error:   gtk.MESSAGE_ERROR,
 }
 
 func displayDiff(diff []byte) {

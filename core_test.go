@@ -443,6 +443,76 @@ func TestDiffAbort(t *testing.T) {
 		Update{Interrupt: true})
 }
 
+func TestReplicaMissing(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Looking for changes\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Reconciling changes\n")))
+	assert.Zero(t, c.ProcOutput([]byte("The root of one of the replicas has been completely emptied.\nUnison may delete everything in the other replica.  (Set the \n'confirmbigdel' preference to false to disable this check.)\n\n")))
+	upd := c.ProcOutput([]byte("Do you really want to proceed? [] "))
+	assertEqual(t, upd.Message.Text, "The root of one of the replicas has been completely emptied.\nUnison may delete everything in the other replica.  (Set the \n'confirmbigdel' preference to false to disable this check.)\n\nDo you really want to proceed?")
+	assertEqual(t, upd.Message.Importance, Warning)
+	assertEqual(t, c.Status, "Reconciling changes")
+	assert.True(t, c.Busy)
+	assertEqual(t, upd.Message.Proceed(),
+		Update{Input: []byte("y")})
+	assert.Zero(t, c.ProcOutput([]byte("y")))
+	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- deleted      [f] ")),
+		Update{Input: []byte("l")})
+	assert.Zero(t, c.ProcOutput([]byte("l\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted      \n")))
+	assert.Zero(t, c.ProcOutput([]byte("left         : unchanged dir      modified on 2021-02-06 at 18:31:42  size 1146      rwxr-xr-x\nright        : deleted\n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- deleted      [f] ")),
+		Update{PlanReady: true})
+	assertEqual(t, c.Status, "Ready to synchronize")
+	assert.False(t, c.Busy)
+	assert.NotNil(t, c.Sync)
+}
+
+func TestReplicaMissingAbort(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("The root of one of the replicas has been completely emptied.\nUnison may delete everything in the other replica.  (Set the \n'confirmbigdel' preference to false to disable this check.)\n\n")))
+	upd := c.ProcOutput([]byte("Do you really want to proceed? [] "))
+	assertEqual(t, upd.Message.Abort(),
+		Update{Input: []byte("q")})
+	assertEqual(t, c.Status, "Quitting Unison")
+}
+
+func TestNewReplicas(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Looking for changes\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Warning: ")))
+	assert.Zero(t, c.ProcOutput([]byte("No archive files were found for these roots, whose canonical names are:\n\t/home/vasiliy/tmp/gunison/left\n\t/home/vasiliy/tmp/gunison/right\nThis can happen either\nbecause this is the first time you have synchronized these roots, \nor because you have upgraded Unison to a new version with a different\narchive format.  \n\nUpdate detection may take a while on this run if the replicas are \nlarge.\n\nUnison will assume that the 'last synchronized state' of both replicas\nwas completely empty.  This means that any files that are different\nwill be reported as conflicts, and any files that exist only on one\nreplica will be judged as new and propagated to the other replica.\nIf the two replicas are identical, then no changes will be reported.\n\nIf you see this message repeatedly, it may be because one of your machines\nis getting its address from DHCP, which is causing its host name to change\nbetween synchronizations.  See the documentation for the UNISONLOCALHOSTNAME\nenvironment variable for advice on how to correct this.\n\nDonations to the Unison project are gratefully accepted: \nhttp://www.cis.upenn.edu/~bcpierce/unison\n\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Press return to continue.[")))
+	upd := c.ProcOutput([]byte("<spc>] "))
+	assertEqual(t, upd.Message.Text, "No archive files were found for these roots, whose canonical names are:\n\t/home/vasiliy/tmp/gunison/left\n\t/home/vasiliy/tmp/gunison/right\nThis can happen either\nbecause this is the first time you have synchronized these roots, \nor because you have upgraded Unison to a new version with a different\narchive format.  \n\nUpdate detection may take a while on this run if the replicas are \nlarge.\n\nUnison will assume that the 'last synchronized state' of both replicas\nwas completely empty.  This means that any files that are different\nwill be reported as conflicts, and any files that exist only on one\nreplica will be judged as new and propagated to the other replica.\nIf the two replicas are identical, then no changes will be reported.\n\nIf you see this message repeatedly, it may be because one of your machines\nis getting its address from DHCP, which is causing its host name to change\nbetween synchronizations.  See the documentation for the UNISONLOCALHOSTNAME\nenvironment variable for advice on how to correct this.\n\nDonations to the Unison project are gratefully accepted: \nhttp://www.cis.upenn.edu/~bcpierce/unison")
+	assertEqual(t, upd.Message.Importance, Warning)
+	assertEqual(t, c.Status, "Looking for changes")
+	assert.True(t, c.Busy)
+	assertEqual(t, upd.Message.Proceed(),
+		Update{Input: []byte("\n")})
+	assert.Zero(t, c.ProcOutput([]byte("\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Reconciling changes\n")))
+	assertEqual(t, c.Status, "Reconciling changes")
+}
+
+func TestNewReplicasAbort(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Warning: ")))
+	assert.Zero(t, c.ProcOutput([]byte("No archive files were found for these roots, whose canonical names are:\n\t/home/vasiliy/tmp/gunison/left\n\t/home/vasiliy/tmp/gunison/right\nThis can happen either\nbecause this is the first time you have synchronized these roots, \nor because you have upgraded Unison to a new version with a different\narchive format.  \n\nUpdate detection may take a while on this run if the replicas are \nlarge.\n\nUnison will assume that the 'last synchronized state' of both replicas\nwas completely empty.  This means that any files that are different\nwill be reported as conflicts, and any files that exist only on one\nreplica will be judged as new and propagated to the other replica.\nIf the two replicas are identical, then no changes will be reported.\n\nIf you see this message repeatedly, it may be because one of your machines\nis getting its address from DHCP, which is causing its host name to change\nbetween synchronizations.  See the documentation for the UNISONLOCALHOSTNAME\nenvironment variable for advice on how to correct this.\n\nDonations to the Unison project are gratefully accepted: \nhttp://www.cis.upenn.edu/~bcpierce/unison\n\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Press return to continue.[")))
+	upd := c.ProcOutput([]byte("<spc>] "))
+	assertEqual(t, upd.Message.Abort(),
+		Update{Input: []byte("q")})
+	assertEqual(t, c.Status, "Quitting Unison")
+}
+
 // assertEqual is just assert.Equal with arguments swapped,
 // which makes for more readable code in places.
 func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unparam
