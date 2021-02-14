@@ -513,6 +513,19 @@ func TestNewReplicasAbort(t *testing.T) {
 	assertEqual(t, c.Status, "Quitting Unison")
 }
 
+func TestEmpty(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Nothing to do: replicas have not changed since last sync.\n")))
+	assertEqual(t, c.ProcExit(0, nil),
+		Update{Message: Message{
+			Text:       "Nothing to do: replicas have not changed since last sync.",
+			Importance: Info,
+		}})
+	assertEqual(t, c.Status, "Finished successfully")
+	assert.False(t, c.Running)
+}
+
 // assertEqual is just assert.Equal with arguments swapped,
 // which makes for more readable code in places.
 func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unparam
