@@ -832,6 +832,43 @@ func TestAssorted(t *testing.T) {
 	assertEqual(t, c.Status, "Sync incomplete (14 transferred, 2 skipped, 1 failed)")
 }
 
+func TestInterruptLookingForChanges(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Connected [//aqtau//home/vasiliy/tmp/gunison/left -> //aqtau//home/vasiliy/tmp/gunison/right]\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Looking for changes\n")))
+	assertEqual(t, c.Interrupt(),
+		Update{Interrupt: true})
+	assertEqual(t, c.Status, "Interrupting Unison")
+	assert.True(t, c.Running)
+	assert.True(t, c.Busy)
+	assert.Nil(t, c.Interrupt)
+	assert.NotNil(t, c.Kill)
+	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
+	assertEqual(t, c.Status, "Interrupting Unison")
+	assert.True(t, c.Running)
+	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.Status, "Interrupted")
+	assert.False(t, c.Running)
+}
+
+func TestSSHFailure(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assertEqual(t, c.ProcOutput([]byte("Fatal error: Lost connection with the server\n")),
+		Update{Message: Message{
+			Text:       "Lost connection with the server",
+			Importance: Error,
+		}})
+	assert.Equal(t, c.Status, "Contacting server")
+	assert.True(t, c.Busy)
+	assert.Zero(t, c.ProcExit(3, nil))
+	assert.Equal(t, c.Status, "Unison exited unexpectedly")
+	assert.False(t, c.Busy)
+}
+
 // assertEqual is just assert.Equal with arguments swapped,
 // which makes for more readable code in places.
 func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unparam
