@@ -523,6 +523,347 @@ func TestEmpty(t *testing.T) {
 	assert.False(t, c.Running)
 }
 
+func TestAssorted(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("\nlocal          tanais             \n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")),
+		Update{Input: []byte("l\n")})
+	assert.Zero(t, c.ProcOutput([]byte("  ")))
+	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1000      rw-r--r--\ntanais       : new dir            modified on 2021-02-17 at 16:21:40  size 2292      rwxr-xr-x\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("new file <-?-> deleted    one hundred/one hundred two  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : new file           modified on 2021-02-17 at 16:21:33  size 1146      rw-r--r--\ntanais       : deleted\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> changed    six/nine  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1147000   rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:43  size 1147000   rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("props    <-?-> props      twenty one  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed props      modified on 2021-02-17 at 16:21:41  size 1146      rw-r--r--\ntanais       : changed props      modified on 2021-02-17 at 16:21:55  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    deeply/nested/sub/directory/with/file  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:56  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("new link ---->            eighteen  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : new symlink        modified on 1970-01-01 at  3:00:00  size 0         unknown permissions\ntanais       : absent\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:55  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("new file ---->            seventeen  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : new file           modified on 2021-02-17 at 16:21:41  size 0         rw-r--r--\ntanais       : absent\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/eight  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:42  size 1147000   rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/eleven  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 10000000  rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:55  size 10000000  rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted    six/fourteen  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged dir      modified on 2021-02-17 at 16:21:33  size 2292      rwxr-xr-x\ntanais       : deleted\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/seven  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 0         rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:41  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("props    ---->            six/ten  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed props      modified on 2021-02-17 at 16:21:33  size 1000      rwx------\ntanais       : unchanged file     modified on 2021-02-17 at 16:21:33  size 1000      rw-r--r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted    three  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1147000   rw-r--r--\ntanais       : deleted\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- props      twelve  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged dir      modified on 2021-02-17 at 16:21:33  size 0         rwxr-xr-x\ntanais       : dir props changed  modified on 2021-02-17 at 16:21:39  size 0         rwx------\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("         <---- new dir    twenty  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : absent\ntanais       : new dir            modified on 2021-02-17 at 16:21:44  size 0         rwxr-xr-x\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            two  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1146      rw-r--r--\ntanais       : unchanged file     modified on 2021-02-17 at 16:21:33  size 1146      rw-r--r--\n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")),
+		Update{PlanReady: true})
+
+	assertEqual(t, c.Items, []Item{
+		{
+			Path:   "one hundred/one hundred one",
+			Left:   Content{File, Modified, "modified on 2021-02-06 at 18:42:07  size 1000      rw-r--r--"},
+			Right:  Content{Directory, Created, "modified on 2021-02-06 at 18:42:07  size 2292      rwxr-xr-x"},
+			Action: Skip,
+		},
+		{
+			Path:   "one hundred/one hundred two",
+			Left:   Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:  Content{Absent, Deleted, ""},
+			Action: Skip,
+		},
+		{
+			Path:   "six/nine",
+			Left:   Content{File, Modified, "modified on 2021-02-06 at 18:42:07  size 1147000   rw-r--r--"},
+			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:42:10  size 1147000   rw-rw-r--"},
+			Action: Skip,
+		},
+		{
+			Path:   "twenty one",
+			Left:   Content{File, PropsChanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--"},
+			Right:  Content{File, PropsChanged, "modified on 2021-02-06 at 18:42:21  size 1146      rw-rw-r--"},
+			Action: Skip,
+		},
+		{
+			Path:   "deeply/nested/sub/directory/with/file",
+			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--"},
+			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:42:21  size 1146      rw-rw-r--"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "eighteen",
+			Left:   Content{Symlink, Created, "modified on 1970-01-01 at  3:00:00  size 0         unknown permissions"},
+			Right:  Content{Absent, Unchanged, ""},
+			Action: LeftToRight,
+		},
+		{
+			Path:   "here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ",
+			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--"},
+			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:42:20  size 1146      rw-rw-r--"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "seventeen",
+			Left:   Content{File, Created, "modified on 2021-02-06 at 18:42:07  size 0         rw-r--r--"},
+			Right:  Content{Absent, Unchanged, ""},
+			Action: LeftToRight,
+		},
+		{
+			Path:   "six/eight",
+			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--"},
+			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:42:08  size 1147000   rw-rw-r--"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "six/eleven",
+			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 10000000  rw-r--r--"},
+			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:42:20  size 10000000  rw-rw-r--"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "six/fourteen",
+			Left:   Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x"},
+			Right:  Content{Absent, Deleted, ""},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "six/seven",
+			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 0         rw-r--r--"},
+			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:42:08  size 1146      rw-rw-r--"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "six/ten",
+			Left:   Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1000      rwx------"},
+			Right:  Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--"},
+			Action: LeftToRight,
+		},
+		{
+			Path:   "three",
+			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1147000   rw-r--r--"},
+			Right:  Content{Absent, Deleted, ""},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "twelve",
+			Left:   Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 34380     rwxr-xr-x"},
+			Right:  Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:42:06  size 0         rwx------"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "twenty",
+			Left:   Content{Absent, Unchanged, ""},
+			Right:  Content{Directory, Created, "modified on 2021-02-06 at 18:42:10  size 0         rwxr-xr-x"},
+			Action: RightToLeft,
+		},
+		{
+			Path:   "two",
+			Left:   Content{File, Modified, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--"},
+			Right:  Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r"},
+			Action: LeftToRight,
+		},
+	})
+	assertEqual(t, c.Plan, map[string]Action{
+		"one hundred/one hundred one":           Skip,
+		"one hundred/one hundred two":           Skip,
+		"six/nine":                              Skip,
+		"twenty one":                            Skip,
+		"deeply/nested/sub/directory/with/file": RightToLeft,
+		"eighteen":                              LeftToRight,
+		"here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ": RightToLeft,
+		"seventeen":    LeftToRight,
+		"six/eight":    RightToLeft,
+		"six/eleven":   RightToLeft,
+		"six/fourteen": RightToLeft,
+		"six/seven":    RightToLeft,
+		"six/ten":      LeftToRight,
+		"three":        RightToLeft,
+		"twelve":       RightToLeft,
+		"twenty":       RightToLeft,
+		"two":          LeftToRight,
+	})
+
+	c.Plan["one hundred/one hundred one"] = LeftToRight
+	c.Plan["six/nine"] = RightToLeft
+	c.Plan["twenty one"] = RightToLeft
+	c.Plan["here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ"] = LeftToRight
+	c.Plan["twelve"] = Skip
+	c.Plan["two"] = Merge
+
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.Status, "Starting synchronization")
+	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ====> new dir    one hundred/one hundred one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("new file <-?-> deleted    one hundred/one hundred two  [] ")),
+		Update{Input: []byte("/\n")})
+	assert.Zero(t, c.ProcOutput([]byte("new file <-?-> deleted    one hundred/one hundred two  \n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> changed    six/nine  [] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <==== changed    six/nine  \n")))
+	assertEqual(t, c.ProcOutput([]byte("props    <-?-> props      twenty one  [] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("props    <==== props      twenty one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- changed    deeply/nested/sub/directory/with/file  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    deeply/nested/sub/directory/with/file  \n")))
+	assertEqual(t, c.ProcOutput([]byte("new link ---->            eighteen  [f] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("new link ---->            eighteen  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- changed    here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ  [f] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         ====> changed    here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ  \n")))
+	assertEqual(t, c.ProcOutput([]byte("new file ---->            seventeen  [f] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("new file ---->            seventeen  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- changed    six/eight  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/eight  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- changed    six/eleven  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/eleven  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- deleted    six/fourteen  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted    six/fourteen  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- changed    six/seven  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/seven  \n")))
+	assertEqual(t, c.ProcOutput([]byte("props    ---->            six/ten  [f] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("props    ---->            six/ten  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- deleted    three  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted    three  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- props      twelve  [f] ")),
+		Update{Input: []byte("/\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <=?=> props      twelve  \n")))
+	assertEqual(t, c.ProcOutput([]byte("         <---- new dir    twenty  [f] ")),
+		Update{Input: []byte("<\n")})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- new dir    twenty  \n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            two  [f] ")),
+		Update{Input: []byte("m\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <=M=>            two  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+
+	assert.Zero(t, c.ProcOutput([]byte("Propagating updates\n")))
+	assert.Zero(t, c.ProcOutput([]byte("\n\nUNISON 2.51.3 (OCAML 4.11.1) started propagating changes at 16:24:22.00 on 17 Feb 2021\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Copying one hundred/one hundred one from /home/vasiliy/tmp/gunison/left to //tanais//home/vasiliy/tmp/gunison/right\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[CONFLICT] Skipping one hundred/one hundred two\n  conflicting updates\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file six/nine from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Copying properties for twenty one from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file deeply/nested/sub/directory/with/file from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Copying eighteen from /home/vasiliy/tmp/gunison/left to //tanais//home/vasiliy/tmp/gunison/right\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ from /home/vasiliy/tmp/gunison/left to //tanais//home/vasiliy/tmp/gunison/right\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Copying seventeen from /home/vasiliy/tmp/gunison/left to //tanais//home/vasiliy/tmp/gunison/right\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file six/eight from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file six/eleven from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file six/seven from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Copying properties for six/ten from /home/vasiliy/tmp/gunison/left to //tanais//home/vasiliy/tmp/gunison/right\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[CONFLICT] Skipping twelve\n  skip requested\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Copying twenty from //tanais//home/vasiliy/tmp/gunison/right to /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  0%  00:55 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Copying properties for twenty one\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  0%  00:55 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  0%  00:04 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  1%  00:02 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  2%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  3%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  4%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  5%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  6%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  7%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  8%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  9%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("Shortcut: copied /home/vasiliy/tmp/gunison/left/six/eight from local file /home/vasiliy/tmp/gunison/left/three\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  9%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("  9%  00:02 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("Shortcut: copied /home/vasiliy/tmp/gunison/left/six/seven from local file /home/vasiliy/tmp/gunison/left/six/fourteen/sixteen\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  9%  00:02 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Copying properties for six/ten\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  9%  00:02 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("Shortcut: copied /home/vasiliy/tmp/gunison/left/two from local file /home/vasiliy/tmp/gunison/left/six/.unison.seven.1e1fb20baa490c92a38dae56142181e1.unison.tmp\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  9%  00:02 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte(" 18%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("Shortcut: copied /home/vasiliy/tmp/gunison/right/one hundred/one hundred one from local file /home/vasiliy/tmp/gunison/right/six/ten\n")))
+	assert.Zero(t, c.ProcOutput([]byte(" 18%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("Shortcut: copied /home/vasiliy/tmp/gunison/right/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ from local file /home/vasiliy/tmp/gunison/right/two\n")))
+	assert.Zero(t, c.ProcOutput([]byte(" 18%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("Shortcut: copied /home/vasiliy/tmp/gunison/right/seventeen from local file /home/vasiliy/tmp/gunison/right/one\n")))
+	assert.Zero(t, c.ProcOutput([]byte(" 18%  00:01 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Copying twenty\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Copying one hundred/one hundred one\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Copying eighteen\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Copying seventeen\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file six/eight\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assertEqual(t, c.ProcOutput([]byte("Failed [two]: 'merge' preference not set for two\n")),
+		Update{Message: Message{
+			Text:       "Failed [two]: 'merge' preference not set for two",
+			Importance: Error,
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file six/seven\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file six/nine\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file deeply/nested/sub/directory/with/file\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file six/eleven\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Deleting six/fourteen from /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Deleting three from /home/vasiliy/tmp/gunison/left\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Deleting six/fourteen\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[END] Deleting three\n")))
+	assert.Zero(t, c.ProcOutput([]byte("UNISON 2.51.3 (OCAML 4.11.1) finished propagating changes at 16:24:22.84 on 17 Feb 2021\n\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Saving synchronizer state\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Synchronization incomplete at 16:24:22  (14 items transferred, 2 skipped, 1 failed)\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  skipped: one hundred/one hundred two (conflicting updates)\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  skipped: twelve (skip requested)\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  failed: two\n")))
+	assert.Zero(t, c.ProcExit(2, nil))
+	assertEqual(t, c.Status, "Sync incomplete (14 transferred, 2 skipped, 1 failed)")
+}
+
 // assertEqual is just assert.Equal with arguments swapped,
 // which makes for more readable code in places.
 func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unparam
