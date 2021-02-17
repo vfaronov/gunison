@@ -205,25 +205,22 @@ func TestProgressPropagatingUpdates(t *testing.T) {
 	assert.Empty(t, c.Progress)
 	assert.Empty(t, c.ProgressFraction)
 
-	assertEqual(t, c.ProcOutput([]byte("  0%  73:28 ETA")),
-		Update{Progressed: true})
+	assert.Zero(t, c.ProcOutput([]byte("  0%  73:28 ETA")))
 	assertEqual(t, c.Progress, "0%  73:28 ETA")
 	assertEqual(t, c.ProgressFraction, 0.00)
 	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
-	assertEqual(t, c.ProcOutput([]byte("  8%  07:45 ETA")),
-		Update{Progressed: true})
+
+	assert.Zero(t, c.ProcOutput([]byte("  8%  07:45 ETA")))
 	assertEqual(t, c.Progress, "8%  07:45 ETA")
 	assertEqual(t, c.ProgressFraction, 0.08)
 	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
 
-	assertEqual(t, c.ProcOutput([]byte(" 13%  07:51 ETA")),
-		Update{Progressed: true})
+	assert.Zero(t, c.ProcOutput([]byte(" 13%  07:51 ETA")))
 	assertEqual(t, c.Progress, "13%  07:51 ETA")
 	assertEqual(t, c.ProgressFraction, 0.13)
 	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
 
-	assertEqual(t, c.ProcOutput([]byte(" 94%  00:01 ETA")),
-		Update{Progressed: true})
+	assert.Zero(t, c.ProcOutput([]byte(" 94%  00:01 ETA")))
 	assertEqual(t, c.Progress, "94%  00:01 ETA")
 	assertEqual(t, c.ProgressFraction, 0.94)
 	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
