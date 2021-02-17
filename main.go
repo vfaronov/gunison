@@ -60,6 +60,7 @@ func main() {
 func startUnison(args ...string) {
 	var err error
 
+	args = append(args, "-dumbtty")
 	unison = exec.Command("unison", args...)
 	unison.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,

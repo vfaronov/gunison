@@ -89,7 +89,7 @@ func prepareUnison(profile, root1, root2, extra string) {
 	}
 	rm(dir)
 	put(p(dir, profile+".prf"),
-		[]byte(fmt.Sprintf("root = %s\nroot = %s\nlogfile = %s\nwatch = false\n%s\n",
+		[]byte(fmt.Sprintf("root = %s\nroot = %s\nlogfile = %s\nwatch = false\ndumbtty = true\n%s\n",
 			root1, root2, p(dir, "log"), extra)))
 }
 
