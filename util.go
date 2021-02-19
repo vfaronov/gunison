@@ -94,3 +94,11 @@ const (
 	handleDefault = false
 	blockDefault  = true
 )
+
+func GetColumnString(store *gtk.TreeStore, iter *gtk.TreeIter, column int) (string, error) {
+	gv, err := store.GetValue(iter, column)
+	if err != nil {
+		return "", err
+	}
+	return gv.GetString()
+}

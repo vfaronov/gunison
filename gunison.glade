@@ -67,6 +67,10 @@
       <column type="gchararray"/>
       <!-- column-name right-props -->
       <column type="gchararray"/>
+      <!-- column-name orig-action -->
+      <column type="gchararray"/>
+      <!-- column-name action-color -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkWindow" id="window">
@@ -198,6 +202,7 @@
                 <child>
                   <object class="GtkCellRendererText" id="action-renderer"/>
                   <attributes>
+                    <attribute name="foreground">8</attribute>
                     <attribute name="text">3</attribute>
                   </attributes>
                 </child>

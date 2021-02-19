@@ -18,6 +18,8 @@ const (
 	colIconName
 	colLeftProps
 	colRightProps
+	colOrigAction
+	colActionColor
 )
 
 func displayItems() {
@@ -29,12 +31,38 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colLeftProps, item.Left.Props), "set left-props column")
 		mustf(treestore.SetValue(iter, colRightProps, item.Right.Props), "set right-props column")
+		mustf(treestore.SetValue(iter, colOrigAction, describeAction[item.Action]), "set orig-action column")
 		displayItemAction(iter, item.Action)
 	}
 }
 
 func displayItemAction(iter *gtk.TreeIter, act Action) {
 	mustf(treestore.SetValue(iter, colAction, describeAction[act]), "set action column")
+
+	var color string
+	origDesc, err := GetColumnString(treestore, iter, colOrigAction)
+	shouldf(err, "get original action from column")
+	orig := undescribeAction[origDesc]
+	// This choice of colors is close to that of unison-gtk, but left-to-right is uncolored.
+	// This assymmetry between left-to-right and right-to-left makes them easier to tell apart.
+	// TODO: This is all arbitrary, and may not play well with themes.
+	// Perhaps colors, as well as strings themselves, should be configurable.
+	if act == orig {
+		switch act {
+		case LeftToRight:
+			// FIXME: this is supposed to be "uncolored", i.e. "foreground not set", but
+			// setting "foreground-set" from a treestore column doesn't seem to work for me,
+			// should find a proper way
+			color = "#000000"
+		case RightToLeft, Merge:
+			color = "#5db55c"
+		default:
+			color = "#eb8144"
+		}
+	} else {
+		color = "#3ea8d6"
+	}
+	mustf(treestore.SetValue(iter, colActionColor, color), "set action-color column")
 }
 
 func describeContent(c Content) string {
@@ -68,13 +96,25 @@ func describeContent(c Content) string {
 	panic(fmt.Sprintf("impossible replica content: %+v", c))
 }
 
-var describeAction = map[Action]string{
-	Skip:             "←?→",
-	LeftToRight:      "→",
-	MaybeLeftToRight: "?→",
-	RightToLeft:      "←",
-	MaybeRightToLeft: "←?",
-	Merge:            "←M→",
+var (
+	describeAction = map[Action]string{
+		Skip:             "←?→",
+		LeftToRight:      "→",
+		MaybeLeftToRight: "?→",
+		RightToLeft:      "←",
+		MaybeRightToLeft: "←?",
+		Merge:            "←M→",
+	}
+	undescribeAction = map[string]Action{}
+)
+
+func init() {
+	for act, desc := range describeAction {
+		if _, ok := undescribeAction[desc]; ok {
+			panic("duplicate description in describeAction: " + desc)
+		}
+		undescribeAction[desc] = act
+	}
 }
 
 func iconName(item Item) string {
@@ -164,12 +204,8 @@ func onDiffMenuItemActivate() {
 func forEachSelectedPath(f func(*gtk.TreeIter, string)) {
 	treeSelection.SelectedForEach(gtk.TreeSelectionForeachFunc(
 		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter, _ ...interface{}) {
-			pathv, err := treestore.GetValue(iter, colPath)
-			if !shouldf(err, "get path value") {
-				return
-			}
-			path, err := pathv.GetString()
-			if !shouldf(err, "get path string") {
+			path, err := GetColumnString(treestore, iter, colPath)
+			if !shouldf(err, "get path") {
 				return
 			}
 			f(iter, path)
