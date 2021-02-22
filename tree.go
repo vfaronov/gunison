@@ -54,13 +54,15 @@ func displayItemAction(iter *gtk.TreeIter, act Action) {
 			// setting "foreground-set" from a treestore column doesn't seem to work for me,
 			// should find a proper way
 			color = "#000000"
-		case RightToLeft, Merge:
-			color = "#5db55c"
-		default:
-			color = "#eb8144"
+		case RightToLeft:
+			color = "#3ea8d6"
+		case Merge:
+			color = "#8f9660"
+		case Skip, MaybeLeftToRight, MaybeRightToLeft:
+			color = "#d46526"
 		}
 	} else {
-		color = "#3ea8d6"
+		color = "#5db55c"
 	}
 	mustf(treestore.SetValue(iter, colActionColor, color), "set action-color column")
 }
