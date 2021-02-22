@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"mime"
 	"path"
 	"strings"
@@ -16,22 +17,18 @@ const (
 	colRight
 	colAction
 	colIconName
-	colLeftProps
-	colRightProps
-	colOrigAction
 	colActionColor
+	colIdx
 )
 
 func displayItems() {
-	for _, item := range core.Items {
+	for i, item := range core.Items {
 		iter := treestore.Append(nil)
 		mustf(treestore.SetValue(iter, colPath, item.Path), "set path column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
-		mustf(treestore.SetValue(iter, colLeftProps, item.Left.Props), "set left-props column")
-		mustf(treestore.SetValue(iter, colRightProps, item.Right.Props), "set right-props column")
-		mustf(treestore.SetValue(iter, colOrigAction, describeAction[item.Action]), "set orig-action column")
+		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 		displayItemAction(iter, item.Action)
 	}
 }
@@ -40,9 +37,8 @@ func displayItemAction(iter *gtk.TreeIter, act Action) {
 	mustf(treestore.SetValue(iter, colAction, describeAction[act]), "set action column")
 
 	var color string
-	origDesc, err := GetColumnString(treestore, iter, colOrigAction)
-	shouldf(err, "get original action from column")
-	orig := undescribeAction[origDesc]
+	idx := MustGetColumn(treestore, iter, colIdx).(int)
+	orig := core.Items[idx].Action
 	// This choice of colors is close to that of unison-gtk, but left-to-right is uncolored.
 	// This assymmetry between left-to-right and right-to-left makes them easier to tell apart.
 	// TODO: This is all arbitrary, and may not play well with themes.
@@ -98,6 +94,51 @@ func describeContent(c Content) string {
 	panic(fmt.Sprintf("impossible replica content: %+v", c))
 }
 
+func describeContentFull(c Content) string {
+	//nolint:exhaustive
+	switch c.Status {
+	case Unchanged:
+		switch c.Type {
+		case Absent:
+			return "absent"
+		case File:
+			return "unchanged file"
+		case Symlink:
+			return "unchanged symlink"
+		case Directory:
+			return "unchanged dir"
+		}
+	case Created:
+		switch c.Type {
+		case File:
+			return "new file"
+		case Symlink:
+			return "new symlink"
+		case Directory:
+			return "new dir"
+		}
+	case Modified:
+		switch c.Type {
+		case File:
+			return "changed file"
+		case Symlink:
+			return "changed symlink"
+		case Directory:
+			return "changed dir"
+		}
+	case PropsChanged:
+		switch c.Type {
+		case File:
+			return "changed props"
+		case Directory:
+			return "dir props changed"
+		}
+	case Deleted:
+		return "deleted"
+	}
+	panic(fmt.Sprintf("impossible replica content: %+v", c))
+}
+
 var (
 	describeAction = map[Action]string{
 		Skip:             "←?→",
@@ -107,17 +148,13 @@ var (
 		MaybeRightToLeft: "←?",
 		Merge:            "←M→",
 	}
-	undescribeAction = map[string]Action{}
-)
-
-func init() {
-	for act, desc := range describeAction {
-		if _, ok := undescribeAction[desc]; ok {
-			panic("duplicate description in describeAction: " + desc)
-		}
-		undescribeAction[desc] = act
+	describeActionFull = map[Action]string{
+		Skip:        "skip",
+		LeftToRight: "propagate from left to right",
+		RightToLeft: "propagate from right to left",
+		Merge:       "merge the versions",
 	}
-}
+)
 
 func iconName(item Item) string {
 	content := item.Left
@@ -206,11 +243,40 @@ func onDiffMenuItemActivate() {
 func forEachSelectedPath(f func(*gtk.TreeIter, string)) {
 	treeSelection.SelectedForEach(gtk.TreeSelectionForeachFunc(
 		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter, _ ...interface{}) {
-			path, err := GetColumnString(treestore, iter, colPath)
-			if !shouldf(err, "get path") {
-				return
-			}
+			path := MustGetColumn(treestore, iter, colPath).(string)
 			f(iter, path)
 		},
 	))
+}
+
+func onTreeviewQueryTooltip(_ *gtk.TreeView, x, y int, keyboardMode bool, tip *gtk.Tooltip) bool {
+	if keyboardMode {
+		return treeTooltip(tip)
+	}
+	return treeTooltipAt(tip, x, y)
+}
+
+func treeTooltip(tip *gtk.Tooltip) bool {
+	if treeSelection.CountSelectedRows() != 1 {
+		return false
+	}
+	forEachSelectedPath(func(iter *gtk.TreeIter, path string) {
+		idx := MustGetColumn(treestore, iter, colIdx).(int)
+		item := core.Items[idx]
+		tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>plan</b>:\t%s",
+			html.EscapeString(path),
+			html.EscapeString(core.Left),
+			html.EscapeString(describeContentFull(item.Left)),
+			html.EscapeString(item.Left.Props),
+			html.EscapeString(core.Right),
+			html.EscapeString(describeContentFull(item.Right)),
+			html.EscapeString(item.Right.Props),
+			describeActionFull[core.Plan[path]],
+		))
+	})
+	return true
+}
+
+func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
+	return false // FIXME
 }

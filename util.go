@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"unicode/utf8"
 
@@ -95,10 +96,14 @@ const (
 	blockDefault  = true
 )
 
-func GetColumnString(store *gtk.TreeStore, iter *gtk.TreeIter, column int) (string, error) {
+func MustGetColumn(store *gtk.TreeStore, iter *gtk.TreeIter, column int) interface{} {
 	gv, err := store.GetValue(iter, column)
 	if err != nil {
-		return "", err
+		panic(fmt.Sprintf("failed to get value from column %v: %s", column, err))
 	}
-	return gv.GetString()
+	v, err := gv.GoValue()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get Go value from column %v value %v: %s", column, v, err))
+	}
+	return v
 }

@@ -151,6 +151,7 @@ func setupWidgets() {
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
 	shouldConnect(treeview, "popup-menu", onTreeviewPopupMenu)
 	shouldConnect(treeview, "button-press-event", onTreeviewButtonPressEvent)
+	shouldConnect(treeview, "query-tooltip", onTreeviewQueryTooltip)
 
 	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
 	shouldConnect(treeSelection, "changed", onTreeSelectionChanged)

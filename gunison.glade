@@ -63,14 +63,10 @@
       <column type="gchararray"/>
       <!-- column-name icon-name -->
       <column type="gchararray"/>
-      <!-- column-name left-props -->
-      <column type="gchararray"/>
-      <!-- column-name right-props -->
-      <column type="gchararray"/>
-      <!-- column-name orig-action -->
-      <column type="gchararray"/>
       <!-- column-name action-color -->
       <column type="gchararray"/>
+      <!-- column-name idx -->
+      <column type="gint"/>
     </columns>
   </object>
   <object class="GtkWindow" id="window">
@@ -146,6 +142,7 @@
         <child>
           <object class="GtkTreeView" id="treeview">
             <property name="can_focus">True</property>
+            <property name="has_tooltip">True</property>
             <property name="model">treestore</property>
             <property name="headers_clickable">False</property>
             <property name="enable_tree_lines">True</property>
@@ -202,7 +199,7 @@
                 <child>
                   <object class="GtkCellRendererText" id="action-renderer"/>
                   <attributes>
-                    <attribute name="foreground">8</attribute>
+                    <attribute name="foreground">5</attribute>
                     <attribute name="text">3</attribute>
                   </attributes>
                 </child>
