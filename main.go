@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 	"syscall"
 
 	"github.com/gotk3/gotk3/gtk"
@@ -48,6 +49,17 @@ var (
 
 	success = errors.New("success")
 )
+
+func init() {
+	// From https://developer.gnome.org/gdk3/stable/gdk3-Threads.html:
+	//
+	//	GTK+ [...] is not thread safe. You should only use GTK+ and GDK from the thread gtk_init()
+	//	and gtk_main() were called on. This is usually referred to as the “main thread”.
+	//
+	// Calling LockOSThread in init guarantees that gtk.Init() and gtk.Main() below will run
+	// only in our main thread.
+	runtime.LockOSThread()
+}
 
 func main() {
 	gtk.Init(nil)
