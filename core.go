@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"time"
 )
 
 type Core struct {
@@ -47,9 +48,10 @@ type Item struct {
 }
 
 type Content struct {
-	Type   Type
-	Status Status
-	Props  string
+	Type     Type
+	Status   Status
+	Props    string
+	Modified time.Time
 }
 
 type Type byte
