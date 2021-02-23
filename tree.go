@@ -278,5 +278,28 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 }
 
 func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
-	return false // FIXME
+	var bx, by int
+	treeview.ConvertWidgetToBinWindowCoords(x, y, &bx, &by)
+	treepath, column, _, _, ok := treeview.GetPathAtPos(bx, by)
+	if !ok {
+		return false
+	}
+	treeview.SetTooltipCell(tip, treepath, column, nil)
+	iter, err := treestore.GetIter(treepath)
+	if !shouldf(err, "get treestore iter for %v", treepath) {
+		return false
+	}
+	idx := MustGetColumn(treestore, iter, colIdx).(int)
+	item := core.Items[idx]
+	switch column.GetXOffset() {
+	case pathColumn.GetXOffset():
+		tip.SetText(item.Path)
+	case leftColumn.GetXOffset():
+		tip.SetText(fmt.Sprintf("%s: %s %s", core.Left, describeContentFull(item.Left), item.Left.Props))
+	case rightColumn.GetXOffset():
+		tip.SetText(fmt.Sprintf("%s: %s %s", core.Right, describeContentFull(item.Right), item.Right.Props))
+	default:
+		return false
+	}
+	return true
 }

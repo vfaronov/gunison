@@ -29,6 +29,7 @@ var (
 	treeview            *gtk.TreeView
 	treeSelection       *gtk.TreeSelection
 	treestore           *gtk.TreeStore
+	pathColumn          *gtk.TreeViewColumn
 	leftColumn          *gtk.TreeViewColumn
 	rightColumn         *gtk.TreeViewColumn
 	itemMenu            *gtk.Menu
@@ -157,6 +158,7 @@ func setupWidgets() {
 	shouldConnect(treeSelection, "changed", onTreeSelectionChanged)
 
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
+	pathColumn = mustGetObject(builder, "path-column").(*gtk.TreeViewColumn)
 	leftColumn = mustGetObject(builder, "left-column").(*gtk.TreeViewColumn)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
 

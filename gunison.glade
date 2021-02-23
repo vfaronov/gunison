@@ -152,7 +152,7 @@
               </object>
             </child>
             <child>
-              <object class="GtkTreeViewColumn">
+              <object class="GtkTreeViewColumn" id="path-column">
                 <property name="resizable">True</property>
                 <property name="spacing">6</property>
                 <property name="sizing">fixed</property>
