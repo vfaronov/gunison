@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/gotk3/gotk3/gtk"
@@ -46,6 +47,7 @@ var (
 	killButton          *gtk.Button
 	closeButton         *gtk.Button
 
+	messages = []Message{}
 	wantQuit bool
 
 	success = errors.New("success")
@@ -265,6 +267,9 @@ func update(upd Update) {
 		progressbar.Pulse()
 	}
 
+	messages = append(messages, upd.Messages...)
+	updateInfobar()
+
 	syncButton.SetVisible(core.Sync != nil)
 	abortButton.SetVisible(core.Abort != nil)
 	killButton.SetVisible(wantQuit && core.Kill != nil)
@@ -296,32 +301,43 @@ func update(upd Update) {
 
 	// This goes last because we better update everything before showing the dialog
 	// (which itself will, moreover, trigger another update).
-	if upd.Message.Text != "" {
-		if upd.Message.Proceed == nil && upd.Message.Abort == nil {
-			showMessageInfobar(upd.Message)
-		} else {
-			showMessageDialog(upd.Message)
-		}
+	if upd.Alert.Text != "" {
+		showAlert(upd.Alert)
 	}
 }
 
-func showMessageDialog(msg Message) {
-	resp := Dialog(importanceToMessageType[msg.Importance], msg.Text,
+func updateInfobar() {
+	if len(messages) == 0 {
+		shouldf(infobar.Set("revealed", false), "occlude infobar")
+		return
+	}
+	var text strings.Builder
+	importance := Info
+	for i, msg := range messages {
+		if i > 0 {
+			text.WriteByte('\n')
+		}
+		text.WriteString(msg.Text)
+		if msg.Importance > importance {
+			importance = msg.Importance
+		}
+	}
+	infobarLabel.SetText(text.String())
+	infobar.SetMessageType(importanceToMessageType[importance])
+	shouldf(infobar.Set("revealed", true), "reveal infobar")
+}
+
+func showAlert(a Alert) {
+	resp := Dialog(importanceToMessageType[a.Importance], a.Text,
 		DialogOption{Text: "Abort", Response: gtk.RESPONSE_REJECT},
 		DialogOption{Text: "Proceed", Response: gtk.RESPONSE_ACCEPT},
 	)
 	switch {
-	case resp == gtk.RESPONSE_REJECT && msg.Abort != nil:
-		update(msg.Abort())
-	case resp == gtk.RESPONSE_ACCEPT && msg.Proceed != nil:
-		update(msg.Proceed())
+	case resp == gtk.RESPONSE_REJECT && a.Abort != nil:
+		update(a.Abort())
+	case resp == gtk.RESPONSE_ACCEPT && a.Proceed != nil:
+		update(a.Proceed())
 	}
-}
-
-func showMessageInfobar(msg Message) {
-	infobarLabel.SetText(msg.Text)
-	infobar.SetMessageType(importanceToMessageType[msg.Importance])
-	shouldf(infobar.Set("revealed", true), "reveal infobar")
 }
 
 var importanceToMessageType = map[Importance]gtk.MessageType{
@@ -376,7 +392,8 @@ func onWindowDeleteEvent() bool {
 }
 
 func onInfobarResponse() {
-	shouldf(infobar.Set("revealed", false), "occlude infobar")
+	messages = messages[:0]
+	updateInfobar()
 }
 
 func onSyncButtonClicked() {
@@ -406,9 +423,11 @@ func checkf(err error, format string, args ...interface{}) bool { // TODO: vs. s
 		log.Printf(format, args...)
 	}
 	if err != nil {
-		infobarLabel.SetText(fmt.Sprintf("Failed to "+format+": %s", append(args, err)...))
-		infobar.SetMessageType(gtk.MESSAGE_ERROR)
-		shouldf(infobar.Set("revealed", true), "reveal infobar")
+		messages = append(messages, Message{
+			Text:       fmt.Sprintf("Failed to "+format+": %s", append(args, err)...),
+			Importance: Error,
+		})
+		updateInfobar()
 		return false
 	}
 	return true

@@ -38,7 +38,8 @@ type Update struct {
 	Input      []byte
 	Interrupt  bool
 	Kill       bool
-	Message    Message
+	Messages   []Message
+	Alert      Alert
 }
 
 type Item struct {
@@ -87,8 +88,6 @@ const (
 type Message struct {
 	Text       string
 	Importance Importance
-	Proceed    func() Update
-	Abort      func() Update
 }
 
 type Importance byte
@@ -98,3 +97,9 @@ const (
 	Warning
 	Error
 )
+
+type Alert struct {
+	Message
+	Proceed func() Update
+	Abort   func() Update
+}
