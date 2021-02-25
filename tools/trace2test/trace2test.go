@@ -1,3 +1,4 @@
+// TODO: Doesn't support `strace -f`, making it cumbersome to deal with output from diff/merge commands.
 package main
 
 import (

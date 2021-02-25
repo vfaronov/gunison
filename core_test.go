@@ -177,16 +177,7 @@ func TestProgressLookingForChanges(t *testing.T) {
 }
 
 func TestProgressPropagatingUpdates(t *testing.T) {
-	c := NewCore()
-	assert.Zero(t, c.ProcStart())
-	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte("l\n")})
-	assert.Zero(t, c.ProcOutput([]byte("  ")))
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{PlanReady: true})
+	c := initCoreMinimalReady(t)
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
@@ -297,16 +288,7 @@ func TestDiff(t *testing.T) {
 
 func TestDiffNoOutput(t *testing.T) {
 	// When the diff command produces no output, it's probably a GUI one, so we silently ignore it.
-	c := NewCore()
-	assert.Zero(t, c.ProcStart())
-	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte("l\n")})
-	assert.Zero(t, c.ProcOutput([]byte("  ")))
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:40:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:40:31  size 1146      rw-r--r--\n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{PlanReady: true})
+	c := initCoreMinimalReady(t)
 	assertEqual(t, c.Diff("one"),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.Status, "Requesting diff")
@@ -339,16 +321,7 @@ func TestDiffDirectory(t *testing.T) {
 }
 
 func TestDiffBadPath(t *testing.T) {
-	c := NewCore()
-	assert.Zero(t, c.ProcStart())
-	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte("l\n")})
-	assert.Zero(t, c.ProcOutput([]byte("  ")))
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-13 at 15:02:55  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-13 at 15:02:55  size 1146      rw-r--r--\n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{PlanReady: true})
+	c := initCoreMinimalReady(t)
 	assertEqual(t, c.Diff("two"),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
@@ -410,6 +383,127 @@ func TestDiffAbort(t *testing.T) {
 		Update{Interrupt: true})
 }
 
+func TestDiffBadCommand(t *testing.T) { // unison -diff 'diff --bad-option'
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.Diff("one"),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("d\n")})
+	assert.Zero(t, c.ProcOutput([]byte("diff: unrecognized option '--bad-option'\n")))
+	assert.Zero(t, c.ProcOutput([]byte("diff: ")))
+	assert.Zero(t, c.ProcOutput([]byte("Try 'diff --help' for more information.\n")))
+	assertEqual(t, c.ProcOutput([]byte("\ndiff --bad-option '/home/vasiliy/tmp/gunison/left/one' '/home/vasiliy/tmp/gunison/right/one'\n\n\n\nchanged  ---->            one  [f] ")),
+		Update{Messages: []Message{
+			{"diff: unrecognized option '--bad-option'\ndiff: Try 'diff --help' for more information.", Error},
+		}})
+	assertEqual(t, c.Status, "Ready to synchronize")
+}
+
+func TestMerge(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	c.Plan["one"] = Merge
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("m\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <=M=>            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+	assert.Zero(t, c.ProcOutput([]byte("Merge command: meld ''/home/vasiliy/tmp/gunison/left/.unison.merge1-one'' ''/home/vasiliy/tmp/gunison/left/.unison.merge2-one''\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Merge result (exited (0)):\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("No outputs detected \n")))
+	assert.Zero(t, c.ProcOutput([]byte("No output from merge cmd and both original files are still present\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Merge program made files equal\n")))
+	assertEqual(t, c.ProcOutput([]byte("Warning: 'backupcurrent' is not set for path one\n")),
+		Update{Messages: []Message{
+			{"Warning: 'backupcurrent' is not set for path one", Warning},
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("Synchronization complete at 16:40:04  (1 item transferred, 0 skipped, 0 failed)\n")))
+	assert.Zero(t, c.ProcExit(0, nil))
+	assertEqual(t, c.Status, "Sync complete (1 item transferred, 0 skipped, 0 failed)")
+}
+
+func TestMergeFailed(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	c.Plan["one"] = Merge
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("m\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <=M=>            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+	assert.Zero(t, c.ProcOutput([]byte("Merge command: meld ''/home/vasiliy/tmp/gunison/left/.unison.merge1-one'' ''/home/vasiliy/tmp/gunison/left/.unison.merge2-one''\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Merge result (exited (0)):\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("No outputs detected \n")))
+	assert.Zero(t, c.ProcOutput([]byte("No output from merge cmd and both original files are still present\n")))
+	assertEqual(t, c.ProcOutput([]byte("\nFailed [one]: Merge program didn't change either temp file\n")),
+		Update{Messages: []Message{
+			{"Failed [one]: Merge program didn't change either temp file\n", Error},
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("Synchronization incomplete at 16:49:21  (0 items transferred, 0 skipped, 1 failed)\n")))
+	assert.Zero(t, c.ProcExit(2, nil))
+	assertEqual(t, c.Status, "Sync incomplete (0 items transferred, 0 skipped, 1 failed)")
+}
+
+func TestMergeDir(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
+	assertEqual(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")),
+		Update{Input: []byte("l\n")})
+	assert.Zero(t, c.ProcOutput([]byte("  ")))
+	assert.Zero(t, c.ProcOutput([]byte("new dir  ---->            one  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("left         : new dir            modified on 2021-02-25 at 17:06:22  size 0         rwxrwxr-x\nright        : absent\n")))
+	assertEqual(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")),
+		Update{PlanReady: true})
+	c.Plan["one"] = Merge
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")),
+		Update{Input: []byte("m\n")})
+	assert.Zero(t, c.ProcOutput([]byte("new dir  <=M=>            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+	assertEqual(t, c.ProcOutput([]byte("Failed [one]: Can only merge two existing files\n")),
+		Update{Messages: []Message{
+			{"Failed [one]: Can only merge two existing files", Error},
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("Synchronization incomplete at 17:06:28  (0 items transferred, 0 skipped, 1 failed)\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  failed: one\n")))
+	assert.Zero(t, c.ProcExit(2, nil))
+	assertEqual(t, c.Status, "Sync incomplete (0 items transferred, 0 skipped, 1 failed)")
+}
+
+func TestMergeBadProgram(t *testing.T) { // unison -merge 'Name * -> nonexistent-program'
+	c := initCoreMinimalReady(t)
+	c.Plan["one"] = Merge
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("m\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <=M=>            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+	assert.Zero(t, c.ProcOutput([]byte("Merge command: nonexistent-program\n")))
+	assertEqual(t, c.ProcOutput([]byte("Merge result (exited (127)):\n/bin/sh: 1: nonexistent-program: not found\n\nExited with status 127\n")),
+		Update{Messages: []Message{
+			{"Merge result (exited (127)):", Warning},
+			{"/bin/sh: 1: nonexistent-program: not found", Info},
+			{"Exited with status 127", Info},
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("No outputs detected \n")))
+	assert.Zero(t, c.ProcOutput([]byte("No output from merge cmd and both original files are still present\n")))
+	assertEqual(t, c.ProcOutput([]byte("/bin/sh: 1: nonexistent-program: not found\n\nExited with status 127\nFailed [one]: Merge program didn't change either temp file\n")),
+		Update{Messages: []Message{
+			{"/bin/sh: 1: nonexistent-program: not found", Info},
+			{"Exited with status 127", Info},
+			{"Failed [one]: Merge program didn't change either temp file", Error},
+		}})
+}
+
+// TODO: tests for merge cases other than "No output from merge cmd and both original files are still present"
+
 func TestReplicaMissing(t *testing.T) {
 	c := NewCore()
 	assert.Zero(t, c.ProcStart())
@@ -433,6 +527,15 @@ func TestReplicaMissing(t *testing.T) {
 	assertEqual(t, c.ProcOutput([]byte("         <---- deleted      [f] ")),
 		Update{PlanReady: true})
 	assertEqual(t, c.Status, "Ready to synchronize")
+	assertEqual(t, c.Items, []Item{
+		{
+			Path: "",
+			Left: Content{Directory, Unchanged, "modified on 2021-02-06 at 18:31:42  size 1146      rwxr-xr-x",
+				time.Date(2021, 2, 6, 18, 31, 42, 0, time.Local)},
+			Right:  Content{Absent, Deleted, "", time.Time{}},
+			Action: RightToLeft,
+		},
+	})
 	assert.False(t, c.Busy)
 	assert.NotNil(t, c.Sync)
 }
@@ -899,4 +1002,47 @@ func TestSSHFailure(t *testing.T) {
 func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unparam
 	t.Helper()
 	return assert.Equal(t, expected, actual)
+}
+
+func initCoreMinimalReady(t *testing.T) *Core {
+	t.Helper()
+
+	c := NewCore()
+	c.ProcStart()
+	c.ProcOutput([]byte("\nleft           right              \n"))
+	c.ProcOutput([]byte("changed  ---->            one  [f] "))
+	c.ProcOutput([]byte("  "))
+	c.ProcOutput([]byte("changed  ---->            one  \n"))
+	c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n"))
+	c.ProcOutput([]byte("changed  ---->            one  [f] "))
+
+	assert.True(t, c.Running)
+	assert.False(t, c.Busy)
+	assertEqual(t, c.Status, "Ready to synchronize")
+	assert.Empty(t, c.Progress)
+	assert.Empty(t, c.ProgressFraction)
+	assertEqual(t, c.Left, "left")
+	assertEqual(t, c.Right, "right")
+	assertEqual(t, c.Items, []Item{
+		{
+			Path: "one",
+			Left: Content{File, Modified, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--",
+				time.Date(2021, 2, 8, 18, 30, 50, 0, time.Local)},
+			Right: Content{File, Unchanged, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--",
+				time.Date(2021, 2, 8, 18, 30, 50, 0, time.Local)},
+			Action: LeftToRight,
+		},
+	})
+	assertEqual(t, c.Plan, map[string]Action{
+		"one": LeftToRight,
+	})
+
+	require.NotNil(t, c.Diff)
+	require.NotNil(t, c.Sync)
+	require.NotNil(t, c.Quit)
+	require.NotNil(t, c.Abort)
+	require.NotNil(t, c.Interrupt)
+	require.NotNil(t, c.Kill)
+
+	return c
 }

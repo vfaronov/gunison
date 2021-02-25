@@ -216,10 +216,10 @@ func updateMenuItems() {
 	allowAction := core.Sync != nil && nsel > 0
 	leftToRightMenuItem.SetSensitive(allowAction)
 	rightToLeftMenuItem.SetSensitive(allowAction)
-	mergeMenuItem.SetSensitive(allowAction)
+	mergeMenuItem.SetSensitive(allowAction) // TODO: for files only
 	skipMenuItem.SetSensitive(allowAction)
 
-	diffMenuItem.SetSensitive(core.Diff != nil && nsel == 1)
+	diffMenuItem.SetSensitive(core.Diff != nil && nsel == 1) // TODO: for files only
 }
 
 func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
