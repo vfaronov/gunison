@@ -93,7 +93,7 @@ func TestMinimal(t *testing.T) {
 	assert.Empty(t, c.ProgressFraction)
 
 	assert.Zero(t, c.ProcOutput([]byte("Synchronization complete at 18:31:20  (1 item transferred, 0 skipped, 0 failed)\n")))
-	assertEqual(t, c.Status, "Sync complete (1 item transferred)")
+	assertEqual(t, c.Status, "Sync complete (1 item transferred, 0 skipped, 0 failed)")
 	assert.False(t, c.Busy)
 	assert.True(t, c.Running)
 
@@ -232,10 +232,7 @@ func TestNonexistentProfile(t *testing.T) {
 	assertEqual(t, c.Status, "Starting unison")
 	assertEqual(t, c.ProcExit(1, nil),
 		Update{Messages: []Message{
-			{
-				Text:       "Unison exited, saying:\nUsage: unison [options]\n[...] Profile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist",
-				Importance: Error,
-			},
+			{"Unison exited, saying:\nUsage: unison [options]\n[...] Profile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist", Error},
 		}})
 	assert.False(t, c.Busy)
 	assertEqual(t, c.Status, "Unison exited unexpectedly")
@@ -312,11 +309,11 @@ func TestDiffNoOutput(t *testing.T) {
 		Update{PlanReady: true})
 	assertEqual(t, c.Diff("one"),
 		Update{Input: []byte("0\n")})
-	assert.Equal(t, c.Status, "Requesting diff")
+	assertEqual(t, c.Status, "Requesting diff")
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
 		Update{Input: []byte("d\n")})
 	assert.Zero(t, c.ProcOutput([]byte("\ntrue '/home/vasiliy/tmp/gunison/left/one' '/home/vasiliy/tmp/gunison/right/one'\n\n\n\nchanged  ---->            one  [f] ")))
-	assert.Equal(t, c.Status, "Ready to synchronize")
+	assertEqual(t, c.Status, "Ready to synchronize")
 }
 
 func TestDiffDirectory(t *testing.T) {
@@ -336,10 +333,7 @@ func TestDiffDirectory(t *testing.T) {
 		Update{Input: []byte("d\n")})
 	assertEqual(t, c.ProcOutput([]byte("Can't diff: path doesn't refer to a file in both replicas\nchanged  <-?-> new dir    one hundred/one hundred one  [] ")),
 		Update{Messages: []Message{
-			{
-				Text:       "Can't diff: path doesn't refer to a file in both replicas",
-				Importance: Error,
-			},
+			{"Can't diff: path doesn't refer to a file in both replicas", Error},
 		}})
 	assertEqual(t, c.Status, "Ready to synchronize")
 }
@@ -363,19 +357,16 @@ func TestDiffBadPath(t *testing.T) {
 		Update{
 			Input: []byte("n\n"),
 			Messages: []Message{
-				{
-					Text:       "Failed to get diff for: two\nThere is no such path in Unison’s plan. This is probably a bug in Gunison.",
-					Importance: Error,
-				},
+				{"Failed to get diff for: two\nThere is no such path in Unison’s plan. This is probably a bug in Gunison.", Error},
 			},
 		})
-	assert.Equal(t, c.Status, "Waiting for Unison")
+	assertEqual(t, c.Status, "Waiting for Unison")
 	assert.True(t, c.Busy)
 	assert.Nil(t, c.Sync)
 	assert.Nil(t, c.Diff)
 	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")))
-	assert.Equal(t, c.Status, "Ready to synchronize")
+	assertEqual(t, c.Status, "Ready to synchronize")
 	assert.NotNil(t, c.Sync)
 	assert.NotNil(t, c.Diff)
 }
@@ -493,10 +484,7 @@ func TestEmpty(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("Nothing to do: replicas have not changed since last sync.\n")))
 	assertEqual(t, c.ProcExit(0, nil),
 		Update{Messages: []Message{
-			{
-				Text:       "Nothing to do: replicas have not changed since last sync.",
-				Importance: Info,
-			},
+			{"Nothing to do: replicas have not changed since last sync.", Info},
 		}})
 	assertEqual(t, c.Status, "Finished successfully")
 	assert.False(t, c.Running)
@@ -850,10 +838,7 @@ func TestAssorted(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
 	assertEqual(t, c.ProcOutput([]byte("Failed [two]: 'merge' preference not set for two\n")),
 		Update{Messages: []Message{
-			{
-				Text:       "Failed [two]: 'merge' preference not set for two",
-				Importance: Error,
-			},
+			{"Failed [two]: 'merge' preference not set for two", Error},
 		}})
 	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file six/seven\n")))
 	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file six/nine\n")))
@@ -870,7 +855,7 @@ func TestAssorted(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("  skipped: twelve (skip requested)\n")))
 	assert.Zero(t, c.ProcOutput([]byte("  failed: two\n")))
 	assert.Zero(t, c.ProcExit(2, nil))
-	assertEqual(t, c.Status, "Sync incomplete (14 transferred, 2 skipped, 1 failed)")
+	assertEqual(t, c.Status, "Sync incomplete (14 items transferred, 2 skipped, 1 failed)")
 }
 
 func TestInterruptLookingForChanges(t *testing.T) {
@@ -900,15 +885,12 @@ func TestSSHFailure(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
 	assertEqual(t, c.ProcOutput([]byte("Fatal error: Lost connection with the server\n")),
 		Update{Messages: []Message{
-			{
-				Text:       "Lost connection with the server",
-				Importance: Error,
-			},
+			{"Lost connection with the server", Error},
 		}})
-	assert.Equal(t, c.Status, "Contacting server")
+	assertEqual(t, c.Status, "Contacting server")
 	assert.True(t, c.Busy)
 	assert.Zero(t, c.ProcExit(3, nil))
-	assert.Equal(t, c.Status, "Unison exited unexpectedly")
+	assertEqual(t, c.Status, "Unison exited unexpectedly")
 	assert.False(t, c.Busy)
 }
 
