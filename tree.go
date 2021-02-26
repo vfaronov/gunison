@@ -298,6 +298,8 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		tip.SetText(fmt.Sprintf("%s: %s %s", core.Left, describeContentFull(item.Left), item.Left.Props))
 	case rightColumn.GetXOffset():
 		tip.SetText(fmt.Sprintf("%s: %s %s", core.Right, describeContentFull(item.Right), item.Right.Props))
+	case actionColumn.GetXOffset():
+		tip.SetText(describeActionFull[core.Plan[item.Path]])
 	default:
 		return false
 	}
