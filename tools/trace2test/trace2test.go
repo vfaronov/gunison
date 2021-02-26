@@ -3,14 +3,23 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 )
 
 func main() {
+	var random bool
+	flag.BoolVar(&random, "random", false,
+		"simulate chunks of output from Unison getting buffered randomly, "+
+			"instead of stuffing each write() entirely into one ProcOutput()")
+	flag.Parse()
+
 	fmt.Println("c := NewCore()")
 	fmt.Println("assert.Zero(t, c.ProcStart())")
 	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(nil, 1024*1024)
 	var output string
 	for scanner.Scan() {
 		var (
@@ -38,14 +47,14 @@ func main() {
 		}
 
 		if out == "" && output != "" {
-			fmt.Printf("assert.Zero(t, c.ProcOutput([]byte(%q)))\n", output)
+			dumpOutput(output, random)
 			output = ""
 		}
 
 		switch {
 		case out != "":
-			if output != "" && len(out) >= 5 {
-				fmt.Printf("assert.Zero(t, c.ProcOutput([]byte(%q)))\n", output)
+			if output != "" && !random && len(out) >= 5 {
+				dumpOutput(output, random)
 				output = ""
 			}
 			output += out
@@ -68,6 +77,19 @@ func main() {
 	}
 
 	if output != "" {
-		fmt.Printf("assert.Zero(c.ProcOutput([]byte(%q)))\n", output)
+		dumpOutput(output, random)
+	}
+}
+
+func dumpOutput(output string, random bool) {
+	for output != "" {
+		chunk := output
+		if random {
+			if n := rand.Intn(300); n < len(output) {
+				chunk = output[:n]
+			}
+		}
+		fmt.Printf("assert.Zero(t, c.ProcOutput([]byte(%q)))\n", chunk)
+		output = output[len(chunk):]
 	}
 }
