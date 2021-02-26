@@ -71,8 +71,8 @@
   </object>
   <object class="GtkWindow" id="window">
     <property name="can_focus">False</property>
-    <property name="default_width">640</property>
-    <property name="default_height">480</property>
+    <property name="default_width">800</property>
+    <property name="default_height">600</property>
     <child type="titlebar">
       <object class="GtkHeaderBar" id="headerbar">
         <property name="visible">True</property>
@@ -90,82 +90,89 @@
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkTreeView" id="treeview">
+          <object class="GtkScrolledWindow">
+            <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="has_tooltip">True</property>
-            <property name="model">treestore</property>
-            <property name="headers_clickable">False</property>
-            <property name="enable_tree_lines">True</property>
-            <child internal-child="selection">
-              <object class="GtkTreeSelection" id="tree-selection">
-                <property name="mode">multiple</property>
-              </object>
-            </child>
+            <property name="shadow_type">in</property>
             <child>
-              <object class="GtkTreeViewColumn" id="path-column">
-                <property name="resizable">True</property>
-                <property name="spacing">6</property>
-                <property name="sizing">fixed</property>
-                <property name="fixed_width">350</property>
-                <property name="title" translatable="yes">Path</property>
-                <property name="expand">True</property>
-                <property name="reorderable">True</property>
-                <child>
-                  <object class="GtkCellRendererPixbuf" id="icon-renderer">
-                    <property name="stock_size">5</property>
+              <object class="GtkTreeView" id="treeview">
+                <property name="can_focus">True</property>
+                <property name="has_tooltip">True</property>
+                <property name="model">treestore</property>
+                <property name="headers_clickable">False</property>
+                <property name="enable_tree_lines">True</property>
+                <child internal-child="selection">
+                  <object class="GtkTreeSelection" id="tree-selection">
+                    <property name="mode">multiple</property>
                   </object>
-                  <attributes>
-                    <attribute name="icon-name">4</attribute>
-                  </attributes>
                 </child>
                 <child>
-                  <object class="GtkCellRendererText" id="path-renderer"/>
-                  <attributes>
-                    <attribute name="text">0</attribute>
-                  </attributes>
+                  <object class="GtkTreeViewColumn" id="path-column">
+                    <property name="resizable">True</property>
+                    <property name="spacing">6</property>
+                    <property name="sizing">fixed</property>
+                    <property name="fixed_width">350</property>
+                    <property name="title" translatable="yes">Path</property>
+                    <property name="expand">True</property>
+                    <property name="reorderable">True</property>
+                    <child>
+                      <object class="GtkCellRendererPixbuf" id="icon-renderer">
+                        <property name="stock_size">5</property>
+                      </object>
+                      <attributes>
+                        <attribute name="icon-name">4</attribute>
+                      </attributes>
+                    </child>
+                    <child>
+                      <object class="GtkCellRendererText" id="path-renderer"/>
+                      <attributes>
+                        <attribute name="text">0</attribute>
+                      </attributes>
+                    </child>
+                  </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkTreeViewColumn" id="left-column">
-                <property name="resizable">True</property>
-                <property name="fixed_width">100</property>
-                <property name="title" translatable="yes">Left</property>
-                <property name="reorderable">True</property>
                 <child>
-                  <object class="GtkCellRendererText" id="left-renderer"/>
-                  <attributes>
-                    <attribute name="text">1</attribute>
-                  </attributes>
+                  <object class="GtkTreeViewColumn" id="left-column">
+                    <property name="resizable">True</property>
+                    <property name="fixed_width">130</property>
+                    <property name="title" translatable="yes">Left</property>
+                    <property name="reorderable">True</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="left-renderer"/>
+                      <attributes>
+                        <attribute name="text">1</attribute>
+                      </attributes>
+                    </child>
+                  </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkTreeViewColumn">
-                <property name="resizable">True</property>
-                <property name="fixed_width">100</property>
-                <property name="title" translatable="yes">Action</property>
-                <property name="reorderable">True</property>
                 <child>
-                  <object class="GtkCellRendererText" id="action-renderer"/>
-                  <attributes>
-                    <attribute name="foreground">5</attribute>
-                    <attribute name="text">3</attribute>
-                  </attributes>
+                  <object class="GtkTreeViewColumn">
+                    <property name="resizable">True</property>
+                    <property name="fixed_width">100</property>
+                    <property name="title" translatable="yes">Action</property>
+                    <property name="reorderable">True</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="action-renderer"/>
+                      <attributes>
+                        <attribute name="foreground">5</attribute>
+                        <attribute name="text">3</attribute>
+                      </attributes>
+                    </child>
+                  </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkTreeViewColumn" id="right-column">
-                <property name="resizable">True</property>
-                <property name="fixed_width">100</property>
-                <property name="title" translatable="yes">Right</property>
-                <property name="reorderable">True</property>
                 <child>
-                  <object class="GtkCellRendererText" id="right-renderer"/>
-                  <attributes>
-                    <attribute name="text">2</attribute>
-                  </attributes>
+                  <object class="GtkTreeViewColumn" id="right-column">
+                    <property name="resizable">True</property>
+                    <property name="fixed_width">130</property>
+                    <property name="title" translatable="yes">Right</property>
+                    <property name="reorderable">True</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="right-renderer"/>
+                      <attributes>
+                        <attribute name="text">2</attribute>
+                      </attributes>
+                    </child>
+                  </object>
                 </child>
               </object>
             </child>
@@ -197,15 +204,33 @@
             </child>
             <child internal-child="content_area">
               <object class="GtkBox">
+                <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <child>
-                  <object class="GtkLabel" id="infobar-label">
+                  <object class="GtkScrolledWindow">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="wrap">True</property>
-                    <property name="wrap_mode">word-char</property>
-                    <property name="selectable">True</property>
-                    <property name="xalign">0</property>
+                    <property name="hscrollbar_policy">never</property>
+                    <property name="overlay_scrolling">False</property>
+                    <property name="max_content_height">300</property>
+                    <property name="propagate_natural_width">True</property>
+                    <property name="propagate_natural_height">True</property>
+                    <child>
+                      <object class="GtkViewport">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkLabel" id="infobar-label">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="wrap">True</property>
+                            <property name="wrap_mode">word-char</property>
+                            <property name="selectable">True</property>
+                            <property name="xalign">0</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -247,7 +272,8 @@
               <object class="GtkLabel" id="status-label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="ellipsize">end</property>
+                <property name="wrap">True</property>
+                <property name="xalign">0</property>
               </object>
               <packing>
                 <property name="position">1</property>
@@ -271,6 +297,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="tooltip_text" translatable="yes">Start synchronization according to the above plan</property>
+                <property name="valign">center</property>
                 <property name="use_underline">True</property>
                 <style>
                   <class name="suggested-action"/>
@@ -286,6 +313,7 @@
                 <property name="label" translatable="yes">_Abort</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="valign">center</property>
                 <property name="use_underline">True</property>
                 <style>
                   <class name="destructive-action"/>
@@ -302,6 +330,7 @@
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
                 <property name="tooltip_text" translatable="yes">Send a KILL signal to the Unison process</property>
+                <property name="valign">center</property>
                 <property name="use_underline">True</property>
                 <style>
                   <class name="destructive-action"/>
@@ -317,6 +346,7 @@
                 <property name="label" translatable="yes">_Close</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="valign">center</property>
                 <property name="use_underline">True</property>
               </object>
               <packing>
