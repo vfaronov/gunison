@@ -114,7 +114,8 @@ func TestTerse(t *testing.T) { // unison -terse
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")))
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")))
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{PlanReady: true})
 	assertEqual(t, c.Status, "Ready to synchronize")
 
 	assertEqual(t, c.Sync(),
@@ -130,6 +131,20 @@ func TestTerse(t *testing.T) { // unison -terse
 	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file one\n")))
 	assert.Zero(t, c.ProcOutput([]byte("Synchronization complete at 01:50:54  (1 item transferred, 0 skipped, 0 failed)\n")))
 	assert.Zero(t, c.ProcExit(0, nil))
+}
+
+func TestQuit(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.Quit(),
+		Update{Input: []byte("q\n")})
+	assertEqual(t, c.Status, "Quitting Unison")
+	assert.True(t, c.Running)
+	assert.True(t, c.Busy)
+	assert.Nil(t, c.Quit)
+	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
+	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.Status, "Exited")
+	assert.False(t, c.Running)
 }
 
 func TestProgressLookingForChanges(t *testing.T) {
@@ -223,7 +238,7 @@ func TestNonexistentProfile(t *testing.T) {
 	assertEqual(t, c.Status, "Starting unison")
 	assertEqual(t, c.ProcExit(1, nil),
 		Update{Messages: []Message{
-			{"Unison exited, saying:\nUsage: unison [options]\n[...] Profile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist", Error},
+			{"Usage: unison [options]\n    or unison root1 root2 [options]\n    or unison profilename [options]\n\nFor a list of options, type \"unison -help\".\nFor a tutorial on basic usage, type \"unison -doc tutorial\".\nFor other documentation, type \"unison -doc topics\".\n\nProfile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist\n", Info},
 		}})
 	assert.False(t, c.Busy)
 	assertEqual(t, c.Status, "Unison exited unexpectedly")
@@ -330,7 +345,7 @@ func TestDiffBadPath(t *testing.T) {
 		Update{
 			Input: []byte("n\n"),
 			Messages: []Message{
-				{"Failed to get diff for: two\nThere is no such path in Unison’s plan. This is probably a bug in Gunison.", Error},
+				{"Failed to get diff for: two\nThere is no such path in Unison's plan. This is probably a bug in Gunison.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Waiting for Unison")
@@ -394,7 +409,7 @@ func TestDiffBadCommand(t *testing.T) { // unison -diff 'diff --bad-option'
 	assert.Zero(t, c.ProcOutput([]byte("Try 'diff --help' for more information.\n")))
 	assertEqual(t, c.ProcOutput([]byte("\ndiff --bad-option '/home/vasiliy/tmp/gunison/left/one' '/home/vasiliy/tmp/gunison/right/one'\n\n\n\nchanged  ---->            one  [f] ")),
 		Update{Messages: []Message{
-			{"diff: unrecognized option '--bad-option'\ndiff: Try 'diff --help' for more information.", Error},
+			{"diff: unrecognized option '--bad-option'\ndiff: Try 'diff --help' for more information.", Warning},
 		}})
 	assertEqual(t, c.Status, "Ready to synchronize")
 }
@@ -439,7 +454,7 @@ func TestMergeFailed(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("No output from merge cmd and both original files are still present\n")))
 	assertEqual(t, c.ProcOutput([]byte("\nFailed [one]: Merge program didn't change either temp file\n")),
 		Update{Messages: []Message{
-			{"Failed [one]: Merge program didn't change either temp file\n", Error},
+			{"Failed [one]: Merge program didn't change either temp file", Error},
 		}})
 	assert.Zero(t, c.ProcOutput([]byte("Synchronization incomplete at 16:49:21  (0 items transferred, 0 skipped, 1 failed)\n")))
 	assert.Zero(t, c.ProcExit(2, nil))
@@ -588,6 +603,22 @@ func TestEmpty(t *testing.T) {
 	assertEqual(t, c.ProcExit(0, nil),
 		Update{Messages: []Message{
 			{"Nothing to do: replicas have not changed since last sync.", Info},
+		}})
+	assertEqual(t, c.Status, "Finished successfully")
+	assert.False(t, c.Running)
+}
+
+func TestIdenticalChanges(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Looking for changes\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Reconciling changes\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Nothing to do: replicas have been changed only in identical ways since last sync.\n")))
+	assertEqual(t, c.Status, "Reconciling changes")
+	assertEqual(t, c.ProcExit(0, nil),
+		Update{Messages: []Message{
+			{"Nothing to do: replicas have been changed only in identical ways since last sync.", Info},
 		}})
 	assertEqual(t, c.Status, "Finished successfully")
 	assert.False(t, c.Running)
@@ -1151,15 +1182,107 @@ func TestSSHFailure(t *testing.T) {
 	c := NewCore()
 	assert.Zero(t, c.ProcStart())
 	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
-	assertEqual(t, c.ProcOutput([]byte("Fatal error: Lost connection with the server\n")),
-		Update{Messages: []Message{
-			{"Lost connection with the server", Error},
-		}})
+	assert.Zero(t, c.ProcOutput([]byte("Fatal error: Lost connection with the server\n")))
 	assertEqual(t, c.Status, "Contacting server")
 	assert.True(t, c.Busy)
-	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.ProcExit(3, nil),
+		Update{Messages: []Message{
+			{"Fatal error: Lost connection with the server", Error},
+		}})
 	assertEqual(t, c.Status, "Unison exited unexpectedly")
 	assert.False(t, c.Busy)
+}
+
+func TestExtraneousOutput1(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Looking for changes\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Something interesting happening here\n")))
+	assertEqual(t, c.Status, "Looking for changes")
+	assertEqual(t, c.ProcOutput([]byte("Reconciling changes\n")),
+		Update{Messages: []Message{
+			{"Something interesting happening here", Info},
+		}})
+	assertEqual(t, c.Status, "Reconciling changes")
+}
+
+func TestExtraneousOutput2(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("l\n")})
+	assert.Zero(t, c.ProcOutput([]byte("  ")))
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
+	assert.Zero(t, c.ProcOutput([]byte("What is this line right here?\n")))
+	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")))
+	upd := c.ProcOutput([]byte("changed  ---->            one  [f] "))
+	assert.True(t, upd.PlanReady)
+	assertEqual(t, c.Status, "Ready to synchronize")
+	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nWhat is this line right here?\n\nIs it safe to proceed?")
+	assert.Zero(t, upd.Alert.Proceed())
+}
+
+func TestExtraneousOutput3(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	c.Plan["one"] = RightToLeft
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	upd := c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] "))
+	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nsome unexpected line\n\nIs it safe to proceed?")
+	assertEqual(t, c.Status, "Starting synchronization")
+	assertEqual(t, upd.Alert.Proceed(),
+		Update{Input: []byte("<\n")})
+}
+
+func TestExtraneousOutput3Abort(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	upd := c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] "))
+	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nsome unexpected line\n\nIs it safe to proceed?")
+	assertEqual(t, c.Status, "Starting synchronization")
+	assertEqual(t, upd.Alert.Abort(),
+		Update{Input: []byte("q\n")})
+	assertEqual(t, c.Status, "Quitting Unison")
+	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.Status, "Aborted")
+	assert.False(t, c.Running)
+}
+
+func TestModifiedDuringSync(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+	assert.Zero(t, c.ProcOutput([]byte("Propagating updates\n")))
+	assert.Zero(t, c.ProcOutput([]byte("\n\nUNISON 2.51.3 (OCAML 4.11.1) started propagating changes at 20:13:49.30 on 26 Feb 2021\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file one from /home/vasiliy/tmp/gunison/left to /home/vasiliy/tmp/gunison/right\n")))
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assertEqual(t, c.ProcOutput([]byte("Failed: The source file /home/vasiliy/tmp/gunison/left/one\nhas been modified during synchronization.  Transfer aborted.\n")),
+		Update{Messages: []Message{
+			{"Failed: The source file /home/vasiliy/tmp/gunison/left/one", Error},
+			{"has been modified during synchronization.  Transfer aborted.", Error},
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
+	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
+	assertEqual(t, c.ProcOutput([]byte("Failed [one]: The source file /home/vasiliy/tmp/gunison/left/one\nhas been modified during synchronization.  Transfer aborted.\n")),
+		Update{Messages: []Message{
+			{"Failed [one]: The source file /home/vasiliy/tmp/gunison/left/one", Error},
+			{"has been modified during synchronization.  Transfer aborted.", Error},
+		}})
+	assert.Zero(t, c.ProcOutput([]byte("UNISON 2.51.3 (OCAML 4.11.1) finished propagating changes at 20:13:49.31 on 26 Feb 2021\n\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Saving synchronizer state\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Synchronization incomplete at 20:13:49  (0 items transferred, 0 skipped, 1 failed)\n")))
+	assert.Zero(t, c.ProcOutput([]byte("  failed: one\n")))
+	assert.Zero(t, c.ProcExit(2, nil))
+	assertEqual(t, c.Status, "Sync incomplete (0 items transferred, 0 skipped, 1 failed)")
 }
 
 // assertEqual is just assert.Equal with arguments swapped,
