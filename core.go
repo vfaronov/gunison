@@ -53,6 +53,7 @@ type Content struct {
 	Status   Status
 	Props    string
 	Modified time.Time
+	Size     int64
 }
 
 type Type byte
