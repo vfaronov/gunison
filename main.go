@@ -99,38 +99,33 @@ func startUnison(args ...string) {
 
 	log.Printf("starting %v", unison)
 	if err := unison.Start(); err != nil {
-		recvError(fmt.Errorf("failed to start unison: %w", err))
+		recvError(fmt.Errorf("failed to start Unison: %w", err))
 		return
 	}
 	shouldf(pipeW.Close(), "close pipeW")
-	go watchOutput()
-	go watchExit()
-	if core.ProcStart != nil {
-		update(core.ProcStart())
-	} else {
-		log.Println("core is not ready to process unison start")
-	}
+	go watchUnison()
+	update(core.ProcStart())
 }
 
-func watchOutput() {
+func watchUnison() {
 	var buf [4096]byte
 	for {
 		n, err := unisonR.Read(buf[:])
-		log.Printf("unison output: %q %v", buf[:n], err)
+		log.Printf("Unison output: %q %v", buf[:n], err)
 		if n > 0 {
 			shouldIdleAdd(recvOutput, buf[:n])
 		}
 		if err != nil {
-			shouldIdleAdd(recvError, err)
+			if !errors.Is(err, io.EOF) {
+				shouldIdleAdd(recvError, err)
+			}
 			break
 		}
 	}
 	shouldf(unisonR.Close(), "close unisonR pipe")
-}
 
-func watchExit() {
 	e := unison.Wait()
-	log.Println("unison exit:", e)
+	log.Println("Unison exit:", e)
 	if e == nil {
 		e = success // nil doesn't seem to work with IdleAdd
 	}
@@ -206,18 +201,12 @@ func setupWidgets() {
 }
 
 func recvOutput(d []byte) {
-	if core.ProcOutput == nil {
-		return
-	}
 	log.Printf("processing %d bytes of output", len(d))
 	update(core.ProcOutput(d))
 }
 
 func recvError(err error) {
-	if core.ProcError == nil {
-		return
-	}
-	log.Println("processing unison I/O error:", err)
+	log.Println("processing Unison I/O error:", err)
 	update(core.ProcError(err))
 }
 
@@ -225,10 +214,7 @@ func recvExit(e error) {
 	if e == success {
 		e = nil
 	}
-	if core.ProcExit == nil {
-		return
-	}
-	log.Println("processing unison exit:", e)
+	log.Println("processing Unison exit:", e)
 	code := -1
 	if ee, ok := e.(*exec.ExitError); ok {
 		code = ee.ExitCode()
@@ -278,26 +264,23 @@ func update(upd Update) {
 	closeButton.SetVisible(!core.Running)
 
 	if len(upd.Input) > 0 {
-		log.Printf("unison input: %#v", upd.Input)
+		log.Printf("Unison input: %#v", upd.Input)
 		if _, err := unisonW.Write(upd.Input); err != nil {
-			log.Printf("failed to write to unison: %v", err)
-			recvError(err)
+			recvError(fmt.Errorf("failed to write to Unison: %w", err))
 		}
 	}
 
 	if upd.Interrupt {
-		log.Print("interrupting unison")
+		log.Print("interrupting Unison")
 		if err := unison.Process.Signal(os.Interrupt); err != nil {
-			log.Printf("failed to interrupt unison: %v", err)
-			recvError(err)
+			recvError(fmt.Errorf("failed to interrupt Unison: %w", err))
 		}
 	}
 
 	if upd.Kill {
-		log.Printf("killing unison")
+		log.Print("killing Unison")
 		if err := unison.Process.Kill(); err != nil {
-			log.Printf("failed to kill unison: %v", err)
-			recvError(err)
+			recvError(fmt.Errorf("failed to kill Unison: %w", err))
 		}
 	}
 
@@ -334,10 +317,10 @@ func showAlert(a Alert) {
 		DialogOption{Text: "Abort", Response: gtk.RESPONSE_REJECT},
 		DialogOption{Text: "Proceed", Response: gtk.RESPONSE_ACCEPT},
 	)
-	switch {
-	case resp == gtk.RESPONSE_REJECT && a.Abort != nil:
+	switch resp {
+	case gtk.RESPONSE_REJECT:
 		update(a.Abort())
-	case resp == gtk.RESPONSE_ACCEPT && a.Proceed != nil:
+	case gtk.RESPONSE_ACCEPT:
 		update(a.Proceed())
 	}
 }
