@@ -223,6 +223,8 @@ func recvExit(e error) {
 }
 
 func update(upd Update) {
+	log.Printf("applying update: %+v (wantQuit = %v)", upd, wantQuit)
+
 	if wantQuit && !core.Running {
 		window.Destroy()
 		return
