@@ -99,7 +99,7 @@ func startUnison(args ...string) {
 
 	log.Printf("starting %v", unison)
 	if err := unison.Start(); err != nil {
-		recvError(fmt.Errorf("failed to start Unison: %w", err))
+		recvError(err)
 		return
 	}
 	shouldf(pipeW.Close(), "close pipeW")

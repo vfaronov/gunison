@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -104,6 +105,8 @@ func TestMinimal(t *testing.T) {
 	assertEqual(t, c.Status, "Finished successfully")
 	assert.False(t, c.Busy)
 	assert.False(t, c.Running)
+	assert.NotNil(t, c.Items)
+	assert.NotNil(t, c.Plan)
 }
 
 func TestTerse(t *testing.T) { // unison -terse
@@ -130,7 +133,7 @@ func TestTerse(t *testing.T) { // unison -terse
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
 	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
 		Update{Input: []byte("y\n")})
-	assertEqual(t, c.Status, "Propagating updates")
+	assertEqual(t, c.Status, "Starting synchronization")
 
 	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file one from /home/vasiliy/tmp/gunison/left to /home/vasiliy/tmp/gunison/right\n")))
 	assert.Zero(t, c.ProcOutput([]byte("[END] Updating file one\n")))
@@ -139,6 +142,7 @@ func TestTerse(t *testing.T) { // unison -terse
 			{"Synchronization complete at 01:50:54  (1 item transferred, 0 skipped, 0 failed)", Info},
 		}})
 	assert.Zero(t, c.ProcExit(0, nil))
+	assertEqual(t, c.Status, "Finished successfully")
 }
 
 func TestQuit(t *testing.T) {
@@ -200,14 +204,7 @@ func TestProgressLookingForChanges(t *testing.T) {
 }
 
 func TestProgressPropagatingUpdates(t *testing.T) {
-	c := initCoreMinimalReady(t)
-	assertEqual(t, c.Sync(),
-		Update{Input: []byte("0\n")})
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte(">\n")})
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
-	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
-		Update{Input: []byte("y\n")})
+	c := initCoreMinimalSyncing(t)
 
 	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file one from /home/vasiliy/tmp/gunison/left to /home/vasiliy/tmp/gunison/right\n")))
 	assert.Empty(t, c.Progress)
@@ -1298,17 +1295,14 @@ func TestExtraneousOutput3Abort(t *testing.T) {
 	assert.Zero(t, c.ProcExit(3, nil))
 	assertEqual(t, c.Status, "Finished with errors")
 	assert.False(t, c.Running)
+
+	// The plan always remains available (once PlanReady:true) because the UI still needs it.
+	assert.NotNil(t, c.Items)
+	assert.NotNil(t, c.Plan)
 }
 
 func TestModifiedDuringSync(t *testing.T) {
-	c := initCoreMinimalReady(t)
-	assertEqual(t, c.Sync(),
-		Update{Input: []byte("0\n")})
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte(">\n")})
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
-	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
-		Update{Input: []byte("y\n")})
+	c := initCoreMinimalSyncing(t)
 	assert.Zero(t, c.ProcOutput([]byte("Propagating updates\n")))
 	assert.Zero(t, c.ProcOutput([]byte("\n\nUNISON 2.51.3 (OCAML 4.11.1) started propagating changes at 20:13:49.30 on 26 Feb 2021\n")))
 	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file one from /home/vasiliy/tmp/gunison/left to /home/vasiliy/tmp/gunison/right\n")))
@@ -1338,6 +1332,69 @@ func TestModifiedDuringSync(t *testing.T) {
 		}})
 	assert.Zero(t, c.ProcExit(2, nil))
 	assertEqual(t, c.Status, "Finished with errors")
+}
+
+func TestConnectionLostDuringSync(t *testing.T) {
+	c := initCoreMinimalSyncing(t)
+	assert.Zero(t, c.ProcOutput([]byte("Propagating updates\n")))
+	assert.Zero(t, c.ProcOutput([]byte("\n\nUNISON 2.51.3 (OCAML 4.11.1) started propagating changes at 10:19:56.00 on 28 Feb 2021\n")))
+	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file one from /home/vasiliy/tmp/gunison/left to //aqtau//home/vasiliy/tmp/gunison/right\n")))
+	assertEqual(t, c.ProcOutput([]byte("Fatal error: Lost connection with the server\n")),
+		Update{Messages: []Message{
+			{"Fatal error: Lost connection with the server", Error},
+		}})
+	assert.True(t, c.Busy)
+	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.Status, "Finished with errors")
+	assert.False(t, c.Busy)
+	assert.NotNil(t, c.Items)
+	assert.NotNil(t, c.Plan)
+}
+
+func TestErrorDuringStart(t *testing.T) {
+	c := NewCore()
+	assertEqual(t, c.ProcError(errors.New(`exec: "unison": executable file not found in $PATH`)),
+		Update{Messages: []Message{
+			{`Exec: "unison": executable file not found in $PATH`, Error},
+		}})
+	assert.False(t, c.Running)
+	assert.False(t, c.Busy)
+	assertEqual(t, c.Status, "Failed to start Unison")
+	assert.Nil(t, c.Kill)
+}
+
+func TestErrorBeforeSync(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.ProcError(errors.New("some unexpected error")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Some unexpected error\nThis is a fatal error. Unison will be stopped now.", Error},
+			},
+		})
+	assertEqual(t, c.Status, "Interrupting Unison")
+	assert.True(t, c.Busy)
+	assert.Nil(t, c.Abort)
+	assert.Nil(t, c.Interrupt)
+	assert.NotNil(t, c.Kill)
+	assert.NotNil(t, c.Items)
+	assert.NotNil(t, c.Plan)
+	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
+	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.Status, "Unison exited")
+}
+
+func TestErrorDuringSync(t *testing.T) {
+	c := initCoreMinimalSyncing(t)
+	assert.Zero(t, c.ProcOutput([]byte("Propagating updates\n")))
+	// At this point we don't interrupt Unison just because some I/O error occurred.
+	// Instead, we show the error to the user, and they can abort if necessary.
+	assertEqual(t, c.ProcError(errors.New("some unexpected error")),
+		Update{Messages: []Message{
+			{"Some unexpected error", Error},
+		}})
+	assertEqual(t, c.Status, "Propagating updates")
+	assert.NotNil(t, c.Abort)
 }
 
 // assertEqual is just assert.Equal with arguments swapped,
@@ -1383,6 +1440,33 @@ func initCoreMinimalReady(t *testing.T) *Core {
 	require.NotNil(t, c.Diff)
 	require.NotNil(t, c.Sync)
 	require.NotNil(t, c.Quit)
+	require.NotNil(t, c.Abort)
+	require.NotNil(t, c.Interrupt)
+	require.NotNil(t, c.Kill)
+
+	return c
+}
+
+func initCoreMinimalSyncing(t *testing.T) *Core {
+	t.Helper()
+
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte(">\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{Input: []byte("y\n")})
+
+	assert.True(t, c.Running)
+	assert.True(t, c.Busy)
+	assertEqual(t, c.Status, "Starting synchronization")
+	assert.Empty(t, c.Progress)
+	assert.Empty(t, c.ProgressFraction)
+	assert.Nil(t, c.Diff)
+	assert.Nil(t, c.Sync)
+	assert.Nil(t, c.Quit)
 	require.NotNil(t, c.Abort)
 	require.NotNil(t, c.Interrupt)
 	require.NotNil(t, c.Kill)

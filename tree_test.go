@@ -56,7 +56,7 @@ func probeRow(t *testing.T, store *gtk.TreeStore, path string, cols ...int) []in
 	require.NoError(t, err)
 	iter, err := store.GetIter(p)
 	require.NoError(t, err)
-	
+
 	row := make([]interface{}, len(cols))
 	for i, col := range cols {
 		v, err := store.GetValue(iter, col)
