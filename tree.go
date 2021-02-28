@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -228,25 +229,20 @@ func onMergeMenuItemActivate()       { setAction(Merge) }
 func onSkipMenuItemActivate()        { setAction(Skip) }
 
 func setAction(act Action) {
-	forEachSelectedPath(func(iter *gtk.TreeIter, path string) {
-		core.Plan[path] = act
+	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+		iter, item := selectedItem(li)
+		core.Plan[item.Path] = act
 		displayItemAction(iter, act)
-	})
+	}
 }
 
 func onDiffMenuItemActivate() {
-	forEachSelectedPath(func(_ *gtk.TreeIter, path string) {
-		update(core.Diff(path))
-	})
-}
-
-func forEachSelectedPath(f func(*gtk.TreeIter, string)) {
-	treeSelection.SelectedForEach(gtk.TreeSelectionForeachFunc(
-		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter, _ ...interface{}) {
-			path := MustGetColumn(treestore, iter, colPath).(string)
-			f(iter, path)
-		},
-	))
+	li := treeSelection.GetSelectedRows(treestore)
+	if li == nil {
+		return
+	}
+	_, item := selectedItem(li)
+	update(core.Diff(item.Path))
 }
 
 func onTreeviewQueryTooltip(_ *gtk.TreeView, x, y int, keyboardMode bool, tip *gtk.Tooltip) bool {
@@ -257,23 +253,21 @@ func onTreeviewQueryTooltip(_ *gtk.TreeView, x, y int, keyboardMode bool, tip *g
 }
 
 func treeTooltip(tip *gtk.Tooltip) bool {
-	if treeSelection.CountSelectedRows() != 1 {
-		return false
+	li := treeSelection.GetSelectedRows(treestore)
+	if li == nil || li.Length() != 1 {
+		return false // only show tooltip when a single row is selected
 	}
-	forEachSelectedPath(func(iter *gtk.TreeIter, path string) {
-		idx := MustGetColumn(treestore, iter, colIdx).(int)
-		item := core.Items[idx]
-		tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>plan</b>:\t%s",
-			html.EscapeString(path),
-			html.EscapeString(core.Left),
-			html.EscapeString(describeContentFull(item.Left)),
-			html.EscapeString(item.Left.Props),
-			html.EscapeString(core.Right),
-			html.EscapeString(describeContentFull(item.Right)),
-			html.EscapeString(item.Right.Props),
-			describeActionFull[core.Plan[path]],
-		))
-	})
+	_, item := selectedItem(li)
+	tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>plan</b>:\t%s",
+		html.EscapeString(item.Path),
+		html.EscapeString(core.Left),
+		html.EscapeString(describeContentFull(item.Left)),
+		html.EscapeString(item.Left.Props),
+		html.EscapeString(core.Right),
+		html.EscapeString(describeContentFull(item.Right)),
+		html.EscapeString(item.Right.Props),
+		describeActionFull[core.Plan[item.Path]],
+	))
 	return true
 }
 
@@ -304,4 +298,11 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		return false
 	}
 	return true
+}
+
+func selectedItem(li *glib.List) (*gtk.TreeIter, Item) {
+	iter, err := treestore.GetIter(li.Data().(*gtk.TreePath))
+	mustf(err, "get tree iter")
+	idx := MustGetColumn(treestore, iter, colIdx).(int)
+	return iter, core.Items[idx]
 }
