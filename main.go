@@ -342,7 +342,8 @@ func displayDiff(diff []byte) {
 	if !checkf(err, "write diff to temporary file") {
 		return
 	}
-	checkf(open.Start(f.Name()), "display diff file")
+	name := f.Name()
+	checkf(open.Start(name), "display diff file: %v", name)
 }
 
 func onWindowDeleteEvent() bool {
