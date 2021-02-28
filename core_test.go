@@ -1355,7 +1355,7 @@ func TestErrorDuringStart(t *testing.T) {
 	c := NewCore()
 	assertEqual(t, c.ProcError(errors.New(`exec: "unison": executable file not found in $PATH`)),
 		Update{Messages: []Message{
-			{`Exec: "unison": executable file not found in $PATH`, Error},
+			{`exec: "unison": executable file not found in $PATH`, Error},
 		}})
 	assert.False(t, c.Running)
 	assert.False(t, c.Busy)
@@ -1369,7 +1369,7 @@ func TestErrorBeforeSync(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"Some unexpected error\nThis is a fatal error. Unison will be stopped now.", Error},
+				{"some unexpected error\nThis is a fatal error. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
@@ -1391,7 +1391,7 @@ func TestErrorDuringSync(t *testing.T) {
 	// Instead, we show the error to the user, and they can abort if necessary.
 	assertEqual(t, c.ProcError(errors.New("some unexpected error")),
 		Update{Messages: []Message{
-			{"Some unexpected error", Error},
+			{"some unexpected error", Error},
 		}})
 	assertEqual(t, c.Status, "Propagating updates")
 	assert.NotNil(t, c.Abort)

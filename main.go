@@ -84,14 +84,14 @@ func startUnison(args ...string) {
 
 	unisonW, err = unison.StdinPipe()
 	if err != nil {
-		recvError(fmt.Errorf("failed to create input pipe: %w", err))
+		recvError(fmt.Errorf("Failed to create input pipe: %w", err))
 		return
 	}
 
 	var pipeW *os.File
 	unisonR, pipeW, err = os.Pipe()
 	if err != nil {
-		recvError(fmt.Errorf("failed to create output pipe: %w", err))
+		recvError(fmt.Errorf("Failed to create output pipe: %w", err))
 		return
 	}
 	unison.Stdout = pipeW
@@ -268,21 +268,21 @@ func update(upd Update) {
 	if len(upd.Input) > 0 {
 		log.Printf("Unison input: %#v", upd.Input)
 		if _, err := unisonW.Write(upd.Input); err != nil {
-			recvError(fmt.Errorf("failed to write to Unison: %w", err))
+			recvError(fmt.Errorf("Failed to write to Unison: %w", err))
 		}
 	}
 
 	if upd.Interrupt {
 		log.Print("interrupting Unison")
 		if err := unison.Process.Signal(os.Interrupt); err != nil {
-			recvError(fmt.Errorf("failed to interrupt Unison: %w", err))
+			recvError(fmt.Errorf("Failed to interrupt Unison: %w", err))
 		}
 	}
 
 	if upd.Kill {
 		log.Print("killing Unison")
 		if err := unison.Process.Kill(); err != nil {
-			recvError(fmt.Errorf("failed to kill Unison: %w", err))
+			recvError(fmt.Errorf("Failed to kill Unison: %w", err))
 		}
 	}
 
