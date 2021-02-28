@@ -113,7 +113,9 @@ func watchUnison() {
 		n, err := unisonR.Read(buf[:])
 		log.Printf("Unison output: %q %v", buf[:n], err)
 		if n > 0 {
-			shouldIdleAdd(recvOutput, buf[:n])
+			data := make([]byte, n)
+			copy(data, buf[:n])
+			shouldIdleAdd(recvOutput, data)
 		}
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
