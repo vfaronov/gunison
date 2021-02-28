@@ -248,7 +248,7 @@ func TestNonexistentProfile(t *testing.T) {
 	assertEqual(t, c.Status, "Starting Unison")
 	assertEqual(t, c.ProcExit(1, nil),
 		Update{Messages: []Message{
-			{"Usage: unison [options]\n    or unison root1 root2 [options]\n    or unison profilename [options]\n\nFor a list of options, type \"unison -help\".\nFor a tutorial on basic usage, type \"unison -doc tutorial\".\nFor other documentation, type \"unison -doc topics\".\n\nProfile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist\n", Info},
+			{"Usage: unison [options]\n    or unison root1 root2 [options]\n    or unison profilename [options]\n\nFor a list of options, type \"unison -help\".\nFor a tutorial on basic usage, type \"unison -doc tutorial\".\nFor other documentation, type \"unison -doc topics\".\n\nProfile /home/vasiliy/tmp/gunison/.unison/nonexistent.prf does not exist", Info},
 		}})
 	assert.False(t, c.Busy)
 	assertEqual(t, c.Status, "Unison exited")
