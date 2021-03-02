@@ -197,6 +197,13 @@ func TestProgressLookingForChanges(t *testing.T) {
 	assertEqual(t, c.Progress, "some file name/so long/that it has...ellipsized to fit into the output")
 	assert.Zero(t, c.ProcOutput([]byte("\r                                                                      \r")))
 
+	assertEqual(t, c.ProcOutput([]byte("- yet/anoth")),
+		Update{Progressed: true})
+	assertEqual(t, c.Progress, "yet/anoth") // report updates as soon as they arrive...
+	assert.Zero(t, c.ProcOutput([]byte("er/file")))
+	assertEqual(t, c.Progress, "yet/another/file") // ...but fix up buffering artifacts
+	assert.Zero(t, c.ProcOutput([]byte("\r                \r")))
+
 	assert.Zero(t, c.ProcOutput([]byte("  Waiting for changes from server\n")))
 	assertEqual(t, c.Status, "Waiting for changes from server")
 	assert.Empty(t, c.Progress)
@@ -1276,10 +1283,17 @@ func TestExtraneousOutput3(t *testing.T) {
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	upd := c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] "))
-	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nsome unexpected line\n\nIs it safe to proceed?")
+	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nsome unexpected line here\n\nIs it safe to proceed?")
 	assertEqual(t, c.Status, "Starting synchronization")
 	assertEqual(t, upd.Alert.Proceed(),
 		Update{Input: []byte("<\n")})
+
+	upd = c.ProcOutput([]byte("another unexpected line here\nchanged  ---->            one  \nyet another one here\nProceed with propagating updates? [] "))
+	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nanother unexpected line here\n\nIs it safe to proceed?")
+	upd = upd.Alert.Proceed()
+	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nyet another one here\n\nIs it safe to proceed?")
+	assertEqual(t, upd.Alert.Proceed(),
+		Update{Input: []byte("y\n")})
 }
 
 func TestExtraneousOutput3Abort(t *testing.T) {
