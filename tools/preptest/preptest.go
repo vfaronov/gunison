@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -238,7 +237,7 @@ func rm(path string) {
 func put(path string, data []byte) {
 	rm(path)
 	mkdir(p(path, ".."))
-	must(ioutil.WriteFile(path, data, 0644))
+	must(os.WriteFile(path, data, 0644))
 }
 
 func symlink(path, target string) {
@@ -256,7 +255,7 @@ func chmod(path string) {
 }
 
 func tweak(path string, pos int) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	must(err)
 	b := make([]byte, pos)
 	copy(b, data[pos:2*pos])

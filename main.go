@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -336,7 +335,7 @@ var importanceToMessageType = map[Importance]gtk.MessageType{
 }
 
 func displayDiff(diff []byte) {
-	f, err := ioutil.TempFile("", "gunison-*.diff")
+	f, err := os.CreateTemp("", "gunison-*.diff")
 	if !checkf(err, "write diff to temporary file") {
 		return
 	}
