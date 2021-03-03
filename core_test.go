@@ -348,30 +348,6 @@ func TestDiffDirectory(t *testing.T) {
 	assertEqual(t, c.Status, "Ready to synchronize")
 }
 
-func TestDiffBadPath(t *testing.T) {
-	c := initCoreMinimalReady(t)
-	assertEqual(t, c.Diff("two"),
-		Update{Input: []byte("0\n")})
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte("n\n")})
-	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
-		Update{
-			Input: []byte("n\n"),
-			Messages: []Message{
-				{"Failed to get diff for: two\nThere is no such path in Unison's plan. This is probably a bug in Gunison.", Error},
-			},
-		})
-	assertEqual(t, c.Status, "Waiting for Unison")
-	assert.True(t, c.Busy)
-	assert.Nil(t, c.Sync)
-	assert.Nil(t, c.Diff)
-	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")))
-	assertEqual(t, c.Status, "Ready to synchronize")
-	assert.NotNil(t, c.Sync)
-	assert.NotNil(t, c.Diff)
-}
-
 func TestDiffAbort(t *testing.T) {
 	c := NewCore()
 	assert.Zero(t, c.ProcStart())
