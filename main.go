@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,9 @@ var (
 	unison  *exec.Cmd
 	unisonR io.ReadCloser
 	unisonW io.WriteCloser
+
+	//go:embed gunison.glade
+	ui string
 
 	window              *gtk.Window
 	headerbar           *gtk.HeaderBar
@@ -134,7 +138,7 @@ func watchUnison() {
 }
 
 func setupWidgets() {
-	builder, err := gtk.BuilderNewFromFile("/home/vasiliy/cur/gunison/gunison/gunison.glade") // +FIXME
+	builder, err := gtk.BuilderNewFromString(ui)
 	mustf(err, "load GtkBuilder")
 
 	window = mustGetObject(builder, "window").(*gtk.Window)

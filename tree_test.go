@@ -45,7 +45,7 @@ func TestDisplayItems(t *testing.T) {
 
 func initTreeStore(t *testing.T) {
 	t.Helper()
-	builder, err := gtk.BuilderNewFromFile("/home/vasiliy/cur/gunison/gunison/gunison.glade") // +FIXME
+	builder, err := gtk.BuilderNewFromString(ui)
 	require.NoError(t, err)
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
 }
