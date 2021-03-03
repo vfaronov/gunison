@@ -219,11 +219,13 @@ func recvExit(e error) {
 	if e == success {
 		e = nil
 	}
-	log.Println("processing Unison exit:", e)
-	code := -1
+	code := 0
 	if ee, ok := e.(*exec.ExitError); ok {
 		code = ee.ExitCode()
+	} else if e != nil {
+		code = -1
 	}
+	log.Println("processing Unison exit:", code, e)
 	update(core.ProcExit(code, e))
 }
 
