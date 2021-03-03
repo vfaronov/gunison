@@ -210,7 +210,7 @@ func (c *Core) kill() Update {
 }
 
 func (c *Core) procExitBeforeSync(code int, err error) Update {
-	output := c.buf.String()
+	output := strings.TrimSpace(c.buf.String())
 
 	*c = Core{
 		Left:  c.Left,
@@ -228,14 +228,14 @@ func (c *Core) procExitBeforeSync(code int, err error) Update {
 
 	upd := Update{}
 	if output != "" {
-		upd.Messages = []Message{{strings.TrimSpace(output), Info}}
+		upd.Messages = []Message{{output, Info}}
 	}
 	return upd.join(echoError(err))
 }
 
 func (c *Core) procErrorBeforeSync(err error) Update {
 	msg := Message{
-		Text:       strings.Title(err.Error()) + "\nThis is a fatal error. Unison will be stopped now.",
+		Text:       err.Error() + "\nThis is a fatal error. Unison will be stopped now.",
 		Importance: Error,
 	}
 	return Update{Messages: []Message{msg}}.join(c.interrupt())
