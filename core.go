@@ -49,6 +49,11 @@ func (c *Core) transition(newc Core) Update {
 		newc.Plan = c.Plan
 	}
 	newc.buf = c.buf
+
+	if newc.ProcError == nil {
+		newc.ProcError = echoError
+	}
+
 	*c = newc
 	return c.next()
 }
@@ -188,8 +193,6 @@ func (c *Core) ProcOutput(data []byte) Update {
 func (c *Core) procErrorBeforeStart(err error) Update {
 	return echoError(err).join(c.transition(Core{
 		Status: "Failed to start Unison",
-
-		ProcError: echoError,
 	}))
 }
 
@@ -199,9 +202,8 @@ func (c *Core) interrupt() Update {
 		Busy:    true,
 		Status:  "Interrupting Unison",
 
-		ProcExit:  c.ProcExit,
-		ProcError: echoError,
-		Kill:      c.kill,
+		ProcExit: c.ProcExit,
+		Kill:     c.kill,
 	}))
 }
 
@@ -211,8 +213,7 @@ func (c *Core) kill() Update {
 		Busy:    true,
 		Status:  "Killing Unison",
 
-		ProcExit:  c.ProcExit,
-		ProcError: echoError,
+		ProcExit: c.ProcExit,
 	}))
 }
 
@@ -232,8 +233,6 @@ func (c *Core) procExitBeforeSync(code int, err error) Update {
 
 	return upd.join(echoError(err)).join(c.transition(Core{
 		Status: status,
-
-		ProcError: echoError,
 	}))
 }
 
