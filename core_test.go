@@ -152,9 +152,21 @@ func TestQuit(t *testing.T) {
 	assert.True(t, c.Busy)
 	assert.Nil(t, c.Quit)
 	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
-	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.ProcExit(3, errors.New("exit status 3")),
+		Update{Messages: []Message{
+			{"exit status 3", Error},
+		}})
 	assertEqual(t, c.Status, "Unison exited")
 	assert.False(t, c.Running)
+}
+
+func TestKilledExternally(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.ProcExit(-1, errors.New("signal: killed")),
+		Update{Messages: []Message{
+			{"signal: killed", Error},
+		}})
+	assertEqual(t, c.Status, "Unison exited")
 }
 
 func TestProgressLookingForChanges(t *testing.T) {
@@ -1376,6 +1388,21 @@ func TestErrorDuringSync(t *testing.T) {
 		}})
 	assertEqual(t, c.Status, "Propagating updates")
 	assert.NotNil(t, c.Abort)
+}
+
+func TestPlanMissing(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	delete(c.Plan, "one")
+	assertEqual(t, c.Sync(),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Failed to start synchronization because this path is missing from Gunison's plan: one\nThis is probably a bug in Gunison.\nThis is a fatal error. Unison will be stopped now.", Error},
+			},
+		})
+	assertEqual(t, c.Status, "Interrupting Unison")
 }
 
 // assertEqual is just assert.Equal with arguments swapped,
