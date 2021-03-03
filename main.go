@@ -245,7 +245,7 @@ func update(upd Update) {
 		rightColumn.SetTitle(core.Right)
 	}
 
-	if upd.PlanReady {
+	if core.Items != nil && !treeview.GetVisible() {
 		displayItems()
 		treeview.SetVisible(true)
 	}

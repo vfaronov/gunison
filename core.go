@@ -19,23 +19,42 @@ type Core struct {
 	Items       []Item
 	Plan        map[string]Action
 
-	procBuffer func([]byte) Update
-	ProcExit   func(int, error) Update
-	ProcError  func(error) Update
-
-	Diff      func(string) Update
-	Sync      func() Update
-	Quit      func() Update
-	Abort     func() Update
-	Interrupt func() Update
-	Kill      func() Update
+	procBuffered func([]byte) (int, Update)
+	ProcExit     func(int, error) Update
+	ProcError    func(error) Update
+	Diff         func(string) Update
+	Sync         func() Update
+	Quit         func() Update
+	Abort        func() Update
+	Interrupt    func() Update
+	Kill         func() Update
 
 	buf bytes.Buffer
 }
 
+func (c *Core) transition(newc Core) Update {
+	// Some pieces of state have to be preserved in all transitions.
+	// For example, even after Unison exits and there's nothing more to do, the UI is
+	// still displaying the tree, for which it still needs c.Items and c.Plan.
+	if newc.Left == "" {
+		newc.Left = c.Left
+	}
+	if newc.Right == "" {
+		newc.Right = c.Right
+	}
+	if newc.Items == nil {
+		newc.Items = c.Items
+	}
+	if newc.Plan == nil {
+		newc.Plan = c.Plan
+	}
+	newc.buf = c.buf
+	*c = newc
+	return c.next()
+}
+
 type Update struct {
 	Progressed bool
-	PlanReady  bool
 	Diff       []byte
 	Input      []byte
 	Interrupt  bool
@@ -45,16 +64,25 @@ type Update struct {
 }
 
 func (upd Update) join(other Update) Update {
-	return Update{
+	upd = Update{
 		Progressed: upd.Progressed || other.Progressed,
-		PlanReady:  upd.PlanReady || other.PlanReady,
-		Diff:       append(upd.Diff, other.Diff...), // FIXME
+		Diff:       upd.Diff,
 		Input:      append(upd.Input, other.Input...),
 		Interrupt:  upd.Interrupt || other.Interrupt,
 		Kill:       upd.Kill || other.Kill,
 		Messages:   append(upd.Messages, other.Messages...),
-		Alert:      other.Alert, // FIXME
+		Alert:      upd.Alert,
 	}
+	if other.Diff != nil {
+		upd.Diff = other.Diff
+	}
+	if other.Alert.Text != "" {
+		if upd.Alert.Text != "" {
+			panic("cannot join two Updates with non-zero Alert")
+		}
+		upd.Alert = other.Alert
+	}
+	return upd
 }
 
 type Item struct {
@@ -125,127 +153,104 @@ func NewCore() *Core {
 		Busy:   true,
 		Status: "Starting Unison",
 	}
-	c.ProcError = c.procStartFailed
+	c.ProcError = c.procErrorBeforeStart
 	return c
 }
 
+func (c *Core) next() Update {
+	if data := c.buf.Bytes(); len(data) > 0 && c.procBuffered != nil {
+		if n, upd := c.procBuffered(data); n > 0 {
+			c.buf.Next(n)
+			return upd.join(c.next())
+		}
+	}
+	return Update{}
+}
+
 func (c *Core) ProcStart() Update {
-	*c = Core{
+	return c.transition(Core{
 		Running: true,
 		Busy:    true,
 		Status:  "Starting Unison",
 
 		ProcExit:  c.procExitBeforeSync,
 		ProcError: c.procErrorBeforeSync,
-
 		Interrupt: c.interrupt,
 		Kill:      c.kill,
-	}
-	return Update{}
+	})
 }
 
 func (c *Core) ProcOutput(data []byte) Update {
 	_, _ = c.buf.Write(data)
-	var upd Update
-	prev := c.buf.Len()
-	for c.procBuffer != nil {
-		upd = upd.join(c.procBuffer(c.buf.Bytes()))
-		pos := c.buf.Len()
-		if pos == prev { // unable to make any more progress
-			break
-		}
-		prev = pos
-	}
-	return upd
+	return c.next()
 }
 
-func (c *Core) procStartFailed(err error) Update {
-	*c = Core{
-		Busy:   false,
+func (c *Core) procErrorBeforeStart(err error) Update {
+	return echoError(err).join(c.transition(Core{
 		Status: "Failed to start Unison",
 
 		ProcError: echoError,
-	}
-	return echoError(err)
+	}))
 }
 
 func (c *Core) interrupt() Update {
-	*c = Core{
+	return Update{Interrupt: true}.join(c.transition(Core{
 		Running: true,
 		Busy:    true,
 		Status:  "Interrupting Unison",
 
-		Left:  c.Left,
-		Right: c.Right,
-		Items: c.Items,
-		Plan:  c.Plan,
-
 		ProcExit:  c.ProcExit,
 		ProcError: echoError,
-
-		Kill: c.kill,
-
-		buf: c.buf,
-	}
-	return Update{Interrupt: true}
+		Kill:      c.kill,
+	}))
 }
 
 func (c *Core) kill() Update {
-	*c = Core{
+	return Update{Kill: true}.join(c.transition(Core{
 		Running: true,
 		Busy:    true,
-		Status:  "Forcing Unison to stop",
-
-		Left:  c.Left,
-		Right: c.Right,
-		Items: c.Items,
-		Plan:  c.Plan,
+		Status:  "Killing Unison",
 
 		ProcExit:  c.ProcExit,
 		ProcError: echoError,
-
-		buf: c.buf,
-	}
-	return Update{Kill: true}
+	}))
 }
 
 func (c *Core) procExitBeforeSync(code int, err error) Update {
 	output := strings.TrimSpace(c.buf.String())
+	c.buf.Reset()
 
-	*c = Core{
-		Left:  c.Left,
-		Right: c.Right,
-		Items: c.Items,
-		Plan:  c.Plan,
+	status := "Unison exited"
+	if code == 0 {
+		status = "Finished successfully"
+	}
+
+	var upd Update
+	if output != "" {
+		upd.Messages = append(upd.Messages, Message{output, Info})
+	}
+
+	return upd.join(echoError(err)).join(c.transition(Core{
+		Status: status,
 
 		ProcError: echoError,
-	}
-	if code == 0 {
-		c.Status = "Finished successfully"
-	} else {
-		c.Status = "Unison exited" // TODO: ..." with code %d"?
-	}
-
-	upd := Update{}
-	if output != "" {
-		upd.Messages = []Message{{output, Info}}
-	}
-	return upd.join(echoError(err))
+	}))
 }
 
 func (c *Core) procErrorBeforeSync(err error) Update {
-	msg := Message{
-		Text:       err.Error() + "\nThis is a fatal error. Unison will be stopped now.",
-		Importance: Error,
-	}
-	return Update{Messages: []Message{msg}}.join(c.interrupt())
+	upd := Update{Messages: []Message{
+		{
+			Text:       err.Error() + "\nThis is a fatal error. Unison will be stopped now.",
+			Importance: Error,
+		},
+	}}
+	return upd.join(c.interrupt())
 }
 
 func echoError(err error) Update {
-	if err == nil {
-		return Update{}
+	var upd Update
+	if err != nil {
+		upd.Messages = append(upd.Messages, Message{err.Error(), Error})
 	}
-	return Update{Messages: []Message{
-		{err.Error(), Error},
-	}}
+	return upd
 }

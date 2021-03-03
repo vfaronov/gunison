@@ -43,8 +43,7 @@ func TestMinimal(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--\n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")))
 	assertEqual(t, c.Status, "Ready to synchronize")
 	assert.False(t, c.Busy)
 	assertEqual(t, c.Items, []Item{
@@ -122,8 +121,7 @@ func TestTerse(t *testing.T) { // unison -terse
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")))
 	assertEqual(t, c.Status, "Ready to synchronize")
 
 	assertEqual(t, c.Sync(),
@@ -275,8 +273,7 @@ func TestDiff(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-13 at 14:29:12  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-13 at 14:29:12  size 1146      rw-r--r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file3  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-13 at 14:29:12  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-13 at 14:29:12  size 1146      rw-r--r--\n  ")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            file1  [f] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file1  [f] ")))
 
 	assertEqual(t, c.Diff("file3"),
 		Update{Input: []byte("0\n")})
@@ -339,8 +336,7 @@ func TestDiffDirectory(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-13 at 14:56:44  size 1000      rw-r--r--\nright        : new dir            modified on 2021-02-13 at 14:56:44  size 2292      rwxr-xr-x\n  ")))
-	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")))
 	assertEqual(t, c.Diff("one hundred/one hundred one"),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")),
@@ -387,8 +383,7 @@ func TestDiffAbort(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-13 at 15:12:12  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-13 at 15:12:12  size 1146      rw-r--r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file2  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-13 at 15:12:12  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-13 at 15:12:12  size 1146      rw-r--r--\n  ")))
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            file1  [f] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file1  [f] ")))
 
 	assertEqual(t, c.Diff("file2"),
 		Update{Input: []byte("0\n")})
@@ -496,8 +491,7 @@ func TestMergeDir(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("new dir  ---->            one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : new dir            modified on 2021-02-25 at 17:06:22  size 0         rwxrwxr-x\nright        : absent\n")))
-	assertEqual(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")))
 	c.Plan["one"] = Merge
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
@@ -571,8 +565,7 @@ func TestReplicaMissing(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted      \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : unchanged dir      modified on 2021-02-06 at 18:31:42  size 1146      rwxr-xr-x\nright        : deleted\n")))
-	assertEqual(t, c.ProcOutput([]byte("         <---- deleted      [f] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted      [f] ")))
 	assertEqual(t, c.Status, "Ready to synchronize")
 	assertEqual(t, c.Items, []Item{
 		{
@@ -697,8 +690,7 @@ func TestAssorted(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("local        : absent\ntanais       : new dir            modified on 2021-02-17 at 16:21:44  size 0         rwxr-xr-x\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            two  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1146      rw-r--r--\ntanais       : unchanged file     modified on 2021-02-17 at 16:21:33  size 1146      rw-r--r--\n")))
-	assertEqual(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")))
 
 	assertEqual(t, c.Items, []Item{
 		{
@@ -1074,8 +1066,7 @@ func TestAssortedRandom(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("ified on 2021-0")))
 	assert.Zero(t, c.ProcOutput([]byte("2-26 at 15:42:40  size 0         rwxr-xr-x\nright        : dir props changed  modified on 2021-02-26 at 15:42:40  size 0         rwx------\n           <---- new dir    twenty  \nleft         : absent\nright        : new dir            modified o")))
 	assert.Zero(t, c.ProcOutput([]byte("n 2021-02-26 at 15:42:40  size 0         rwxr-xr-x\n  changed  ---->            two  \nleft         : changed ")))
-	assertEqual(t, c.ProcOutput([]byte("file       modified on 2021-02-26 at 15:42:40  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-26 at 15:42:40  size 1146      rw-r--r--\nchanged  <-?-> new dir    one hundred/one hundred one  [] ")),
-		Update{PlanReady: true})
+	assert.Zero(t, c.ProcOutput([]byte("file       modified on 2021-02-26 at 15:42:40  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-26 at 15:42:40  size 1146      rw-r--r--\nchanged  <-?-> new dir    one hundred/one hundred one  [] ")))
 
 	assertEqual(t, c.Plan, map[string]Action{
 		"one hundred/one hundred one":           Skip,
@@ -1270,7 +1261,7 @@ func TestExtraneousOutput2(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("What is this line right here?\n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")))
 	upd := c.ProcOutput([]byte("changed  ---->            one  [f] "))
-	assert.True(t, upd.PlanReady)
+	assert.NotNil(t, c.Items)
 	assertEqual(t, c.Status, "Ready to synchronize")
 	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nWhat is this line right here?\n\nIs it safe to proceed?")
 	assertEqual(t, upd.Alert.Importance, Warning)
@@ -1310,7 +1301,7 @@ func TestExtraneousOutput3Abort(t *testing.T) {
 	assertEqual(t, c.Status, "Finished with errors")
 	assert.False(t, c.Running)
 
-	// The plan always remains available (once PlanReady:true) because the UI still needs it.
+	// The plan, once initialized, always remains available because the UI still needs it.
 	assert.NotNil(t, c.Items)
 	assert.NotNil(t, c.Plan)
 }
@@ -1418,9 +1409,7 @@ func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unp
 	return assert.Equal(t, expected, actual)
 }
 
-func initCoreMinimalReady(t *testing.T) *Core {
-	t.Helper()
-
+func initCoreMinimalReady(t *testing.T) *Core { //nolint:thelper
 	c := NewCore()
 	c.ProcStart()
 	c.ProcOutput([]byte("\nleft           right              \n"))
@@ -1461,17 +1450,12 @@ func initCoreMinimalReady(t *testing.T) *Core {
 	return c
 }
 
-func initCoreMinimalSyncing(t *testing.T) *Core {
-	t.Helper()
-
+func initCoreMinimalSyncing(t *testing.T) *Core { //nolint:thelper
 	c := initCoreMinimalReady(t)
-	assertEqual(t, c.Sync(),
-		Update{Input: []byte("0\n")})
-	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
-		Update{Input: []byte(">\n")})
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
-	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
-		Update{Input: []byte("y\n")})
+	c.Sync()
+	c.ProcOutput([]byte("changed  ---->            one  [f] "))
+	c.ProcOutput([]byte("changed  ---->            one  \n"))
+	c.ProcOutput([]byte("\nProceed with propagating updates? [] "))
 
 	assert.True(t, c.Running)
 	assert.True(t, c.Busy)
