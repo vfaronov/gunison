@@ -128,9 +128,9 @@ type Action byte
 const (
 	Skip Action = 1 + iota
 	LeftToRight
-	MaybeLeftToRight
+	LeftToRightPartial
 	RightToLeft
-	MaybeRightToLeft
+	RightToLeftPartial
 	Merge
 )
 

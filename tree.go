@@ -59,7 +59,7 @@ func displayItemAction(iter *gtk.TreeIter, act Action) {
 			color = "#3ea8d6"
 		case Merge:
 			color = "#8f9660"
-		case Skip, MaybeLeftToRight, MaybeRightToLeft:
+		case Skip, LeftToRightPartial, RightToLeftPartial:
 			color = "#d46526"
 		}
 	} else {
@@ -146,18 +146,20 @@ func describeContentFull(c Content) string {
 
 var (
 	describeAction = map[Action]string{
-		Skip:             "←?→",
-		LeftToRight:      "→",
-		MaybeLeftToRight: "?→",
-		RightToLeft:      "←",
-		MaybeRightToLeft: "←?",
-		Merge:            "←M→",
+		Skip:               "←?→",
+		LeftToRight:        "→",
+		LeftToRightPartial: "?→",
+		RightToLeft:        "←",
+		RightToLeftPartial: "←?",
+		Merge:              "←M→",
 	}
 	describeActionFull = map[Action]string{
-		Skip:        "skip",
-		LeftToRight: "propagate from left to right",
-		RightToLeft: "propagate from right to left",
-		Merge:       "merge the versions",
+		Skip:               "skip",
+		LeftToRight:        "propagate from left to right",
+		LeftToRightPartial: "propagate from left to right, partial",
+		RightToLeft:        "propagate from right to left",
+		RightToLeftPartial: "propagate from right to left, partial",
+		Merge:              "merge the versions",
 	}
 )
 
