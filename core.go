@@ -4,6 +4,8 @@ package main
 
 import (
 	"bytes"
+	"log"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -19,15 +21,15 @@ type Core struct {
 	Items       []Item
 	Plan        map[string]Action
 
-	procBuffered func([]byte) (int, Update)
-	ProcExit     func(int, error) Update
-	ProcError    func(error) Update
-	Diff         func(string) Update
-	Sync         func() Update
-	Quit         func() Update
-	Abort        func() Update
-	Interrupt    func() Update
-	Kill         func() Update
+	procBuffer func() Update
+	ProcExit   func(int, error) Update
+	ProcError  func(error) Update
+	Diff       func(string) Update
+	Sync       func() Update
+	Quit       func() Update
+	Abort      func() Update
+	Interrupt  func() Update
+	Kill       func() Update
 
 	buf bytes.Buffer
 }
@@ -163,11 +165,8 @@ func NewCore() *Core {
 }
 
 func (c *Core) next() Update {
-	if data := c.buf.Bytes(); len(data) > 0 && c.procBuffered != nil {
-		if n, upd := c.procBuffered(data); n > 0 {
-			c.buf.Next(n)
-			return upd.join(c.next())
-		}
+	if c.buf.Len() > 0 && c.procBuffer != nil {
+		return c.procBuffer()
 	}
 	return Update{}
 }
@@ -178,10 +177,11 @@ func (c *Core) ProcStart() Update {
 		Busy:    true,
 		Status:  "Starting Unison",
 
-		ProcExit:  c.procExitBeforeSync,
-		ProcError: c.procErrorBeforeSync,
-		Interrupt: c.interrupt,
-		Kill:      c.kill,
+		procBuffer: c.procBufStartup,
+		ProcExit:   c.procExitBeforeSync,
+		ProcError:  c.procErrorBeforeSync,
+		Interrupt:  c.interrupt,
+		Kill:       c.kill,
 	})
 }
 
@@ -218,22 +218,15 @@ func (c *Core) kill() Update {
 }
 
 func (c *Core) procExitBeforeSync(code int, err error) Update {
-	output := strings.TrimSpace(c.buf.String())
+	output := c.buf.Bytes()
 	c.buf.Reset()
-
 	status := "Unison exited"
 	if code == 0 {
 		status = "Finished successfully"
 	}
-
-	var upd Update
-	if output != "" {
-		upd.Messages = append(upd.Messages, Message{output, Info})
-	}
-
-	return upd.join(echoError(err)).join(c.transition(Core{
-		Status: status,
-	}))
+	return echo(output).
+		join(echoError(err)).
+		join(c.transition(Core{Status: status}))
 }
 
 func (c *Core) procErrorBeforeSync(err error) Update {
@@ -252,4 +245,113 @@ func echoError(err error) Update {
 		upd.Messages = append(upd.Messages, Message{err.Error(), Error})
 	}
 	return upd
+}
+
+const (
+	patEraseLine          = "^\r *\r"
+	patContactingServer   = "(?m:^Unison [^:\n]+: (Contacting server)\\.\\.\\.$)"
+	patConnected          = "(?m:^Connected \\[[^\\]]+\\]$)"
+	patLookingForChanges  = "(?m:^(Looking for changes)$)"
+	patFileProgress       = "(?m:^[-/|\\\\] ([^\r\n]+))"
+	patFileProgressCont   = "^[^\r\n]+"
+	patWaitingForChanges  = "(?m:^\\s*(Waiting for changes from server)$)"
+	patReconcilingChanges = "(?m:^(Reconciling changes)$)"
+)
+
+var expStartup = makeExpecter(patContactingServer, patConnected, patLookingForChanges, patFileProgress,
+	patWaitingForChanges, patReconcilingChanges)
+
+func (c *Core) procBufStartup() Update {
+	switch pat, m, upd := expStartup(&c.buf); pat {
+	case patContactingServer, patLookingForChanges, patWaitingForChanges, patReconcilingChanges:
+		c.Status = string(m[1])
+		c.Progress = ""
+		c.ProgressFraction = 0
+		return upd.join(c.next())
+
+	case patFileProgress:
+		upd.Progressed = true
+		c.Progress = string(m[1])
+		c.ProgressFraction = -1
+		c.procBuffer = c.procBufFileProgress
+		return upd.join(c.next())
+
+	default:
+		return upd
+	}
+}
+
+var expFileProgress = makeExpecter(patFileProgressCont, patEraseLine)
+
+func (c *Core) procBufFileProgress() Update {
+	// We're here when Unison has printed something like "- path/to/file". Because there is
+	// no newline or other delimiter, we can't know if "path/to/file" is the entire path or just
+	// the chunk that happened to fit into some buffer.
+	switch pat, m, upd := expFileProgress(&c.buf); pat {
+	case patFileProgressCont: // So, if the line continues, it's more of the same path.
+		c.Progress += string(m[0])
+		return upd.join(c.next())
+
+	default: // But if there's anything else, we revert to the previous state.
+		// (There has to be something else, because procBuffer is only called on a non-empty buffer.)
+		c.procBuffer = c.procBufStartup
+		return upd.join(c.next())
+	}
+}
+
+func makeExpecter(patterns ...string) func(*bytes.Buffer) (string, [][]byte, Update) {
+	start := make([]int, len(patterns))
+	start[0] = 1
+	combined := ""
+	for i, pat := range patterns {
+		if i > 0 {
+			start[i] = start[i-1] + regexp.MustCompile(patterns[i-1]).NumSubexp() + 1
+			combined += "|"
+		}
+		combined += "(" + pat + ")"
+	}
+	exp := regexp.MustCompile(combined)
+
+	return func(buf *bytes.Buffer) (pattern string, match [][]byte, upd Update) {
+		data := buf.Bytes()
+		m := exp.FindSubmatch(data)
+		if m == nil {
+			return
+		}
+		offset := bytes.Index(data, m[0])
+		buf.Next(offset + len(m[0]))
+		upd = echo(data[:offset])
+		for i, pat := range patterns {
+			if len(m[start[i]]) > 0 {
+				pattern = pat
+				if i < len(patterns)-1 {
+					match = m[start[i]:start[i+1]]
+				} else {
+					match = m[start[i]:]
+				}
+				break
+			}
+		}
+		log.Printf("match: %q %q", pattern, match)
+		return
+	}
+}
+
+var (
+	expWarning = regexp.MustCompile(`(?i)^warning`)
+	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed)`)
+)
+
+func echo(output []byte) Update {
+	text := strings.TrimSpace(string(output))
+	if text == "" {
+		return Update{}
+	}
+	msg := Message{text, Info}
+	if expWarning.MatchString(text) {
+		msg.Importance = Warning
+	} else if expError.MatchString(text) {
+		msg.Importance = Error
+	}
+	return Update{Messages: []Message{msg}}
 }

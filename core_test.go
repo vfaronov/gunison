@@ -154,6 +154,7 @@ func TestQuit(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
 	assertEqual(t, c.ProcExit(3, errors.New("exit status 3")),
 		Update{Messages: []Message{
+			{"Terminated!", Info},
 			{"exit status 3", Error},
 		}})
 	assertEqual(t, c.Status, "Unison exited")
@@ -178,7 +179,7 @@ func TestProgressLookingForChanges(t *testing.T) {
 	assertEqual(t, c.ProcOutput([]byte("| some/file")),
 		Update{Progressed: true})
 	assertEqual(t, c.Progress, "some/file")
-	assertEqual(t, c.ProgressFraction, -1)
+	assertEqual(t, c.ProgressFraction, float64(-1))
 
 	assert.Zero(t, c.ProcOutput([]byte("\r           \r")))
 
@@ -1204,7 +1205,10 @@ func TestInterruptLookingForChanges(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
 	assertEqual(t, c.Status, "Interrupting Unison")
 	assert.True(t, c.Running)
-	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.ProcExit(3, nil),
+		Update{Messages: []Message{
+			{"Terminated!", Info},
+		}})
 	assertEqual(t, c.Status, "Unison exited")
 	assert.False(t, c.Running)
 }
@@ -1373,7 +1377,10 @@ func TestErrorBeforeSync(t *testing.T) {
 	assert.NotNil(t, c.Items)
 	assert.NotNil(t, c.Plan)
 	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
-	assert.Zero(t, c.ProcExit(3, nil))
+	assertEqual(t, c.ProcExit(3, nil),
+		Update{Messages: []Message{
+			{"Terminated!", Info},
+		}})
 	assertEqual(t, c.Status, "Unison exited")
 }
 
