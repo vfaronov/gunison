@@ -165,10 +165,14 @@ func NewCore() *Core {
 }
 
 func (c *Core) next() Update {
-	if c.buf.Len() > 0 && c.procBuffer != nil {
-		return c.procBuffer()
+	var upd Update
+	if c.buf.Len() > 0 {
+		if c.procBuffer != nil {
+			upd = c.procBuffer()
+		}
+		upd = upd.join(c.procBufCommon())
 	}
-	return Update{}
+	return upd
 }
 
 func (c *Core) ProcStart() Update {
@@ -193,6 +197,18 @@ func (c *Core) ProcOutput(data []byte) Update {
 func (c *Core) procErrorBeforeStart(err error) Update {
 	return echoError(err).join(c.transition(Core{
 		Status: "Failed to start Unison",
+	}))
+}
+
+func (c *Core) quit() Update {
+	return Update{Input: []byte("q\n")}.join(c.transition(Core{
+		Running: true,
+		Busy:    true,
+		Status:  "Quitting Unison",
+
+		ProcExit:  c.ProcExit,
+		Interrupt: c.interrupt,
+		Kill:      c.kill,
 	}))
 }
 
@@ -249,6 +265,9 @@ func echoError(err error) Update {
 
 const (
 	patEraseLine          = "^\r *\r"
+	patPrompt             = "\\s*\\[[^\\]]*\\] $"
+	patReallyProceed      = "Do you really want to proceed\\?" + patPrompt
+	patPressReturn        = "Press return to continue\\." + patPrompt
 	patContactingServer   = "(?m:^Unison [^:\n]+: (Contacting server)\\.\\.\\.$)"
 	patConnected          = "(?m:^Connected \\[[^\\]]+\\]$)"
 	patLookingForChanges  = "(?m:^(Looking for changes)$)"
@@ -258,11 +277,36 @@ const (
 	patReconcilingChanges = "(?m:^(Reconciling changes)$)"
 )
 
-var expStartup = makeExpecter(patContactingServer, patConnected, patLookingForChanges, patFileProgress,
-	patWaitingForChanges, patReconcilingChanges)
+var expCommon = makeExpecter(true, patReallyProceed, patPressReturn)
+
+func (c *Core) procBufCommon() Update {
+	switch pat, _, upd, extra := expCommon(&c.buf); pat {
+	case patReallyProceed:
+		upd.Alert = Alert{
+			Message: Message{extra + "Do you really want to proceed?", Warning},
+			Proceed: func() Update { return Update{Input: []byte("y\n")}.join(c.next()) },
+			Abort:   c.quit,
+		}
+		return upd
+
+	case patPressReturn:
+		upd.Alert = Alert{
+			Message: Message{strings.TrimSpace(extra), Warning},
+			Proceed: func() Update { return Update{Input: []byte("\n")}.join(c.next()) },
+			Abort:   c.quit,
+		}
+		return upd
+
+	default:
+		return upd
+	}
+}
+
+var expStartup = makeExpecter(false, patContactingServer, patConnected, patLookingForChanges,
+	patFileProgress, patWaitingForChanges, patReconcilingChanges)
 
 func (c *Core) procBufStartup() Update {
-	switch pat, m, upd := expStartup(&c.buf); pat {
+	switch pat, m, upd, _ := expStartup(&c.buf); pat {
 	case patContactingServer, patLookingForChanges, patWaitingForChanges, patReconcilingChanges:
 		c.Status = string(m[1])
 		c.Progress = ""
@@ -281,13 +325,13 @@ func (c *Core) procBufStartup() Update {
 	}
 }
 
-var expFileProgress = makeExpecter(patFileProgressCont, patEraseLine)
+var expFileProgress = makeExpecter(false, patFileProgressCont, patEraseLine)
 
 func (c *Core) procBufFileProgress() Update {
 	// We're here when Unison has printed something like "- path/to/file". Because there is
 	// no newline or other delimiter, we can't know if "path/to/file" is the entire path or just
 	// the chunk that happened to fit into some buffer.
-	switch pat, m, upd := expFileProgress(&c.buf); pat {
+	switch pat, m, upd, _ := expFileProgress(&c.buf); pat {
 	case patFileProgressCont: // So, if the line continues, it's more of the same path.
 		c.Progress += string(m[0])
 		return upd.join(c.next())
@@ -299,7 +343,7 @@ func (c *Core) procBufFileProgress() Update {
 	}
 }
 
-func makeExpecter(patterns ...string) func(*bytes.Buffer) (string, [][]byte, Update) {
+func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][]byte, Update, string) {
 	start := make([]int, len(patterns))
 	start[0] = 1
 	combined := ""
@@ -312,7 +356,7 @@ func makeExpecter(patterns ...string) func(*bytes.Buffer) (string, [][]byte, Upd
 	}
 	exp := regexp.MustCompile(combined)
 
-	return func(buf *bytes.Buffer) (pattern string, match [][]byte, upd Update) {
+	return func(buf *bytes.Buffer) (pattern string, match [][]byte, upd Update, extra string) {
 		data := buf.Bytes()
 		m := exp.FindSubmatch(data)
 		if m == nil {
@@ -320,7 +364,11 @@ func makeExpecter(patterns ...string) func(*bytes.Buffer) (string, [][]byte, Upd
 		}
 		offset := bytes.Index(data, m[0])
 		buf.Next(offset + len(m[0]))
-		upd = echo(data[:offset])
+		if raw {
+			extra = string(data[:offset])
+		} else {
+			upd = echo(data[:offset])
+		}
 		for i, pat := range patterns {
 			if len(m[start[i]]) > 0 {
 				pattern = pat
