@@ -263,7 +263,7 @@ func echoError(err error) Update {
 	return upd
 }
 
-const (
+var (
 	patEraseLine          = "^\r *\r"
 	patPrompt             = "\\s*\\[[^\\]]*\\] $"
 	patReallyProceed      = "Do you really want to proceed\\?" + patPrompt
@@ -275,7 +275,24 @@ const (
 	patFileProgressCont   = "^[^\r\n]+"
 	patWaitingForChanges  = "(?m:^\\s*(Waiting for changes from server)$)"
 	patReconcilingChanges = "(?m:^(Reconciling changes)$)"
+
+	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.+)  "
+	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
+	patItemPrompt      = "(?m:^)" + patItem + patPrompt
+
+	patPlanBeginning  = patReplicasHeader + "\n" + patItemPrompt
+	patReplicasHeader = "(?m:^(.{12})   (.{12}) +$)"
 )
+
+var parseAction = map[string]Action{
+	// FIXME: "error"
+	"<-?->": Skip,
+	"---->": LeftToRight,
+	"--?->": LeftToRightPartial,
+	"<----": RightToLeft,
+	"<-?--": RightToLeftPartial,
+	"<-M->": Merge,
+}
 
 var expCommon = makeExpecter(true, patReallyProceed, patPressReturn)
 
@@ -303,7 +320,7 @@ func (c *Core) procBufCommon() Update {
 }
 
 var expStartup = makeExpecter(false, patContactingServer, patConnected, patLookingForChanges,
-	patFileProgress, patWaitingForChanges, patReconcilingChanges)
+	patFileProgress, patWaitingForChanges, patReconcilingChanges, patPlanBeginning)
 
 func (c *Core) procBufStartup() Update {
 	switch pat, m, upd, _ := expStartup(&c.buf); pat {
@@ -319,6 +336,21 @@ func (c *Core) procBufStartup() Update {
 		c.ProgressFraction = -1
 		c.procBuffer = c.procBufFileProgress
 		return upd.join(c.next())
+
+	case patPlanBeginning:
+		c.Left = strings.TrimSpace(string(m[1]))
+		c.Right = strings.TrimSpace(string(m[2]))
+		upd.Input = []byte("l\n")
+		return upd.join(c.transition(Core{
+			Running: true,
+			Busy:    true,
+			Status:  "Assembling plan",
+
+			ProcExit:  c.procExitBeforeSync,
+			ProcError: c.procErrorBeforeSync,
+			Interrupt: c.interrupt,
+			Kill:      c.kill,
+		}))
 
 	default:
 		return upd

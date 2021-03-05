@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"reflect"
+	"regexp"
 	"unicode/utf8"
 
 	"github.com/gotk3/gotk3/glib"
@@ -106,4 +108,19 @@ func MustGetColumn(store *gtk.TreeStore, iter *gtk.TreeIter, column int) interfa
 		panic(fmt.Sprintf("failed to get Go value from column %v value %v: %s", column, v, err))
 	}
 	return v
+}
+
+func anyOf(m interface{}) string {
+	pat := "("
+	first := true
+	iter := reflect.ValueOf(m).MapRange()
+	for iter.Next() {
+		if !first {
+			pat += "|"
+		}
+		first = false
+		pat += regexp.QuoteMeta(iter.Key().Interface().(string))
+	}
+	pat += ")"
+	return pat
 }
