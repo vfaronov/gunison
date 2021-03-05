@@ -166,10 +166,10 @@ func NewCore() *Core {
 
 func (c *Core) next() Update {
 	var upd Update
+	if c.buf.Len() > 0 && c.procBuffer != nil {
+		upd = c.procBuffer()
+	}
 	if c.buf.Len() > 0 {
-		if c.procBuffer != nil {
-			upd = c.procBuffer()
-		}
 		upd = upd.join(c.procBufCommon())
 	}
 	return upd

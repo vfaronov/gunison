@@ -326,11 +326,10 @@ func showAlert(a Alert) {
 		DialogOption{Text: "Abort", Response: gtk.RESPONSE_REJECT},
 		DialogOption{Text: "Proceed", Response: gtk.RESPONSE_ACCEPT},
 	)
-	switch resp { //nolint:exhaustive
-	case gtk.RESPONSE_REJECT:
-		update(a.Abort())
-	case gtk.RESPONSE_ACCEPT:
+	if resp == gtk.RESPONSE_ACCEPT {
 		update(a.Proceed())
+	} else { // including RESPONSE_NONE (Esc), etc.
+		update(a.Abort())
 	}
 }
 
