@@ -3,7 +3,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -11,9 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMain(m *testing.M) {
+func maybeInitGTK() {
 	gtk.Init(nil)
-	os.Exit(m.Run())
 }
 
 func TestDisplayItems(t *testing.T) {

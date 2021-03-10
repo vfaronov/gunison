@@ -4,12 +4,30 @@ package main
 
 import (
 	"errors"
+	"flag"
+	"io"
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	// Silence debug logging unless running under -v.
+	// TODO: Instead, inject t.Log as logger into code under test,
+	// so that it gets enabled magically for failing tests?
+	flag.Parse()
+	if !testing.Verbose() {
+		log.SetOutput(io.Discard)
+	}
+
+	maybeInitGTK() // depending on -tags
+
+	os.Exit(m.Run())
+}
 
 func TestMinimal(t *testing.T) {
 	c := NewCore()
