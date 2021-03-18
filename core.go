@@ -4,8 +4,10 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -183,7 +185,7 @@ func (c *Core) ProcStart() Update {
 
 		procBuffer: c.procBufStartup,
 		ProcExit:   c.procExitBeforeSync,
-		ProcError:  c.procErrorBeforeSync,
+		ProcError:  c.procErrorUnrecoverable,
 		Interrupt:  c.interrupt,
 		Kill:       c.kill,
 	})
@@ -245,7 +247,7 @@ func (c *Core) procExitBeforeSync(code int, err error) Update {
 		join(c.transition(Core{Status: status}))
 }
 
-func (c *Core) procErrorBeforeSync(err error) Update {
+func (c *Core) procErrorUnrecoverable(err error) Update {
 	upd := Update{Messages: []Message{
 		{
 			Text:       err.Error() + "\nThis is a fatal error. Unison will be stopped now.",
@@ -253,6 +255,13 @@ func (c *Core) procErrorBeforeSync(err error) Update {
 		},
 	}}
 	return upd.join(c.interrupt())
+}
+
+func (c *Core) fatalf(clearBuf bool, format string, args ...interface{}) Update {
+	if clearBuf {
+		c.buf.Reset()
+	}
+	return c.procErrorUnrecoverable(fmt.Errorf(format, args...))
 }
 
 func echoError(err error) Update {
@@ -276,12 +285,15 @@ var (
 	patWaitingForChanges  = "(?m:^\\s*(Waiting for changes from server)$)"
 	patReconcilingChanges = "(?m:^(Reconciling changes)$)"
 
-	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.+)  "
+	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
 	patItemPrompt      = "(?m:^)" + patItem + patPrompt
 
 	patPlanBeginning  = patReplicasHeader + "\n" + patItemPrompt
 	patReplicasHeader = "(?m:^(.{12})   (.{12}) +$)"
+
+	patItemHeader   = "(?m:^)\\s*" + patItem + "\n"
+	patItemSideInfo = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*))(?m:$)"
 )
 
 var parseAction = map[string]Action{
@@ -294,13 +306,33 @@ var parseAction = map[string]Action{
 	"<-M->": Merge,
 }
 
+var parseTypeStatus = map[string]struct {
+	Status
+	Type
+}{
+	"unchanged file   ": {Unchanged, File},
+	"unchanged symlink": {Unchanged, Symlink},
+	"unchanged dir    ": {Unchanged, Directory},
+	"new file         ": {Created, File},
+	"file             ": {Created, File},
+	"changed file     ": {Modified, File},
+	"changed props    ": {PropsChanged, File},
+	"new symlink      ": {Created, Symlink},
+	"symlink          ": {Created, Symlink},
+	"changed symlink  ": {Modified, Symlink},
+	"new dir          ": {Created, Directory},
+	"dir              ": {Created, Directory},
+	"changed dir      ": {Modified, Directory},
+	"dir props changed": {PropsChanged, Directory},
+}
+
 var expCommon = makeExpecter(true, patReallyProceed, patPressReturn)
 
 func (c *Core) procBufCommon() Update {
 	switch pat, _, upd, extra := expCommon(&c.buf); pat {
 	case patReallyProceed:
 		upd.Alert = Alert{
-			Message: Message{extra + "Do you really want to proceed?", Warning},
+			Message: Message{strings.TrimSpace(extra) + "\n\nDo you really want to proceed?", Warning},
 			Proceed: func() Update { return Update{Input: []byte("y\n")}.join(c.next()) },
 			Abort:   c.quit,
 		}
@@ -346,10 +378,11 @@ func (c *Core) procBufStartup() Update {
 			Busy:    true,
 			Status:  "Assembling plan",
 
-			ProcExit:  c.procExitBeforeSync,
-			ProcError: c.procErrorBeforeSync,
-			Interrupt: c.interrupt,
-			Kill:      c.kill,
+			procBuffer: c.makeProcBufPlan(),
+			ProcExit:   c.procExitBeforeSync,
+			ProcError:  c.procErrorUnrecoverable,
+			Interrupt:  c.interrupt,
+			Kill:       c.kill,
 		}))
 
 	default:
@@ -375,6 +408,89 @@ func (c *Core) procBufFileProgress() Update {
 	}
 }
 
+func (c *Core) makeProcBufPlan() func() Update {
+	items := make([]Item, 0)
+	patItemSide := "(?m:^)(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ")\\s*" + patItemSideInfo
+	expPlan := makeExpecter(true, patItemHeader, patItemSide, patItemPrompt)
+
+	return func() Update {
+		pat, m, upd, extra := expPlan(&c.buf)
+		if extra != "" {
+			return upd.join(c.fatalf(true, "Cannot parse the following output from Unison:\n%s", extra))
+		}
+
+		switch pat {
+		case patItemHeader:
+			items = append(items, Item{
+				Action: parseAction[string(m[1])],
+				Path:   string(m[2]),
+			})
+			return upd.join(c.next())
+
+		case patItemSide:
+			if len(items) == 0 {
+				return upd.join(c.fatalf(true, "Got item details before item header"))
+			}
+			item := &items[len(items)-1]
+			sideName := string(m[1])
+			side := &item.Left
+			if sideName == c.Right {
+				side = &item.Right
+			}
+			if *side != (Content{}) {
+				return upd.join(c.fatalf(true, "Got duplicate details for %s in %s", item.Path, sideName))
+			}
+
+			switch {
+			case bytes.Equal(m[2], []byte("absent")):
+				side.Type = Absent
+			case bytes.Equal(m[2], []byte("deleted")):
+				side.Type = Absent
+				side.Status = Deleted
+			default:
+				ts := parseTypeStatus[string(m[3])]
+				side.Type = ts.Type
+				side.Status = ts.Status
+			}
+			side.Props = string(m[4])
+			side.Modified, _ = time.ParseInLocation("2006-01-02 at 15:04:05", string(m[5]), time.Local)
+			side.Size, _ = strconv.ParseInt(string(m[6]), 10, 64)
+			return upd.join(c.next())
+
+		case patItemPrompt:
+			plan := make(map[string]Action, len(items))
+			for _, item := range items {
+				plan[item.Path] = item.Action
+			}
+			return upd.join(c.transition(Core{
+				Running: true,
+				Status:  "Ready to synchronize",
+				Items:   items,
+				Plan:    plan,
+
+				ProcExit:  c.procExitBeforeSync,
+				ProcError: c.procErrorUnrecoverable,
+				Diff:      c.diff,
+				Sync:      c.sync,
+				Quit:      c.quit,
+				Interrupt: c.interrupt,
+				Kill:      c.kill,
+			}))
+
+		default:
+			return upd
+		}
+	}
+}
+
+func (c *Core) diff(string) Update {
+	panic("not implemented yet")
+}
+
+func (c *Core) sync() Update {
+	panic("not implemented yet")
+}
+
 func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][]byte, Update, string) {
 	start := make([]int, len(patterns))
 	start[0] = 1
@@ -397,7 +513,7 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][
 		offset := bytes.Index(data, m[0])
 		buf.Next(offset + len(m[0]))
 		if raw {
-			extra = string(data[:offset])
+			extra = strings.TrimSpace(string(data[:offset]))
 		} else {
 			upd = echo(data[:offset])
 		}

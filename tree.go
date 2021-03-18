@@ -96,6 +96,9 @@ func describeContent(c Content) string {
 	case Deleted:
 		return "deleted"
 	}
+	if c.Type == Absent {
+		return ""
+	}
 	panic(fmt.Sprintf("impossible replica content: %+v", c))
 }
 
@@ -104,8 +107,6 @@ func describeContentFull(c Content) string {
 	switch c.Status {
 	case Unchanged:
 		switch c.Type {
-		case Absent:
-			return "absent"
 		case File:
 			return "unchanged file"
 		case Symlink:
@@ -140,6 +141,9 @@ func describeContentFull(c Content) string {
 		}
 	case Deleted:
 		return "deleted"
+	}
+	if c.Type == Absent {
+		return "absent"
 	}
 	panic(fmt.Sprintf("impossible replica content: %+v", c))
 }

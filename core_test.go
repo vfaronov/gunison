@@ -1274,13 +1274,14 @@ func TestExtraneousOutput2(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("What is this line right here?\n")))
-	assert.Zero(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")))
-	upd := c.ProcOutput([]byte("changed  ---->            one  [f] "))
-	assert.NotNil(t, c.Items)
-	assertEqual(t, c.Status, "Ready to synchronize")
-	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nWhat is this line right here?\n\nIs it safe to proceed?")
-	assertEqual(t, upd.Alert.Importance, Warning)
-	assert.Zero(t, upd.Alert.Proceed())
+	assertEqual(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Cannot parse the following output from Unison:\nWhat is this line right here?\nThis is a fatal error. Unison will be stopped now.", Error},
+			},
+		})
+	assertEqual(t, c.Status, "Interrupting Unison")
 }
 
 func TestExtraneousOutput3(t *testing.T) {
@@ -1462,10 +1463,10 @@ func initCoreMinimalReady(t *testing.T) *Core { //nolint:thelper
 	assertEqual(t, c.Items, []Item{
 		{
 			Path: "one",
-			Left: Content{File, Modified, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--",
-				time.Date(2021, 2, 8, 18, 30, 50, 0, time.Local), 1146},
-			Right: Content{File, Unchanged, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--",
-				time.Date(2021, 2, 8, 18, 30, 50, 0, time.Local), 1146},
+			Left: Content{File, Modified, "modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--",
+				time.Date(2021, 2, 7, 1, 50, 31, 0, time.Local), 1146},
+			Right: Content{File, Unchanged, "modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--",
+				time.Date(2021, 2, 7, 1, 50, 31, 0, time.Local), 1146},
 			Action: LeftToRight,
 		},
 	})
@@ -1476,7 +1477,7 @@ func initCoreMinimalReady(t *testing.T) *Core { //nolint:thelper
 	require.NotNil(t, c.Diff)
 	require.NotNil(t, c.Sync)
 	require.NotNil(t, c.Quit)
-	require.NotNil(t, c.Abort)
+	require.Nil(t, c.Abort)
 	require.NotNil(t, c.Interrupt)
 	require.NotNil(t, c.Kill)
 
