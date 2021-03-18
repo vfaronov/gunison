@@ -11,9 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gotk3/gotk3/gtk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var needGTK = false // depending on -tags
 
 func TestMain(m *testing.M) {
 	// Silence debug logging unless running under -v.
@@ -24,7 +27,9 @@ func TestMain(m *testing.M) {
 		log.SetOutput(io.Discard)
 	}
 
-	maybeInitGTK() // depending on -tags
+	if needGTK {
+		gtk.Init(nil)
+	}
 
 	os.Exit(m.Run())
 }

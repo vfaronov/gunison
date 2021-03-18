@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func maybeInitGTK() {
-	gtk.Init(nil)
+func init() {
+	needGTK = true
 }
 
 func TestDisplayItems(t *testing.T) {
