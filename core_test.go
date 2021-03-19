@@ -46,8 +46,8 @@ func TestMinimal(t *testing.T) {
 	assert.Nil(t, c.Sync)
 	assert.Nil(t, c.Quit)
 	assert.Nil(t, c.Abort)
-	assert.NotNil(t, c.Interrupt)
-	assert.NotNil(t, c.Kill)
+	assert.Nil(t, c.Interrupt)
+	assert.Nil(t, c.Kill)
 
 	assert.Zero(t, c.ProcStart())
 	assert.True(t, c.Running)
@@ -99,8 +99,7 @@ func TestMinimal(t *testing.T) {
 	assertEqual(t, c.Status, "Propagating updates")
 	assert.Zero(t, c.ProcOutput([]byte("\n\nUNISON 2.51.3 (OCAML 4.11.1) started propagating changes at 18:31:20.92 on 08 Feb 2021\n")))
 	assert.Zero(t, c.ProcOutput([]byte("[BGN] Updating file one from /home/vasiliy/tmp/gunison/left to /home/vasiliy/tmp/gunison/right\n")))
-	assertEqual(t, c.ProcOutput([]byte("100%  00:00 ETA")),
-		Update{Progressed: true})
+	assert.Zero(t, c.ProcOutput([]byte("100%  00:00 ETA")))
 	assertEqual(t, c.Progress, "100%  00:00 ETA")
 	assertEqual(t, c.ProgressFraction, 1.00)
 	assert.Zero(t, c.ProcOutput([]byte("\r               \r")))
@@ -1045,7 +1044,10 @@ func TestAssortedRandom(t *testing.T) {
 	c := NewCore()
 	assert.Zero(t, c.ProcStart())
 	assertEqual(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\nLooking for changes\n\\ four\r      \r\\ six/fourteen\r              \rReconciling changes\n\nleft           right              \nchanged  <-?-> new dir    one hundred/one hundred one  [] ")),
-		Update{Input: []byte("l\n")})
+		Update{
+			Progressed: true,
+			Input:      []byte("l\n"),
+		})
 	assertEqual(t, c.Status, "Assembling plan")
 	assert.Zero(t, c.ProcOutput([]byte("  changed  <-?-> new dir    one hundred/one hundred one  \nleft         : changed file  ")))
 	assert.Zero(t, c.ProcOutput([]byte("     modified on 2021-02-26 at 15:42:40  size 1")))
@@ -1289,33 +1291,14 @@ func TestExtraneousOutput3(t *testing.T) {
 	c.Plan["one"] = RightToLeft
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
-	upd := c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] "))
-	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nsome unexpected line here\n\nIs it safe to proceed?")
-	assertEqual(t, c.Status, "Starting synchronization")
-	assertEqual(t, upd.Alert.Proceed(),
-		Update{Input: []byte("<\n")})
-
-	upd = c.ProcOutput([]byte("another unexpected line here\nchanged  ---->            one  \nyet another one here\nProceed with propagating updates? [] "))
-	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nanother unexpected line here\n\nIs it safe to proceed?")
-	upd = upd.Alert.Proceed()
-	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nyet another one here\n\nIs it safe to proceed?")
-	assertEqual(t, upd.Alert.Proceed(),
-		Update{Input: []byte("y\n")})
-}
-
-func TestExtraneousOutput3Abort(t *testing.T) {
-	c := initCoreMinimalReady(t)
-	assertEqual(t, c.Sync(),
-		Update{Input: []byte("0\n")})
-	upd := c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] "))
-	assertEqual(t, upd.Alert.Text, "Unison said something that Gunison doesn't know to parse:\n\nsome unexpected line\n\nIs it safe to proceed?")
-	assertEqual(t, c.Status, "Starting synchronization")
-	assertEqual(t, upd.Alert.Abort(),
-		Update{Input: []byte("q\n")})
-	assertEqual(t, c.Status, "Quitting Unison")
-	assert.Zero(t, c.ProcExit(3, nil))
-	assertEqual(t, c.Status, "Finished with errors")
-	assert.False(t, c.Running)
+	assertEqual(t, c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] ")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Cannot parse the following output from Unison:\nsome unexpected line here\nThis is a fatal error. Unison will be stopped now.", Error},
+			},
+		})
+	assertEqual(t, c.Status, "Interrupting Unison")
 
 	// The plan, once initialized, always remains available because the UI still needs it.
 	assert.NotNil(t, c.Items)
@@ -1366,7 +1349,7 @@ func TestConnectionLostDuringSync(t *testing.T) {
 		}})
 	assert.True(t, c.Busy)
 	assert.Zero(t, c.ProcExit(3, nil))
-	assertEqual(t, c.Status, "Finished with errors")
+	assertEqual(t, c.Status, "Unison exited")
 	assert.False(t, c.Busy)
 	assert.NotNil(t, c.Items)
 	assert.NotNil(t, c.Plan)

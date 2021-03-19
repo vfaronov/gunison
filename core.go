@@ -235,16 +235,22 @@ func (c *Core) kill() Update {
 	}))
 }
 
-func (c *Core) procExitBeforeSync(code int, err error) Update {
+func (c *Core) handleExit(code int, err error, codeStatus map[int]string) Update {
 	output := c.buf.Bytes()
 	c.buf.Reset()
 	status := "Unison exited"
-	if code == 0 {
-		status = "Finished successfully"
+	if s, ok := codeStatus[code]; ok {
+		status = s
 	}
 	return echo(output).
 		join(echoError(err)).
 		join(c.transition(Core{Status: status}))
+}
+
+func (c *Core) procExitBeforeSync(code int, err error) Update {
+	return c.handleExit(code, err, map[int]string{
+		0: "Finished successfully",
+	})
 }
 
 func (c *Core) procErrorUnrecoverable(err error) Update {
@@ -273,37 +279,65 @@ func echoError(err error) Update {
 }
 
 var (
-	patEraseLine          = "^\r *\r"
+	patAnyLine   = "(?m:^)([^\n]*)\n"
+	patEraseLine = "^\r *\r"
+
 	patPrompt             = "\\s*\\[[^\\]]*\\] $"
 	patReallyProceed      = "Do you really want to proceed\\?" + patPrompt
 	patPressReturn        = "Press return to continue\\." + patPrompt
-	patContactingServer   = "(?m:^Unison [^:\n]+: (Contacting server)\\.\\.\\.$)"
-	patConnected          = "(?m:^Connected \\[[^\\]]+\\]$)"
-	patLookingForChanges  = "(?m:^(Looking for changes)$)"
-	patFileProgress       = "(?m:^[-/|\\\\] ([^\r\n]+))"
+	patContactingServer   = "(?m:^)Unison [^:\n]+: (Contacting server)\\.\\.\\.\n"
+	patConnected          = "(?m:^)Connected \\[[^\\]]+\\]\n"
+	patLookingForChanges  = "(?m:^)(Looking for changes)\n"
+	patFileProgress       = "(?m:^)[-/|\\\\] ([^\r\n]+)"
 	patFileProgressCont   = "^[^\r\n]+"
-	patWaitingForChanges  = "(?m:^\\s*(Waiting for changes from server)$)"
-	patReconcilingChanges = "(?m:^(Reconciling changes)$)"
+	patWaitingForChanges  = "(?m:^)\\s*(Waiting for changes from server)\n"
+	patReconcilingChanges = "(?m:^)(Reconciling changes)\n"
 
 	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
 	patItemPrompt      = "(?m:^)" + patItem + patPrompt
 
-	patPlanBeginning  = patReplicasHeader + "\n" + patItemPrompt
-	patReplicasHeader = "(?m:^(.{12})   (.{12}) +$)"
+	patPlanBeginning  = patReplicasHeader + patItemPrompt
+	patReplicasHeader = "(?m:^)(.{12})   (.{12}) +\n"
 
 	patItemHeader   = "(?m:^)\\s*" + patItem + "\n"
-	patItemSideInfo = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*))(?m:$)"
+	patItemSideInfo = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*))\n"
+
+	patProceedUpdates             = "(?m:^)Proceed with propagating updates\\?" + patPrompt
+	patPropagatingUpdates         = "(?m:^)(Propagating updates)\n"
+	patStartedFinishedPropagating = "(?m:^)UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*\n"
+	patSyncThreadStatus           = "(?m:^)\\[(?:BGN|END|CONFLICT)\\] [^\n]*\n"
+	patSyncProgress               = "(?m:^)\\s*([0-9]+)%  (?:[0-9]{2}:[0-9]{2}|--:--) ETA"
+	patWhySkipped                 = "(?m:^)\\s*(?:conflicting updates|skip requested|contents changed on both sides)\n"
+	patSavingState                = "(?m:^)(Saving synchronizer state)\n"
 )
 
 var parseAction = map[string]Action{
 	// FIXME: "error"
 	"<-?->": Skip,
+	"<=?=>": Skip,
 	"---->": LeftToRight,
+	"====>": LeftToRight,
 	"--?->": LeftToRightPartial,
+	"==?=>": LeftToRightPartial,
 	"<----": RightToLeft,
+	"<====": RightToLeft,
 	"<-?--": RightToLeftPartial,
+	"<=?==": RightToLeftPartial,
 	"<-M->": Merge,
+	"<=M=>": Merge,
+}
+
+var sendAction = map[Action][]byte{
+	Skip:        []byte("/\n"),
+	LeftToRight: []byte(">\n"),
+	RightToLeft: []byte("<\n"),
+	Merge:       []byte("m\n"),
+
+	// Gunison doesn't generate these actions, so if they are in the plan,
+	// they are Unison's recommendations and we just accept them.
+	LeftToRightPartial: []byte("\n"),
+	RightToLeftPartial: []byte("\n"),
 }
 
 var parseTypeStatus = map[string]struct {
@@ -488,7 +522,99 @@ func (c *Core) diff(string) Update {
 }
 
 func (c *Core) sync() Update {
-	panic("not implemented yet")
+	return Update{Input: []byte("0\n")}.join(c.transition(Core{
+		Running: true,
+		Busy:    true,
+		Status:  "Starting synchronization",
+
+		procBuffer: c.procBufStartSync,
+		ProcExit:   c.procExitBeforeSync,
+		ProcError:  c.procErrorUnrecoverable,
+		Abort:      c.interrupt,
+		Interrupt:  c.interrupt,
+		Kill:       c.kill,
+	}))
+}
+
+var expStartSync = makeExpecter(true, patItemPrompt, patItemHeader, patProceedUpdates)
+
+func (c *Core) procBufStartSync() Update {
+	pat, m, upd, extra := expStartSync(&c.buf)
+	if extra != "" {
+		return upd.join(c.fatalf(false, "Cannot parse the following output from Unison:\n%s", extra))
+	}
+
+	switch pat {
+	case patItemPrompt:
+		path := string(m[2])
+		act, ok := c.Plan[path]
+		if !ok {
+			return upd.join(c.fatalf(false,
+				"Failed to start synchronization because this path is missing from Gunison's plan: %s\n"+
+					"This is probably a bug in Gunison.", path))
+		}
+		upd.Input = sendAction[act]
+		return upd.join(c.next())
+
+	case patProceedUpdates:
+		upd.Input = []byte("y\n")
+		return upd.join(c.transition(Core{
+			Running: true,
+			Busy:    true,
+			Status:  "Starting synchronization",
+
+			procBuffer: c.procBufSync,
+			ProcExit:   c.procExitSync,
+			ProcError:  echoError,
+			Abort:      c.interrupt,
+			Interrupt:  c.interrupt,
+			Kill:       c.kill,
+		}))
+
+	case none:
+		return upd
+
+	default:
+		return upd.join(c.next())
+	}
+}
+
+func (c *Core) procExitSync(code int, err error) Update {
+	return c.handleExit(code, err, map[int]string{
+		// These codes, documented in the Unison manual, take on their meaning
+		// only after synchronization begins.
+		0: "Finished successfully",
+		1: "Finished successfully (some files skipped)",
+		2: "Finished with errors",
+	})
+}
+
+var expSync = makeExpecter(false, patEraseLine, patPropagatingUpdates, patStartedFinishedPropagating,
+	patSyncThreadStatus, patSyncProgress, patWhySkipped, patSavingState, patAnyLine)
+
+func (c *Core) procBufSync() Update {
+	switch pat, m, upd, _ := expSync(&c.buf); pat {
+	case patPropagatingUpdates, patSavingState:
+		c.Status = string(m[1])
+		c.Progress = ""
+		c.ProgressFraction = 0
+		return upd.join(c.next())
+
+	case patSyncProgress:
+		c.Progress = strings.TrimSpace(string(m[0]))
+		percent, _ := strconv.Atoi(string(m[1]))
+		c.ProgressFraction = float64(percent) / 100
+		return upd.join(c.next())
+
+	case patAnyLine: // something we don't explicitly recognize and consume
+		return upd.join(echo(m[1])).join(c.next())
+
+	case none:
+		return upd
+
+	default: // all the noise we recognize and ignore, such as patWhySkipped, etc.
+		return upd.join(c.next())
+	}
 }
 
 func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][]byte, Update, string) {
@@ -533,8 +659,10 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][
 	}
 }
 
+const none = ""
+
 var (
-	expWarning = regexp.MustCompile(`(?i)^warning`)
+	expWarning = regexp.MustCompile(`(?i)^(?:warning|synchronization incomplete)`)
 	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed)`)
 )
 
