@@ -69,6 +69,7 @@ func init() {
 }
 
 func main() {
+	log.SetFlags(0)
 	gtk.Init(nil)
 	setupWidgets()
 	startUnison(os.Args[1:]...)
@@ -250,6 +251,7 @@ func update(upd Update) {
 	if core.Items != nil && !treeview.GetVisible() {
 		displayItems()
 		treeview.SetVisible(true)
+		treeview.GrabFocus()
 	}
 
 	updateMenuItems()
@@ -271,6 +273,9 @@ func update(upd Update) {
 	abortButton.SetVisible(core.Abort != nil)
 	killButton.SetVisible(wantQuit && core.Kill != nil)
 	closeButton.SetVisible(!core.Running)
+	if closeButton.GetVisible() {
+		closeButton.GrabFocus()
+	}
 
 	if len(upd.Input) > 0 {
 		log.Printf("Unison input: %#v", upd.Input)
@@ -391,6 +396,7 @@ func onInfobarResponse() {
 }
 
 func onSyncButtonClicked() {
+	treeSelection.UnselectAll() // looks better
 	update(core.Sync())
 }
 
