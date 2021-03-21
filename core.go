@@ -278,40 +278,45 @@ func echoError(err error) Update {
 	return upd
 }
 
-var (
-	patAnyLine   = "(?m:^)([^\n]*)\n"
-	patEraseLine = "^\r *\r"
+const (
+	lineBgn = "(?:^|\r|\n)"
+	lineEnd = "(?:\r\n?|\n)"
+)
 
-	patPrompt             = "\\s*\\[[^\\]]*\\] $"
+func line(pattern string) string {
+	return lineBgn + pattern + lineEnd
+}
+
+var (
+	patSomeLine = line("(.*?)")
+
+	patPrompt             = "\\s*\\[.*\\] $"
 	patReallyProceed      = "Do you really want to proceed\\?" + patPrompt
 	patPressReturn        = "Press return to continue\\." + patPrompt
-	patContactingServer   = "(?m:^)Unison [^:\n]+: (Contacting server)\\.\\.\\.\n"
-	patPermissionDenied   = "(?m:^)Permission denied, please try again\\.(\r)?\n"
-	patConnected          = "(?m:^)Connected \\[[^\\]]+\\]\n"
-	patLookingForChanges  = "(?m:^)(Looking for changes)\n"
-	patFileProgress       = "(?m:^)[-/|\\\\] ([^\r\n]+)"
+	patContactingServer   = line("Unison [^:\n]+: (Contacting server)\\.\\.\\.")
+	patPermissionDenied   = line("Permission denied, please try again\\.")
+	patConnected          = line("Connected \\[[^\\]]+\\]")
+	patLookingForChanges  = line("(Looking for changes)")
+	patFileProgress       = lineBgn + "[-/|\\\\] ([^\r\n]+)"
 	patFileProgressCont   = "^[^\r\n]+"
-	patWaitingForChanges  = "(?m:^)\\s*(Waiting for changes from server)\n"
-	patReconcilingChanges = "(?m:^)(Reconciling changes)\n"
+	patWaitingForChanges  = line("\\s*(Waiting for changes from server)")
+	patReconcilingChanges = line("(Reconciling changes)")
 
-	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*)  "
+	patPlanBeginning   = lineBgn + "(.{12})   (.{12}) +\r?" + patItemPrompt
+	patItemPrompt      = lineBgn + patItem + patPrompt
+	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
-	patItemPrompt      = "(?m:^)" + patItem + patPrompt
+	patItemHeader      = line("\\s*" + patItem)
+	patItemSideInfo    = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
 
-	patPlanBeginning  = patReplicasHeader + patItemPrompt
-	patReplicasHeader = "(?m:^)(.{12})   (.{12}) +\n"
-
-	patItemHeader   = "(?m:^)\\s*" + patItem + "\n"
-	patItemSideInfo = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*))\n"
-
-	patProceedUpdates             = "(?m:^)Proceed with propagating updates\\?" + patPrompt
-	patPropagatingUpdates         = "(?m:^)(Propagating updates)\n"
-	patStartedFinishedPropagating = "(?m:^)UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*\n"
-	patSyncThreadStatus           = "(?m:^)\\[(?:BGN|END|CONFLICT)\\] [^\n]*\n"
-	patSyncProgress               = "(?m:^)\\s*([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
-	patWhySkipped                 = "(?m:^)\\s*(?:conflicting updates|skip requested|contents changed on both sides)\n"
-	patShortcut                   = "(?m:^)Shortcut: [^\n]+\n"
-	patSavingState                = "(?m:^)(Saving synchronizer state)\n"
+	patProceedUpdates             = lineBgn + "Proceed with propagating updates\\?" + patPrompt
+	patPropagatingUpdates         = line("(Propagating updates)")
+	patStartedFinishedPropagating = line("UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*?")
+	patSyncThreadStatus           = line("\\[(?:BGN|END|CONFLICT)\\] .*?")
+	patSyncProgress               = lineBgn + "\\s*([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
+	patWhySkipped                 = line("\\s*(?:conflicting updates|skip requested|contents changed on both sides)")
+	patShortcut                   = line("Shortcut: .+")
+	patSavingState                = line("(Saving synchronizer state)")
 )
 
 var parseAction = map[string]Action{
@@ -429,7 +434,7 @@ func (c *Core) procBufStartup() Update {
 	}
 }
 
-var expFileProgress = makeExpecter(false, patFileProgressCont, patEraseLine)
+var expFileProgress = makeExpecter(false, patFileProgressCont)
 
 func (c *Core) procBufFileProgress() Update {
 	// We're here when Unison has printed something like "- path/to/file". Because there is
@@ -449,7 +454,8 @@ func (c *Core) procBufFileProgress() Update {
 
 func (c *Core) makeProcBufPlan() func() Update {
 	items := make([]Item, 0)
-	patItemSide := "(?m:^)(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ")\\s*" + patItemSideInfo
+	patItemSide := line("(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ")\\s*" +
+		patItemSideInfo)
 	expPlan := makeExpecter(true, patItemHeader, patItemSide, patItemPrompt)
 
 	return func() Update {
@@ -594,9 +600,9 @@ func (c *Core) procExitSync(code int, err error) Update {
 	})
 }
 
-var expSync = makeExpecter(false, patEraseLine, patPropagatingUpdates, patStartedFinishedPropagating,
+var expSync = makeExpecter(false, patPropagatingUpdates, patStartedFinishedPropagating,
 	patSyncThreadStatus, patSyncProgress, patWhySkipped, patShortcut,
-	patSavingState, patAnyLine)
+	patSavingState, patSomeLine)
 
 func (c *Core) procBufSync() Update {
 	switch pat, m, upd, _ := expSync(&c.buf); pat {
@@ -612,7 +618,9 @@ func (c *Core) procBufSync() Update {
 		c.ProgressFraction = float64(percent) / 100
 		return upd.join(c.next())
 
-	case patAnyLine: // something we don't explicitly recognize and consume
+	case patSomeLine: // something we don't explicitly recognize and consume
+		// (it's not enough to rely on makeExpecter's echo because
+		// at this point we want to echo lines as soon as they come)
 		return upd.join(echo(m[1])).join(c.next())
 
 	case none:
@@ -660,7 +668,7 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, []s
 				break
 			}
 		}
-		log.Printf("match: %q %q", pattern, match)
+		log.Printf("match: %q", match)
 		return
 	}
 }
