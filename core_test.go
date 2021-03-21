@@ -668,48 +668,48 @@ func TestAssorted(t *testing.T) {
 		Update{Input: []byte("l\n")})
 	assert.Zero(t, c.ProcOutput([]byte("  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1000      rw-r--r--\ntanais       : new dir            modified on 2021-02-17 at 16:21:40  size 2292      rwxr-xr-x\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--\ntanais       : new dir            modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("new file <-?-> deleted    one hundred/one hundred two  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : new file           modified on 2021-02-17 at 16:21:33  size 1146      rw-r--r--\ntanais       : deleted\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : new file           modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\ntanais       : deleted\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> changed    six/nine  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1147000   rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:43  size 1147000   rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--\ntanais       : changed file       modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("props    <-?-> props      twenty one  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : changed props      modified on 2021-02-17 at 16:21:41  size 1146      rw-r--r--\ntanais       : changed props      modified on 2021-02-17 at 16:21:55  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed props      modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\ntanais       : changed props      modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    deeply/nested/sub/directory/with/file  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:56  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("new link ---->            eighteen  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("local        : new symlink        modified on 1970-01-01 at  3:00:00  size 0         unknown permissions\ntanais       : absent\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:55  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("new file ---->            seventeen  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : new file           modified on 2021-02-17 at 16:21:41  size 0         rw-r--r--\ntanais       : absent\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : new file           modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--\ntanais       : absent\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/eight  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:42  size 1147000   rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\ntanais       : changed file       modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/eleven  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 10000000  rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:55  size 10000000  rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-06 at 18:41:58  size 10000000  rw-r--r--\ntanais       : changed file       modified on 2021-02-06 at 18:41:58  size 10000000  rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted    six/fourteen  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged dir      modified on 2021-02-17 at 16:21:33  size 2292      rwxr-xr-x\ntanais       : deleted\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged dir      modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x\ntanais       : deleted\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- changed    six/seven  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 0         rw-r--r--\ntanais       : changed file       modified on 2021-02-17 at 16:21:41  size 1146      rw-rw-r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--\ntanais       : changed file       modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("props    ---->            six/ten  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : changed props      modified on 2021-02-17 at 16:21:33  size 1000      rwx------\ntanais       : unchanged file     modified on 2021-02-17 at 16:21:33  size 1000      rw-r--r--\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed props      modified on 2021-02-06 at 18:41:58  size 1000      rwx------\ntanais       : unchanged file     modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- deleted    three  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-17 at 16:21:40  size 1147000   rw-r--r--\ntanais       : deleted\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged file     modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--\ntanais       : deleted\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- props      twelve  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged dir      modified on 2021-02-17 at 16:21:33  size 0         rwxr-xr-x\ntanais       : dir props changed  modified on 2021-02-17 at 16:21:39  size 0         rwx------\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : unchanged dir      modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x\ntanais       : dir props changed  modified on 2021-02-06 at 18:41:58  size 0         rwx------\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("         <---- new dir    twenty  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : absent\ntanais       : new dir            modified on 2021-02-17 at 16:21:44  size 0         rwxr-xr-x\n  ")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : absent\ntanais       : new dir            modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x\n  ")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            two  \n")))
-	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-17 at 16:21:41  size 1146      rw-r--r--\ntanais       : unchanged file     modified on 2021-02-17 at 16:21:33  size 1146      rw-r--r--\n")))
+	assert.Zero(t, c.ProcOutput([]byte("local        : changed file       modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\ntanais       : unchanged file     modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--\n")))
 	assert.Zero(t, c.ProcOutput([]byte("changed  <-?-> new dir    one hundred/one hundred one  [] ")))
 
 	assertEqual(t, c.Items, []Item{
 		{
 			Path: "one hundred/one hundred one",
-			Left: Content{File, Modified, "modified on 2021-02-06 at 18:42:07  size 1000      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1000},
-			Right: Content{Directory, Created, "modified on 2021-02-06 at 18:42:07  size 2292      rwxr-xr-x",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 2292},
+			Left: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1000},
+			Right: Content{Directory, Created, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 2292},
 			Action: Skip,
 		},
 		{
@@ -721,79 +721,79 @@ func TestAssorted(t *testing.T) {
 		},
 		{
 			Path: "six/nine",
-			Left: Content{File, Modified, "modified on 2021-02-06 at 18:42:07  size 1147000   rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1147000},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:10  size 1147000   rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 10, 0, time.Local), 1147000},
+			Left: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1147000},
+			Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1147000},
 			Action: Skip,
 		},
 		{
 			Path: "twenty one",
-			Left: Content{File, PropsChanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1146},
-			Right: Content{File, PropsChanged, "modified on 2021-02-06 at 18:42:21  size 1146      rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 21, 0, time.Local), 1146},
+			Left: Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+			Right: Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
 			Action: Skip,
 		},
 		{
 			Path: "deeply/nested/sub/directory/with/file",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1146},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:21  size 1146      rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 21, 0, time.Local), 1146},
+			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+			Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
 			Action: RightToLeft,
 		},
 		{
 			Path: "eighteen",
 			Left: Content{Symlink, Created, "modified on 1970-01-01 at  3:00:00  size 0         unknown permissions",
 				time.Date(1970, 1, 1, 3, 0, 0, 0, time.Local), 0},
-			Right:  Content{Absent, Unchanged, "", time.Time{}, 0},
+			Right:  Content{Type: Absent},
 			Action: LeftToRight,
 		},
 		{
 			Path: "here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1146},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:20  size 1146      rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 20, 0, time.Local), 1146},
+			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+			Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
 			Action: RightToLeft,
 		},
 		{
 			Path: "seventeen",
-			Left: Content{File, Created, "modified on 2021-02-06 at 18:42:07  size 0         rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 0},
-			Right:  Content{Absent, Unchanged, "", time.Time{}, 0},
+			Left: Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Right:  Content{Type: Absent},
 			Action: LeftToRight,
 		},
 		{
 			Path: "six/eight",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1146},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:08  size 1147000   rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 8, 0, time.Local), 1147000},
+			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+			Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1147000},
 			Action: RightToLeft,
 		},
 		{
 			Path: "six/eleven",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 10000000  rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 10000000},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:20  size 10000000  rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 20, 0, time.Local), 10000000},
+			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 10000000  rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 10000000},
+			Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 10000000  rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 10000000},
 			Action: RightToLeft,
 		},
 		{
 			Path: "six/fourteen",
 			Left: Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x",
 				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 2292},
-			Right:  Content{Absent, Deleted, "", time.Time{}, 0},
+			Right:  Content{Type: Absent, Status: Deleted},
 			Action: RightToLeft,
 		},
 		{
 			Path: "six/seven",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 0         rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 0},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:08  size 1146      rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 8, 0, time.Local), 1146},
+			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
 			Action: RightToLeft,
 		},
 		{
@@ -806,31 +806,31 @@ func TestAssorted(t *testing.T) {
 		},
 		{
 			Path: "three",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1147000   rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1147000},
-			Right:  Content{Absent, Deleted, "", time.Time{}, 0},
+			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1147000},
+			Right:  Content{Type: Absent, Status: Deleted},
 			Action: RightToLeft,
 		},
 		{
 			Path: "twelve",
-			Left: Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 34380     rwxr-xr-x",
-				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 34380},
-			Right: Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:42:06  size 0         rwx------",
-				time.Date(2021, 2, 6, 18, 42, 6, 0, time.Local), 0},
+			Left: Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Right: Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
 			Action: RightToLeft,
 		},
 		{
 			Path: "twenty",
-			Left: Content{Absent, Unchanged, "", time.Time{}, 0},
-			Right: Content{Directory, Created, "modified on 2021-02-06 at 18:42:10  size 0         rwxr-xr-x",
-				time.Date(2021, 2, 6, 18, 42, 10, 0, time.Local), 0},
+			Left: Content{Type: Absent},
+			Right: Content{Directory, Created, "modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
 			Action: RightToLeft,
 		},
 		{
 			Path: "two",
-			Left: Content{File, Modified, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1146},
-			Right: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r",
+			Left: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+			Right: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
 				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
 			Action: LeftToRight,
 		},
