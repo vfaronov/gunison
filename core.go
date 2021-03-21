@@ -307,7 +307,7 @@ var (
 	patPropagatingUpdates         = "(?m:^)(Propagating updates)\n"
 	patStartedFinishedPropagating = "(?m:^)UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*\n"
 	patSyncThreadStatus           = "(?m:^)\\[(?:BGN|END|CONFLICT)\\] [^\n]*\n"
-	patSyncProgress               = "(?m:^)\\s*([0-9]+)%  (?:[0-9]{2}:[0-9]{2}|--:--) ETA"
+	patSyncProgress               = "(?m:^)\\s*([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
 	patWhySkipped                 = "(?m:^)\\s*(?:conflicting updates|skip requested|contents changed on both sides)\n"
 	patSavingState                = "(?m:^)(Saving synchronizer state)\n"
 )
