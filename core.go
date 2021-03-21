@@ -236,7 +236,7 @@ func (c *Core) kill() Update {
 }
 
 func (c *Core) handleExit(code int, err error, codeStatus map[int]string) Update {
-	output := c.buf.Bytes()
+	output := c.buf.String()
 	c.buf.Reset()
 	status := "Unison exited"
 	if s, ok := codeStatus[code]; ok {
@@ -393,7 +393,7 @@ var expStartup = makeExpecter(false, patContactingServer, patPermissionDenied, p
 func (c *Core) procBufStartup() Update {
 	switch pat, m, upd, _ := expStartup(&c.buf); pat {
 	case patContactingServer, patLookingForChanges, patWaitingForChanges, patReconcilingChanges:
-		c.Status = string(m[1])
+		c.Status = m[1]
 		c.Progress = ""
 		c.ProgressFraction = 0
 		return upd.join(c.next())
@@ -403,14 +403,14 @@ func (c *Core) procBufStartup() Update {
 
 	case patFileProgress:
 		upd.Progressed = true
-		c.Progress = string(m[1])
+		c.Progress = m[1]
 		c.ProgressFraction = -1
 		c.procBuffer = c.procBufFileProgress
 		return upd.join(c.next())
 
 	case patPlanBeginning:
-		c.Left = strings.TrimSpace(string(m[1]))
-		c.Right = strings.TrimSpace(string(m[2]))
+		c.Left = strings.TrimSpace(m[1])
+		c.Right = strings.TrimSpace(m[2])
 		upd.Input = []byte("l\n")
 		return upd.join(c.transition(Core{
 			Running: true,
@@ -437,7 +437,7 @@ func (c *Core) procBufFileProgress() Update {
 	// the chunk that happened to fit into some buffer.
 	switch pat, m, upd, _ := expFileProgress(&c.buf); pat {
 	case patFileProgressCont: // So, if the line continues, it's more of the same path.
-		c.Progress += string(m[0])
+		c.Progress += m[0]
 		return upd.join(c.next())
 
 	default: // But if there's anything else, we revert to the previous state.
@@ -461,8 +461,8 @@ func (c *Core) makeProcBufPlan() func() Update {
 		switch pat {
 		case patItemHeader:
 			items = append(items, Item{
-				Action: parseAction[string(m[1])],
-				Path:   string(m[2]),
+				Action: parseAction[m[1]],
+				Path:   m[2],
 			})
 			return upd.join(c.next())
 
@@ -471,7 +471,7 @@ func (c *Core) makeProcBufPlan() func() Update {
 				return upd.join(c.fatalf(true, "Got item details before item header"))
 			}
 			item := &items[len(items)-1]
-			sideName := string(m[1])
+			sideName := m[1]
 			side := &item.Left
 			if sideName == c.Right {
 				side = &item.Right
@@ -480,20 +480,20 @@ func (c *Core) makeProcBufPlan() func() Update {
 				return upd.join(c.fatalf(true, "Got duplicate details for %s in %s", item.Path, sideName))
 			}
 
-			switch {
-			case bytes.Equal(m[2], []byte("absent")):
+			switch m[2] {
+			case "absent":
 				side.Type = Absent
-			case bytes.Equal(m[2], []byte("deleted")):
+			case "deleted":
 				side.Type = Absent
 				side.Status = Deleted
 			default:
-				ts := parseTypeStatus[string(m[3])]
+				ts := parseTypeStatus[m[3]]
 				side.Type = ts.Type
 				side.Status = ts.Status
 			}
-			side.Props = string(m[4])
-			side.Modified, _ = time.ParseInLocation("2006-01-02 at 15:04:05", string(m[5]), time.Local)
-			side.Size, _ = strconv.ParseInt(string(m[6]), 10, 64)
+			side.Props = m[4]
+			side.Modified, _ = time.ParseInLocation("2006-01-02 at 15:04:05", m[5], time.Local)
+			side.Size, _ = strconv.ParseInt(m[6], 10, 64)
 			return upd.join(c.next())
 
 		case patItemPrompt:
@@ -551,7 +551,7 @@ func (c *Core) procBufStartSync() Update {
 
 	switch pat {
 	case patItemPrompt:
-		path := string(m[2])
+		path := m[2]
 		act, ok := c.Plan[path]
 		if !ok {
 			return upd.join(c.fatalf(false,
@@ -601,14 +601,14 @@ var expSync = makeExpecter(false, patEraseLine, patPropagatingUpdates, patStarte
 func (c *Core) procBufSync() Update {
 	switch pat, m, upd, _ := expSync(&c.buf); pat {
 	case patPropagatingUpdates, patSavingState:
-		c.Status = string(m[1])
+		c.Status = m[1]
 		c.Progress = ""
 		c.ProgressFraction = 0
 		return upd.join(c.next())
 
 	case patSyncProgress:
-		c.Progress = strings.TrimSpace(string(m[0]))
-		percent, _ := strconv.Atoi(string(m[1]))
+		c.Progress = strings.TrimSpace(m[0])
+		percent, _ := strconv.Atoi(m[1])
 		c.ProgressFraction = float64(percent) / 100
 		return upd.join(c.next())
 
@@ -623,7 +623,7 @@ func (c *Core) procBufSync() Update {
 	}
 }
 
-func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][]byte, Update, string) {
+func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, []string, Update, string) {
 	start := make([]int, len(patterns))
 	start[0] = 1
 	combined := ""
@@ -636,16 +636,16 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, [][
 	}
 	exp := regexp.MustCompile(combined)
 
-	return func(buf *bytes.Buffer) (pattern string, match [][]byte, upd Update, extra string) {
-		data := buf.Bytes()
-		m := exp.FindSubmatch(data)
+	return func(buf *bytes.Buffer) (pattern string, match []string, upd Update, extra string) {
+		data := buf.String()
+		m := exp.FindStringSubmatch(data)
 		if m == nil {
 			return
 		}
-		offset := bytes.Index(data, m[0])
+		offset := strings.Index(data, m[0])
 		buf.Next(offset + len(m[0]))
 		if raw {
-			extra = strings.TrimSpace(string(data[:offset]))
+			extra = strings.TrimSpace(data[:offset])
 		} else {
 			upd = echo(data[:offset])
 		}
@@ -672,8 +672,8 @@ var (
 	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed)`)
 )
 
-func echo(output []byte) Update {
-	text := strings.TrimSpace(string(output))
+func echo(output string) Update {
+	text := strings.TrimSpace(output)
 	if text == "" {
 		return Update{}
 	}
