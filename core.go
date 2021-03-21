@@ -33,7 +33,8 @@ type Core struct {
 	Interrupt  func() Update
 	Kill       func() Update
 
-	buf bytes.Buffer
+	buf  bytes.Buffer
+	seek string
 }
 
 func (c *Core) transition(newc Core) Update {
@@ -304,9 +305,9 @@ var (
 
 	patPlanBeginning   = lineBgn + "(.{12})   (.{12}) +\r?" + patItemPrompt
 	patItemPrompt      = lineBgn + patItem + patPrompt
-	patItem            = patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
+	patItem            = "\\s*" + patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
-	patItemHeader      = line("\\s*" + patItem)
+	patItemHeader      = line(patItem)
 	patItemSideInfo    = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
 
 	patProceedUpdates             = lineBgn + "Proceed with propagating updates\\?" + patPrompt
@@ -511,24 +512,12 @@ func (c *Core) makeProcBufPlan() func() Update {
 			return upd.join(c.next())
 
 		case patItemPrompt:
-			plan := make(map[string]Action, len(items))
+			c.Items = items
+			c.Plan = make(map[string]Action, len(items))
 			for _, item := range items {
-				plan[item.Path] = item.Action
+				c.Plan[item.Path] = item.Action
 			}
-			return upd.join(c.transition(Core{
-				Running: true,
-				Status:  "Ready to synchronize",
-				Items:   items,
-				Plan:    plan,
-
-				ProcExit:  c.procExitBeforeSync,
-				ProcError: c.procErrorUnrecoverable,
-				Diff:      c.diff,
-				Sync:      c.sync,
-				Quit:      c.quit,
-				Interrupt: c.interrupt,
-				Kill:      c.kill,
-			}))
+			return upd.join(c.transitionToReady())
 
 		default:
 			return upd
@@ -536,8 +525,96 @@ func (c *Core) makeProcBufPlan() func() Update {
 	}
 }
 
-func (c *Core) diff(string) Update {
-	panic("not implemented yet")
+func (c *Core) transitionToReady() Update {
+	return c.transition(Core{
+		Running: true,
+		Status:  "Ready to synchronize",
+
+		ProcExit:  c.procExitBeforeSync,
+		ProcError: c.procErrorUnrecoverable,
+		Diff:      c.diff,
+		Sync:      c.sync,
+		Quit:      c.quit,
+		Interrupt: c.interrupt,
+		Kill:      c.kill,
+	})
+}
+
+func (c *Core) restorePrompt() Update {
+	return c.transition(Core{
+		Running: true,
+		Busy:    true,
+		Status:  "Waiting for Unison",
+
+		procBuffer: c.procBufRestorePrompt,
+		ProcExit:   c.procExitBeforeSync,
+		ProcError:  c.procErrorUnrecoverable,
+		Interrupt:  c.interrupt,
+		Kill:       c.kill,
+	})
+}
+
+var expSeek = makeExpecter(false, patItemPrompt, patProceedUpdates)
+
+func (c *Core) procBufRestorePrompt() Update {
+	switch pat, _, upd, _ := expSeek(&c.buf); pat {
+	case patItemPrompt, patProceedUpdates:
+		return upd.join(c.transitionToReady())
+
+	default:
+		return upd
+	}
+}
+
+func (c *Core) diff(path string) Update {
+	return Update{Input: []byte("0\n")}.join(c.transition(Core{
+		Running: true,
+		Busy:    true,
+		Status:  "Requesting diff",
+
+		procBuffer: c.procBufDiff,
+		ProcExit:   c.procExitBeforeSync,
+		ProcError:  c.procErrorUnrecoverable,
+		Abort:      c.restorePrompt,
+		Interrupt:  c.interrupt,
+		Kill:       c.kill,
+
+		seek: path,
+	}))
+}
+
+func (c *Core) procBufDiff() Update {
+	switch pat, m, upd, _ := expSeek(&c.buf); pat {
+	case patItemPrompt:
+		if m[2] == c.seek { // found the path to diff
+			upd.Input = []byte("d\n")
+			c.procBuffer = c.procBufDiffOutput
+			c.Abort = c.interrupt
+		} else {
+			upd.Input = []byte("n\n")
+		}
+		return upd.join(c.next())
+
+	case patProceedUpdates: // there's no next item to seek to
+		// This is fatal in the sense that we screwed up so badly, we better not try to continue.
+		return upd.join(c.fatalf(false, "Failed to find '%s' in Unison prompts.", c.seek))
+
+	default:
+		return upd
+	}
+}
+
+var expDiffOutput = makeExpecter(true, patItemPrompt)
+
+func (c *Core) procBufDiffOutput() Update {
+	switch pat, _, upd, _ := expDiffOutput(&c.buf); pat {
+	case patItemPrompt:
+		// FIXME
+		return upd.join(c.transitionToReady())
+
+	default:
+		return upd
+	}
 }
 
 func (c *Core) sync() Update {
