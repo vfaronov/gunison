@@ -124,3 +124,14 @@ func anyOf(m interface{}) string {
 	pat += ")"
 	return pat
 }
+
+func ClearCursor(treeview *gtk.TreeView) {
+	for {
+		path, _ := treeview.GetCursor()
+		if path == nil {
+			return
+		}
+		path.Down()
+		treeview.SetCursor(path, nil, false)
+	}
+}
