@@ -314,9 +314,17 @@ var (
 	patStartedFinishedPropagating = line("UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*?")
 	patSyncThreadStatus           = line("\\[(?:BGN|END|CONFLICT)\\] .*?")
 	patSyncProgress               = lineBgn + "\\s*([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
-	patWhySkipped                 = line("\\s*(?:conflicting updates|skip requested|contents changed on both sides)")
-	patShortcut                   = line("Shortcut: .+")
-	patSavingState                = line("(Saving synchronizer state)")
+	patMergeNoise                 = line("(?:Merge command: .*?" +
+		"|Merge result \\(exited \\(0\\)\\):\n.*?" +
+		"|(?:No|One|Two|Three) outputs? detected\\s*" +
+		"|Two outputs not equal but merge command returned 0.*?" +
+		"|No output from merge cmd and both original files are still present" +
+		"|Merge program (?:made files equal|changed just (?:first|second) input)" +
+		"|Merge program changed both of its inputs in different ways, but returned zero\\." +
+		"|No outputs and (?:first|second) replica has been deleted\\s*)")
+	patWhySkipped  = line("\\s*(?:conflicting updates|skip requested|contents changed on both sides)")
+	patShortcut    = line("Shortcut: .+")
+	patSavingState = line("(Saving synchronizer state)")
 )
 
 var parseAction = map[string]Action{
@@ -601,7 +609,7 @@ func (c *Core) procExitSync(code int, err error) Update {
 }
 
 var expSync = makeExpecter(false, patPropagatingUpdates, patStartedFinishedPropagating,
-	patSyncThreadStatus, patSyncProgress, patWhySkipped, patShortcut,
+	patSyncThreadStatus, patSyncProgress, patMergeNoise, patWhySkipped, patShortcut,
 	patSavingState, patSomeLine)
 
 func (c *Core) procBufSync() Update {
@@ -676,7 +684,7 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, []s
 const none = ""
 
 var (
-	expWarning = regexp.MustCompile(`(?i)^(?:warning|synchronization incomplete)`)
+	expWarning = regexp.MustCompile(`(?i)^(?:warning|synchronization incomplete|merge result)`)
 	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed)`)
 )
 
