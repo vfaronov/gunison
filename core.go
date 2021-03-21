@@ -286,6 +286,7 @@ var (
 	patReallyProceed      = "Do you really want to proceed\\?" + patPrompt
 	patPressReturn        = "Press return to continue\\." + patPrompt
 	patContactingServer   = "(?m:^)Unison [^:\n]+: (Contacting server)\\.\\.\\.\n"
+	patPermissionDenied   = "(?m:^)Permission denied, please try again\\.(\r)?\n"
 	patConnected          = "(?m:^)Connected \\[[^\\]]+\\]\n"
 	patLookingForChanges  = "(?m:^)(Looking for changes)\n"
 	patFileProgress       = "(?m:^)[-/|\\\\] ([^\r\n]+)"
@@ -309,6 +310,7 @@ var (
 	patSyncThreadStatus           = "(?m:^)\\[(?:BGN|END|CONFLICT)\\] [^\n]*\n"
 	patSyncProgress               = "(?m:^)\\s*([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
 	patWhySkipped                 = "(?m:^)\\s*(?:conflicting updates|skip requested|contents changed on both sides)\n"
+	patShortcut                   = "(?m:^)Shortcut: [^\n]+\n"
 	patSavingState                = "(?m:^)(Saving synchronizer state)\n"
 )
 
@@ -385,8 +387,8 @@ func (c *Core) procBufCommon() Update {
 	}
 }
 
-var expStartup = makeExpecter(false, patContactingServer, patConnected, patLookingForChanges,
-	patFileProgress, patWaitingForChanges, patReconcilingChanges, patPlanBeginning)
+var expStartup = makeExpecter(false, patContactingServer, patPermissionDenied, patConnected,
+	patLookingForChanges, patFileProgress, patWaitingForChanges, patReconcilingChanges, patPlanBeginning)
 
 func (c *Core) procBufStartup() Update {
 	switch pat, m, upd, _ := expStartup(&c.buf); pat {
@@ -394,6 +396,9 @@ func (c *Core) procBufStartup() Update {
 		c.Status = string(m[1])
 		c.Progress = ""
 		c.ProgressFraction = 0
+		return upd.join(c.next())
+
+	case patPermissionDenied:
 		return upd.join(c.next())
 
 	case patFileProgress:
@@ -590,7 +595,8 @@ func (c *Core) procExitSync(code int, err error) Update {
 }
 
 var expSync = makeExpecter(false, patEraseLine, patPropagatingUpdates, patStartedFinishedPropagating,
-	patSyncThreadStatus, patSyncProgress, patWhySkipped, patSavingState, patAnyLine)
+	patSyncThreadStatus, patSyncProgress, patWhySkipped, patShortcut,
+	patSavingState, patAnyLine)
 
 func (c *Core) procBufSync() Update {
 	switch pat, m, upd, _ := expSync(&c.buf); pat {
