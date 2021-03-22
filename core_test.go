@@ -355,6 +355,92 @@ func TestDiff(t *testing.T) {
 		Update{Diff: []byte("--- /home/vasiliy/tmp/gunison/right/file1\t2021-02-13 14:29:12.571303322 +0300\n+++ /home/vasiliy/tmp/gunison/left/file1\t2021-02-13 14:29:12.571303322 +0300\n@@ -1,6 +1,6 @@\n-Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n+Quia est unde laboriosam. Eum ullam deleniti dolorrupti maiores optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n+Consectetur fuga sed vitae eut ut sed officiis id. Et aut nostrum est quia cores. Magni quasi facere voluptas. Dolor doloribus at nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n \n Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus porro perspiciatis. Veniam in dignissimos voluptatem exercitationem excepturi reprehenderit sed optio.\n \n")})
 }
 
+func TestDiffRandom(t *testing.T) {
+	// Like TestDiff, but chunks of Unison output get buffered randomly before arriving to Gunison.
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assertEqual(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\nLooking for changes\n/ file2\r       \rReconciling changes\n\nleft           right              \nchanged  ---->            file1  [f] ")),
+		Update{
+			Progressed: true,
+			Input:      []byte("l\n"),
+		})
+	assert.Zero(t, c.ProcOutput([]byte("  changed  ---->            file1  \nleft         : changed file       modified on 2021-")))
+	assert.Zero(t, c.ProcOutput([]byte("03-22 at 11:21:26  size 1146      rw-r--r--\nrig")))
+	assert.Zero(t, c.ProcOutput([]byte("ht        : unchanged file     modified on 2021-03-22 at 11")))
+	assert.Zero(t, c.ProcOutput([]byte(":21:26  size 1146      rw-r--r--\n  changed  ---->            file2  \nleft         : changed file       modified on 2021-03-22 at 11:21:26  size 1146      rw-r--r--\nright        : un")))
+	assert.Zero(t, c.ProcOutput([]byte("changed file     m")))
+	assert.Zero(t, c.ProcOutput([]byte("odified on 2021-03-22 at ")))
+	assert.Zero(t, c.ProcOutput([]byte("11:21:26  size 1146      rw-r--r--\n  changed  ---->            file3  \nleft         : changed file       modified on 2021-03-22 at 11:21:26 ")))
+	assert.Zero(t, c.ProcOutput([]byte(" size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-03-22 at 11:21:26  size 1146      rw-r--r--\nchanged  ---->            file1  [f] ")))
+
+	assertEqual(t, c.Diff("file3"),
+		Update{Input: []byte("0\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file1  ")))
+	assertEqual(t, c.ProcOutput([]byte("[f] ")),
+		Update{Input: []byte("n\n")})
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file2  [f]")))
+	assertEqual(t, c.ProcOutput([]byte(" ")),
+		Update{Input: []byte("n\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            file3  [f] ")),
+		Update{Input: []byte("d\n")})
+	assert.Zero(t, c.ProcOutput([]byte("\ndiff -u '/home/vasiliy/tmp/gunison/right/file3' '/home/vasiliy/tmp/gunison/left/file3'\n\n")))
+	assert.Zero(t, c.ProcOutput([]byte("--- /home/vasiliy/tmp/guniso")))
+	assert.Zero(t, c.ProcOutput([]byte("n/right/file3\t2021-03-22 11:21:26.165184522 +0300\n+++ /home/vasiliy/tmp/gu")))
+	assert.Zero(t, c.ProcOutput([]byte("nison/left/file3\t2021-03-22 11:21:26.165184522 +0300\n@@ -1,9 +1,9 @@\n-Quia est unde laboriosam. Eum ullam delen")))
+	assert.Zero(t, c.ProcOutput([]byte("iti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n+Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed offi")))
+	assert.Zero(t, c.ProcOutput([]byte("ciis id. Et aut nostrum est quia cororiosam at labore omnis eos et minus porro perspiciatis. Veniam in dignissimos voluptatem exercitatio")))
+	assert.Zero(t, c.ProcOutput([]byte("nem excepturi reprehenderit sed optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in volu")))
+	assert.Zero(t, c.ProcOutput([]byte("ptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n+Omnis reput consequatur")))
+	assert.Zero(t, c.ProcOutput([]byte(" neque. Veniam in voluptate quia. Culpa labore distinctio laudanti")))
+	assert.Zero(t, c.ProcOutput([]byte("um maxime voluptate eaque.\n \n-Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus porro perspiciatis.")))
+	assert.Zero(t, c.ProcOutput([]byte(" Veniam in dignissimos voluptatem exercitationem excepturi")))
+	assert.Zero(t, c.ProcOutput([]byte(" reprehenderit sed optio.\n+Deserunt dignissimos corrupti aut vel. Labrupti maiores optio.\n \n-Omnis repudiandae nobis autem qui autem possimus. Dolo")))
+	assert.Zero(t, c.ProcOutput([]byte("rem id a reprehenderit nihil laboriosam non. Dolor minima in soluta. Magni eveniet magnam velit officia consectetur tempore quia id. Perspiciatis enim corrupti aliquam nam accusamus et molestiae rerum. Sint sit exercitationem corrupti omnis.\n+Cons")))
+	assert.Zero(t, c.ProcOutput([]byte("ectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium udiandae nobis autem qui autem possimus. Dolorem id a reprehend")))
+	assert.Zero(t, c.ProcOutput([]byte("erit nihil laboriosam non. Dolor minima in soluta. Magni eveniet magnam velit officia co")))
+	assert.Zero(t, c.ProcOutput([]byte("nsectetur tempore quia id. Perspiciatis enim corrupti aliquam nam accusamus et molestiae r")))
+	assert.Zero(t, c.ProcOutput([]byte("erum. Sint sit ")))
+	assert.Zero(t, c.ProcOutput([]byte("exercitationem corrupti omnis.\n \n Facere asperiores unde rerum dignissimos id. Nihil maiores sequi accusamus eum repudiandae et. Nesciunt ab inventore repellat enim illum ratione enim voluptatum. Tempore sint quos tempore fugit rerum sit omn")))
+	assert.Zero(t, c.ProcOutput([]byte("is quae. Minus deserunt aut dolores excepturi qui.\n\nchanged  ---->            ")))
+	assertEqual(t, c.ProcOutput([]byte("file3  [f] ")),
+		Update{Diff: []byte("--- /home/vasiliy/tmp/gunison/right/file3\t2021-03-22 11:21:26.165184522 +0300\n+++ /home/vasiliy/tmp/gunison/left/file3\t2021-03-22 11:21:26.165184522 +0300\n@@ -1,9 +1,9 @@\n-Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n+Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia cororiosam at labore omnis eos et minus porro perspiciatis. Veniam in dignissimos voluptatem exercitationem excepturi reprehenderit sed optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n+Omnis reput consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n \n-Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus porro perspiciatis. Veniam in dignissimos voluptatem exercitationem excepturi reprehenderit sed optio.\n+Deserunt dignissimos corrupti aut vel. Labrupti maiores optio.\n \n-Omnis repudiandae nobis autem qui autem possimus. Dolorem id a reprehenderit nihil laboriosam non. Dolor minima in soluta. Magni eveniet magnam velit officia consectetur tempore quia id. Perspiciatis enim corrupti aliquam nam accusamus et molestiae rerum. Sint sit exercitationem corrupti omnis.\n+Consectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium udiandae nobis autem qui autem possimus. Dolorem id a reprehenderit nihil laboriosam non. Dolor minima in soluta. Magni eveniet magnam velit officia consectetur tempore quia id. Perspiciatis enim corrupti aliquam nam accusamus et molestiae rerum. Sint sit exercitationem corrupti omnis.\n \n Facere asperiores unde rerum dignissimos id. Nihil maiores sequi accusamus eum repudiandae et. Nesciunt ab inventore repellat enim illum ratione enim voluptatum. Tempore sint quos tempore fugit rerum sit omnis quae. Minus deserunt aut dolores excepturi qui.\n")})
+
+	assertEqual(t, c.Diff("file2"),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            file1  [f] ")),
+		Update{Input: []byte("n\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            file2  [f] ")),
+		Update{Input: []byte("d\n")})
+	assert.Zero(t, c.ProcOutput([]byte("\ndiff -u '/home/vasiliy/tmp/gunison/right/file2' '/home/vasiliy/tmp/gunison/left/file2'\n\n--- /home/vasiliy/tmp/gunison/right/file")))
+	assert.Zero(t, c.ProcOutput([]byte("2\t2021-03-22 11:21:26.165184522 +0300\n+++ /home/vasiliy/")))
+	assert.Zero(t, c.ProcOutput([]byte("tmp/gunison/left/file2\t2021-03-22 11:21:26.165184522 +0300\n@@ -1,6 +1,6 @@\n-Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maior")))
+	assert.Zero(t, c.ProcOutput([]byte("es optio.\n+Quia est unde labori")))
+	assert.Zero(t, c.ProcOutput([]byte("osam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate t nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut ut")))
+	assert.Zero(t, c.ProcOutput([]byte(" sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet rerum o")))
+	assert.Zero(t, c.ProcOutput([]byte("fficia repudi")))
+	assert.Zero(t, c.ProcOutput([]byte("andae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n+Consectetur fuga sed vit")))
+	assert.Zero(t, c.ProcOutput([]byte("ae eeaque.\n \n Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus p")))
+	assert.Zero(t, c.ProcOutput([]byte("orro perspiciatis. Veniam in dignissimos voluptatem exercitatio")))
+	assertEqual(t, c.ProcOutput([]byte("nem excepturi reprehenderit sed optio.\n \n\nchanged  ---->            file2  [f] ")),
+		Update{Diff: []byte("--- /home/vasiliy/tmp/gunison/right/file2\t2021-03-22 11:21:26.165184522 +0300\n+++ /home/vasiliy/tmp/gunison/left/file2\t2021-03-22 11:21:26.165184522 +0300\n@@ -1,6 +1,6 @@\n-Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n+Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate t nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n+Consectetur fuga sed vitae eeaque.\n \n Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus porro perspiciatis. Veniam in dignissimos voluptatem exercitationem excepturi reprehenderit sed optio.\n \n")})
+
+	assertEqual(t, c.Diff("file1"),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            file1  [f] ")),
+		Update{Input: []byte("d\n")})
+	assert.Zero(t, c.ProcOutput([]byte("\ndiff -u '/home/vasiliy/tmp/gunison/right/file1' '/home/vasiliy/tmp/gunison/left/file1'\n\n--- /home/vasiliy/tmp/gunison/right/file1\t2021-03-22 11:21:26.165184522 +0300\n+++ /home/v")))
+	assert.Zero(t, c.ProcOutput([]byte("asiliy/tmp/gunison/left/file1\t2021-03-22 11:21:26.165184522 +0300\n@@ -1,6 +1,6 @@\n-Quia est unde laboriosam. Eum ullam delen")))
+	assert.Zero(t, c.ProcOutput([]byte("iti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n+Quia est unde laboriosam. Eum ullam deleniti dolorrupti maiores optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet reru")))
+	assert.Zero(t, c.ProcOutput([]byte("m officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudant")))
+	assert.Zero(t, c.ProcOutput([]byte("ium maxime voluptate eaque.\n+Consectetur fuga sed vitae e")))
+	assert.Zero(t, c.ProcOutput([]byte("ut ut sed officiis id. Et aut nostrum est quia cores. Magni quasi facere voluptas. Dolor doloribus at nihil quia. Eveniet")))
+	assert.Zero(t, c.ProcOutput([]byte(" rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n \n ")))
+	assert.Zero(t, c.ProcOutput([]byte("Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus porro perspiciatis. ")))
+	assert.Zero(t, c.ProcOutput([]byte("Veniam in dignissimos voluptatem exercitationem excepturi reprehenderit sed optio.\n \n\nchanged  ---->")))
+	assertEqual(t, c.ProcOutput([]byte("            file1  [f] ")),
+		Update{Diff: []byte("--- /home/vasiliy/tmp/gunison/right/file1\t2021-03-22 11:21:26.165184522 +0300\n+++ /home/vasiliy/tmp/gunison/left/file1\t2021-03-22 11:21:26.165184522 +0300\n@@ -1,6 +1,6 @@\n-Quia est unde laboriosam. Eum ullam deleniti dolores. Magni quasi facere voluptas. Dolor doloribus aut ut sed officiis id. Et aut nostrum est quia corrupti maiores optio.\n+Quia est unde laboriosam. Eum ullam deleniti dolorrupti maiores optio.\n \n-Consectetur fuga sed vitae et nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n+Consectetur fuga sed vitae eut ut sed officiis id. Et aut nostrum est quia cores. Magni quasi facere voluptas. Dolor doloribus at nihil quia. Eveniet rerum officia repudiandae tenetur molestiae. Magni ipsum et natus accusantium ut consequatur neque. Veniam in voluptate quia. Culpa labore distinctio laudantium maxime voluptate eaque.\n \n Deserunt dignissimos corrupti aut vel. Laboriosam at labore omnis eos et minus porro perspiciatis. Veniam in dignissimos voluptatem exercitationem excepturi reprehenderit sed optio.\n \n")})
+}
+
 func TestDiffNoOutput(t *testing.T) {
 	// When the diff command produces no output, it's probably a GUI one, so we silently ignore it.
 	c := initCoreMinimalReady(t)
@@ -410,7 +496,9 @@ func TestDiffAbort(t *testing.T) {
 	assertEqual(t, c.Status, "Waiting for Unison")
 	assert.True(t, c.Busy)
 	assert.Nil(t, c.Sync)
-	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file2  [f] ")))
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            file2  ")))
+	assertEqual(t, c.Status, "Waiting for Unison")
+	assert.Zero(t, c.ProcOutput([]byte("[f] ")))
 	assertEqual(t, c.Status, "Ready to synchronize")
 	assert.False(t, c.Busy)
 	assert.NotNil(t, c.Sync)
@@ -443,6 +531,21 @@ func TestDiffBadCommand(t *testing.T) { // unison -diff 'diff --bad-option'
 			{"diff: unrecognized option '--bad-option'\ndiff: Try 'diff --help' for more information.", Warning},
 		}})
 	assertEqual(t, c.Status, "Ready to synchronize")
+}
+
+func TestDiffBadItem(t *testing.T) {
+	c := initCoreMinimalReady(t)
+	assertEqual(t, c.Diff("two"),
+		Update{Input: []byte("0\n")})
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("n\n")})
+	assertEqual(t, c.ProcOutput([]byte("\nProceed with propagating updates? [] ")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Failed to find 'two' in Unison prompts.\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
+			},
+		})
 }
 
 func TestMerge(t *testing.T) {
@@ -653,6 +756,7 @@ func TestIdenticalChanges(t *testing.T) {
 	c := NewCore()
 	assert.Zero(t, c.ProcStart())
 	assert.Zero(t, c.ProcOutput([]byte("Unison 2.51.3 (ocaml 4.11.1): Contacting server...\n")))
+	assert.Zero(t, c.ProcOutput([]byte("Permission denied, please try again.\n")))
 	assert.Zero(t, c.ProcOutput([]byte("Looking for changes\n")))
 	assert.Zero(t, c.ProcOutput([]byte("Reconciling changes\n")))
 	assert.Zero(t, c.ProcOutput([]byte("Nothing to do: replicas have been changed only in identical ways since last sync.\n")))
@@ -1422,6 +1526,58 @@ func TestPlanMissing(t *testing.T) {
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
+}
+
+func TestBadPlan1(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("l\n")})
+	assertEqual(t, c.Status, "Assembling plan")
+	assertEqual(t, c.Left, "left")
+	assertEqual(t, c.Right, "right")
+	assertEqual(t, c.ProcOutput([]byte("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Got item details before item header\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
+			},
+		})
+	assertEqual(t, c.Status, "Interrupting Unison")
+}
+
+func TestBadPlan2(t *testing.T) {
+	c := NewCore()
+	assert.Zero(t, c.ProcStart())
+	assert.Zero(t, c.ProcOutput([]byte("\nleft           right              \n")))
+	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
+		Update{Input: []byte("l\n")})
+	assertEqual(t, c.Status, "Assembling plan")
+	assertEqual(t, c.Left, "left")
+	assertEqual(t, c.Right, "right")
+	assert.Zero(t, c.ProcOutput([]byte("  ")))
+	assert.Zero(t, c.ProcOutput([]byte("changed  ---->            one  \n")))
+	assertEqual(t, c.ProcOutput([]byte("right        : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")),
+		Update{
+			Interrupt: true,
+			Messages: []Message{
+				{"Got duplicate details for 'one' in right\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
+			},
+		})
+	assertEqual(t, c.Status, "Interrupting Unison")
+}
+
+func TestKill(t *testing.T) {
+	c := initCoreMinimalSyncing(t)
+	assertEqual(t, c.Interrupt(),
+		Update{Interrupt: true})
+	assertEqual(t, c.Kill(),
+		Update{Kill: true})
+	assertEqual(t, c.Status, "Killing Unison")
+	assert.Nil(t, c.Quit)
+	assert.Nil(t, c.Interrupt)
+	assert.Nil(t, c.Kill)
 }
 
 // assertEqual is just assert.Equal with arguments swapped,
