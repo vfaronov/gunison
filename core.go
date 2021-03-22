@@ -257,7 +257,7 @@ func (c *Core) procExitBeforeSync(code int, err error) Update {
 func (c *Core) procErrorUnrecoverable(err error) Update {
 	upd := Update{Messages: []Message{
 		{
-			Text:       err.Error() + "\nThis is a fatal error. Unison will be stopped now.",
+			Text:       err.Error() + "\nThis is probably a bug in Gunison. Unison will be stopped now.",
 			Importance: Error,
 		},
 	}}
@@ -496,7 +496,7 @@ func (c *Core) makeProcBufPlan() func() Update {
 				side = &item.Right
 			}
 			if *side != (Content{}) {
-				return upd.join(c.fatalf(true, "Got duplicate details for %s in %s", item.Path, sideName))
+				return upd.join(c.fatalf(true, "Got duplicate details for '%s' in %s", item.Path, sideName))
 			}
 
 			switch m[2] {
@@ -509,10 +509,10 @@ func (c *Core) makeProcBufPlan() func() Update {
 				ts := parseTypeStatus[m[3]]
 				side.Type = ts.Type
 				side.Status = ts.Status
+				side.Props = m[4]
+				side.Modified, _ = time.ParseInLocation("2006-01-02 at 15:04:05", m[5], time.Local)
+				side.Size, _ = strconv.ParseInt(m[6], 10, 64)
 			}
-			side.Props = m[4]
-			side.Modified, _ = time.ParseInLocation("2006-01-02 at 15:04:05", m[5], time.Local)
-			side.Size, _ = strconv.ParseInt(m[6], 10, 64)
 			return upd.join(c.next())
 
 		case patItemPrompt:
@@ -673,8 +673,7 @@ func (c *Core) procBufStartSync() Update {
 		act, ok := c.Plan[path]
 		if !ok {
 			return upd.join(c.fatalf(false,
-				"Failed to start synchronization because this path is missing from Gunison's plan: %s\n"+
-					"This is probably a bug in Gunison.", path))
+				"Failed to start synchronization because this path is missing from Gunison's plan: %s", path))
 		}
 		upd.Input = sendAction[act]
 		return upd.join(c.next())

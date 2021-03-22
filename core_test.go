@@ -1285,7 +1285,7 @@ func TestExtraneousOutput2(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"Cannot parse the following output from Unison:\nWhat is this line right here?\nThis is a fatal error. Unison will be stopped now.", Error},
+				{"Cannot parse the following output from Unison:\nWhat is this line right here?\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
@@ -1300,7 +1300,7 @@ func TestExtraneousOutput3(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"Cannot parse the following output from Unison:\nsome unexpected line here\nThis is a fatal error. Unison will be stopped now.", Error},
+				{"Cannot parse the following output from Unison:\nsome unexpected line here\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
@@ -1378,7 +1378,7 @@ func TestErrorBeforeSync(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"some unexpected error\nThis is a fatal error. Unison will be stopped now.", Error},
+				{"some unexpected error\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
@@ -1418,7 +1418,7 @@ func TestPlanMissing(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"Failed to start synchronization because this path is missing from Gunison's plan: one\nThis is probably a bug in Gunison.\nThis is a fatal error. Unison will be stopped now.", Error},
+				{"Failed to start synchronization because this path is missing from Gunison's plan: one\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
