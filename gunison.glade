@@ -53,6 +53,8 @@
   </object>
   <object class="GtkTreeStore" id="treestore">
     <columns>
+      <!-- column-name idx -->
+      <column type="gint"/>
       <!-- column-name path -->
       <column type="gchararray"/>
       <!-- column-name left -->
@@ -65,8 +67,6 @@
       <column type="gchararray"/>
       <!-- column-name action-color -->
       <column type="gchararray"/>
-      <!-- column-name idx -->
-      <column type="gint"/>
       <!-- column-name font-weight -->
       <column type="gint"/>
     </columns>
@@ -122,13 +122,13 @@
                         <property name="stock_size">5</property>
                       </object>
                       <attributes>
-                        <attribute name="icon-name">4</attribute>
+                        <attribute name="icon-name">5</attribute>
                       </attributes>
                     </child>
                     <child>
                       <object class="GtkCellRendererText" id="path-renderer"/>
                       <attributes>
-                        <attribute name="text">0</attribute>
+                        <attribute name="text">1</attribute>
                         <attribute name="weight">7</attribute>
                       </attributes>
                     </child>
@@ -143,7 +143,7 @@
                     <child>
                       <object class="GtkCellRendererText" id="left-renderer"/>
                       <attributes>
-                        <attribute name="text">1</attribute>
+                        <attribute name="text">2</attribute>
                       </attributes>
                     </child>
                   </object>
@@ -157,8 +157,8 @@
                     <child>
                       <object class="GtkCellRendererText" id="action-renderer"/>
                       <attributes>
-                        <attribute name="foreground">5</attribute>
-                        <attribute name="text">3</attribute>
+                        <attribute name="foreground">6</attribute>
+                        <attribute name="text">4</attribute>
                       </attributes>
                     </child>
                   </object>
@@ -172,7 +172,7 @@
                     <child>
                       <object class="GtkCellRendererText" id="right-renderer"/>
                       <attributes>
-                        <attribute name="text">2</attribute>
+                        <attribute name="text">3</attribute>
                       </attributes>
                     </child>
                   </object>

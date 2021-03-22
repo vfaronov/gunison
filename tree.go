@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	colPath = iota
+	colIdx = iota
+	colPath
 	colLeft
 	colRight
 	colAction
 	colIconName
 	colActionColor
-	colIdx
 	colFontWeight
 )
 

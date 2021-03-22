@@ -1,5 +1,3 @@
-// +build !coremock
-
 package main
 
 import (
@@ -1541,7 +1539,7 @@ func TestBadPlan1(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"Got item details before item header\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
+				{"Got item details before item header.\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
@@ -1562,7 +1560,7 @@ func TestBadPlan2(t *testing.T) {
 		Update{
 			Interrupt: true,
 			Messages: []Message{
-				{"Got duplicate details for 'one' in right\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
+				{"Got duplicate details for 'one' in right.\nThis is probably a bug in Gunison. Unison will be stopped now.", Error},
 			},
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")

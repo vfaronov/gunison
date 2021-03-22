@@ -1,5 +1,3 @@
-// +build !coremock
-
 package main
 
 import (
@@ -379,11 +377,11 @@ var parseTypeStatus = map[string]struct {
 	"dir props changed": {PropsChanged, Directory},
 }
 
-var expCommon = makeExpecter(true, patReallyProceed, patPressReturn)
+var expCommon = makeExpecter(true, &patReallyProceed, &patPressReturn)
 
 func (c *Core) procBufCommon() Update {
 	switch pat, _, upd, extra := expCommon(&c.buf); pat {
-	case patReallyProceed:
+	case &patReallyProceed:
 		upd.Alert = Alert{
 			Message: Message{strings.TrimSpace(extra) + "\n\nDo you really want to proceed?", Warning},
 			Proceed: func() Update { return Update{Input: []byte("y\n")}.join(c.next()) },
@@ -391,7 +389,7 @@ func (c *Core) procBufCommon() Update {
 		}
 		return upd
 
-	case patPressReturn:
+	case &patPressReturn:
 		upd.Alert = Alert{
 			Message: Message{strings.TrimSpace(extra), Warning},
 			Proceed: func() Update { return Update{Input: []byte("\n")}.join(c.next()) },
@@ -404,28 +402,29 @@ func (c *Core) procBufCommon() Update {
 	}
 }
 
-var expStartup = makeExpecter(false, patContactingServer, patPermissionDenied, patConnected,
-	patLookingForChanges, patFileProgress, patWaitingForChanges, patReconcilingChanges, patPlanBeginning)
+var expStartup = makeExpecter(false, &patContactingServer, &patPermissionDenied, &patConnected,
+	&patLookingForChanges, &patFileProgress, &patWaitingForChanges, &patReconcilingChanges,
+	&patPlanBeginning)
 
 func (c *Core) procBufStartup() Update {
 	switch pat, m, upd, _ := expStartup(&c.buf); pat {
-	case patContactingServer, patLookingForChanges, patWaitingForChanges, patReconcilingChanges:
+	case &patContactingServer, &patLookingForChanges, &patWaitingForChanges, &patReconcilingChanges:
 		c.Status = m[1]
 		c.Progress = ""
 		c.ProgressFraction = 0
 		return upd.join(c.next())
 
-	case patPermissionDenied:
+	case &patPermissionDenied:
 		return upd.join(c.next())
 
-	case patFileProgress:
+	case &patFileProgress:
 		upd.Progressed = true
 		c.Progress = m[1]
 		c.ProgressFraction = -1
 		c.procBuffer = c.procBufFileProgress
 		return upd.join(c.next())
 
-	case patPlanBeginning:
+	case &patPlanBeginning:
 		c.Left = strings.TrimSpace(m[1])
 		c.Right = strings.TrimSpace(m[2])
 		upd.Input = []byte("l\n")
@@ -446,14 +445,14 @@ func (c *Core) procBufStartup() Update {
 	}
 }
 
-var expFileProgress = makeExpecter(false, patFileProgressCont)
+var expFileProgress = makeExpecter(false, &patFileProgressCont)
 
 func (c *Core) procBufFileProgress() Update {
 	// We're here when Unison has printed something like "- path/to/file". Because there is
 	// no newline or other delimiter, we can't know if "path/to/file" is the entire path or just
 	// the chunk that happened to fit into some buffer.
 	switch pat, m, upd, _ := expFileProgress(&c.buf); pat {
-	case patFileProgressCont: // So, if the line continues, it's more of the same path.
+	case &patFileProgressCont: // So, if the line continues, it's more of the same path.
 		c.Progress += m[0]
 		return upd.join(c.next())
 
@@ -468,7 +467,7 @@ func (c *Core) makeProcBufPlan() func() Update {
 	items := make([]Item, 0)
 	patItemSide := line("(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ") *" +
 		patItemSideInfo)
-	expPlan := makeExpecter(true, patItemHeader, patItemSide, patItemPrompt)
+	expPlan := makeExpecter(true, &patItemHeader, &patItemSide, &patItemPrompt)
 
 	return func() Update {
 		pat, m, upd, extra := expPlan(&c.buf)
@@ -478,16 +477,16 @@ func (c *Core) makeProcBufPlan() func() Update {
 		}
 
 		switch pat {
-		case patItemHeader:
+		case &patItemHeader:
 			items = append(items, Item{
 				Action: parseAction[m[1]],
 				Path:   m[2],
 			})
 			return upd.join(c.next())
 
-		case patItemSide:
+		case &patItemSide:
 			if len(items) == 0 {
-				return upd.join(c.fatalf(true, "Got item details before item header"))
+				return upd.join(c.fatalf(true, "Got item details before item header."))
 			}
 			item := &items[len(items)-1]
 			sideName := m[1]
@@ -496,7 +495,8 @@ func (c *Core) makeProcBufPlan() func() Update {
 				side = &item.Right
 			}
 			if *side != (Content{}) {
-				return upd.join(c.fatalf(true, "Got duplicate details for '%s' in %s", item.Path, sideName))
+				return upd.join(c.fatalf(true,
+					"Got duplicate details for '%s' in %s.", item.Path, sideName))
 			}
 
 			switch m[2] {
@@ -515,7 +515,7 @@ func (c *Core) makeProcBufPlan() func() Update {
 			}
 			return upd.join(c.next())
 
-		case patItemPrompt:
+		case &patItemPrompt:
 			c.Items = items
 			c.Plan = make(map[string]Action, len(items))
 			for _, item := range items {
@@ -558,11 +558,11 @@ func (c *Core) restorePrompt() Update {
 	})
 }
 
-var expSeek = makeExpecter(false, patItemPrompt, patProceedUpdates)
+var expSeek = makeExpecter(false, &patItemPrompt, &patProceedUpdates)
 
 func (c *Core) procBufRestorePrompt() Update {
 	switch pat, _, upd, _ := expSeek(&c.buf); pat {
-	case patItemPrompt, patProceedUpdates:
+	case &patItemPrompt, &patProceedUpdates:
 		return upd.join(c.transitionToReady())
 
 	default:
@@ -589,7 +589,7 @@ func (c *Core) diff(path string) Update {
 
 func (c *Core) procBufDiffSeek() Update {
 	switch pat, m, upd, _ := expSeek(&c.buf); pat {
-	case patItemPrompt:
+	case &patItemPrompt:
 		if m[2] == c.seek { // found the path to diff
 			upd.Input = []byte("d\n")
 			c.procBuffer = c.procBufDiffBegin
@@ -599,7 +599,7 @@ func (c *Core) procBufDiffSeek() Update {
 		}
 		return upd.join(c.next())
 
-	case patProceedUpdates: // there's no next item to seek to
+	case &patProceedUpdates: // there's no next item to seek to
 		// This is fatal in the sense that we screwed up so badly, we better not try to continue.
 		return upd.join(c.fatalf(false, "Failed to find '%s' in Unison prompts.", c.seek))
 
@@ -608,17 +608,17 @@ func (c *Core) procBufDiffSeek() Update {
 	}
 }
 
-var expDiffBegin = makeExpecter(true, patShortcut, patDiffHeader, patItemPrompt)
+var expDiffBegin = makeExpecter(true, &patShortcut, &patDiffHeader, &patItemPrompt)
 
 func (c *Core) procBufDiffBegin() Update {
 	switch pat, _, upd, extra := expDiffBegin(&c.buf); pat {
-	case patDiffHeader:
+	case &patDiffHeader:
 		c.procBuffer = c.procBufDiffOutput
 		return upd.
 			join(echo(extra, Warning)). // diff's stderr (if any) gets printed before the "header"
 			join(c.next())
 
-	case patItemPrompt:
+	case &patItemPrompt:
 		return upd.
 			join(echo(extra, Error)).
 			join(c.transitionToReady())
@@ -628,11 +628,11 @@ func (c *Core) procBufDiffBegin() Update {
 	}
 }
 
-var expDiffOutput = makeExpecter(true, patItemPrompt)
+var expDiffOutput = makeExpecter(true, &patItemPrompt)
 
 func (c *Core) procBufDiffOutput() Update {
 	switch pat, _, upd, out := expDiffOutput(&c.buf); pat {
-	case patItemPrompt:
+	case &patItemPrompt:
 		if strings.TrimSpace(out) != "" {
 			upd.Diff = []byte(out)
 		}
@@ -658,7 +658,7 @@ func (c *Core) sync() Update {
 	}))
 }
 
-var expStartSync = makeExpecter(true, patItemPrompt, patItemHeader, patProceedUpdates)
+var expStartSync = makeExpecter(true, &patItemPrompt, &patItemHeader, &patProceedUpdates)
 
 func (c *Core) procBufStartSync() Update {
 	pat, m, upd, extra := expStartSync(&c.buf)
@@ -668,17 +668,18 @@ func (c *Core) procBufStartSync() Update {
 	}
 
 	switch pat {
-	case patItemPrompt:
+	case &patItemPrompt:
 		path := m[2]
 		act, ok := c.Plan[path]
 		if !ok {
 			return upd.join(c.fatalf(false,
-				"Failed to start synchronization because this path is missing from Gunison's plan: %s", path))
+				"Failed to start synchronization because this path is missing from Gunison's plan: %s",
+				path))
 		}
 		upd.Input = sendAction[act]
 		return upd.join(c.next())
 
-	case patProceedUpdates:
+	case &patProceedUpdates:
 		upd.Input = []byte("y\n")
 		return upd.join(c.transition(Core{
 			Running: true,
@@ -693,7 +694,7 @@ func (c *Core) procBufStartSync() Update {
 			Kill:       c.kill,
 		}))
 
-	case none:
+	case nil:
 		return upd
 
 	default:
@@ -711,32 +712,32 @@ func (c *Core) procExitSync(code int, err error) Update {
 	})
 }
 
-var expSync = makeExpecter(false, patPropagatingUpdates, patStartedFinishedPropagating,
-	patSyncThreadStatus, patSyncProgress, patMergeNoise, patWhySkipped, patShortcut,
-	patSavingState, patSomeLine)
+var expSync = makeExpecter(false, &patPropagatingUpdates, &patStartedFinishedPropagating,
+	&patSyncThreadStatus, &patSyncProgress, &patMergeNoise, &patWhySkipped, &patShortcut,
+	&patSavingState, &patSomeLine)
 
 func (c *Core) procBufSync() Update {
 	switch pat, m, upd, _ := expSync(&c.buf); pat {
-	case patPropagatingUpdates, patSavingState:
+	case &patPropagatingUpdates, &patSavingState:
 		c.Status = m[1]
 		c.Progress = ""
 		c.ProgressFraction = 0
 		return upd.join(c.next())
 
-	case patSyncProgress:
+	case &patSyncProgress:
 		c.Progress = strings.TrimSpace(m[0])
 		percent, _ := strconv.Atoi(m[1])
 		c.ProgressFraction = float64(percent) / 100
 		return upd.join(c.next())
 
-	case patSomeLine: // something we don't explicitly recognize and consume
+	case &patSomeLine: // something we don't explicitly recognize and consume
 		// (it's not enough to rely on makeExpecter's echo because
 		// at this point we want to echo lines as soon as they come)
 		return upd.
 			join(echo(m[1], Info)).
 			join(c.next())
 
-	case none:
+	case nil:
 		return upd
 
 	default: // all the noise we recognize and ignore, such as patWhySkipped, etc.
@@ -744,20 +745,20 @@ func (c *Core) procBufSync() Update {
 	}
 }
 
-func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, []string, Update, string) {
+func makeExpecter(raw bool, patterns ...*string) func(*bytes.Buffer) (*string, []string, Update, string) {
 	start := make([]int, len(patterns))
 	start[0] = 1
 	combined := ""
 	for i, pat := range patterns {
 		if i > 0 {
-			start[i] = start[i-1] + regexp.MustCompile(patterns[i-1]).NumSubexp() + 1
+			start[i] = start[i-1] + regexp.MustCompile(*patterns[i-1]).NumSubexp() + 1
 			combined += "|"
 		}
-		combined += "(" + pat + ")"
+		combined += "(" + *pat + ")"
 	}
 	exp := regexp.MustCompile(combined)
 
-	return func(buf *bytes.Buffer) (pattern string, match []string, upd Update, extra string) {
+	return func(buf *bytes.Buffer) (pattern *string, match []string, upd Update, extra string) {
 		data := buf.String()
 		m := exp.FindStringSubmatch(data)
 		if m == nil {
@@ -785,8 +786,6 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, []s
 		return
 	}
 }
-
-const none = ""
 
 var (
 	expWarning = regexp.MustCompile(`(?i)^(?:warning|synchronization incomplete|merge result)`)

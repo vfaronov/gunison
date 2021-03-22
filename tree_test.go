@@ -1,4 +1,4 @@
-// +build !no_gtk_tests
+// +build gtk
 
 package main
 
