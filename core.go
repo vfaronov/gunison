@@ -243,7 +243,7 @@ func (c *Core) handleExit(code int, err error, codeStatus map[int]string) Update
 	if s, ok := codeStatus[code]; ok {
 		status = s
 	}
-	return echo(output).
+	return echo(output, Info).
 		join(echoError(err)).
 		join(c.transition(Core{Status: status}))
 }
@@ -309,6 +309,9 @@ var (
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
 	patItemHeader      = line(patItem)
 	patItemSideInfo    = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
+
+	// Unison prepends diff output with a blank line, the command line, and two more blank lines.
+	patDiffHeader = lineBgn + "\r?\n.+?\r?\n\r?\n"
 
 	patProceedUpdates             = lineBgn + "Proceed with propagating updates\\?" + patPrompt
 	patPropagatingUpdates         = line("(Propagating updates)")
@@ -469,6 +472,7 @@ func (c *Core) makeProcBufPlan() func() Update {
 
 	return func() Update {
 		pat, m, upd, extra := expPlan(&c.buf)
+		extra = strings.TrimSpace(extra)
 		if extra != "" {
 			return upd.join(c.fatalf(true, "Cannot parse the following output from Unison:\n%s", extra))
 		}
@@ -572,7 +576,7 @@ func (c *Core) diff(path string) Update {
 		Busy:    true,
 		Status:  "Requesting diff",
 
-		procBuffer: c.procBufDiff,
+		procBuffer: c.procBufDiffSeek,
 		ProcExit:   c.procExitBeforeSync,
 		ProcError:  c.procErrorUnrecoverable,
 		Abort:      c.restorePrompt,
@@ -583,12 +587,12 @@ func (c *Core) diff(path string) Update {
 	}))
 }
 
-func (c *Core) procBufDiff() Update {
+func (c *Core) procBufDiffSeek() Update {
 	switch pat, m, upd, _ := expSeek(&c.buf); pat {
 	case patItemPrompt:
 		if m[2] == c.seek { // found the path to diff
 			upd.Input = []byte("d\n")
-			c.procBuffer = c.procBufDiffOutput
+			c.procBuffer = c.procBufDiffBegin
 			c.Abort = c.interrupt
 		} else {
 			upd.Input = []byte("n\n")
@@ -604,12 +608,34 @@ func (c *Core) procBufDiff() Update {
 	}
 }
 
+var expDiffBegin = makeExpecter(true, patDiffHeader, patItemPrompt)
+
+func (c *Core) procBufDiffBegin() Update {
+	switch pat, _, upd, extra := expDiffBegin(&c.buf); pat {
+	case patDiffHeader:
+		c.procBuffer = c.procBufDiffOutput
+		return upd.
+			join(echo(extra, Warning)). // diff's stderr (if any) gets printed before the "header"
+			join(c.next())
+
+	case patItemPrompt:
+		return upd.
+			join(echo(extra, Error)).
+			join(c.transitionToReady())
+
+	default:
+		return upd
+	}
+}
+
 var expDiffOutput = makeExpecter(true, patItemPrompt)
 
 func (c *Core) procBufDiffOutput() Update {
-	switch pat, _, upd, _ := expDiffOutput(&c.buf); pat {
+	switch pat, _, upd, out := expDiffOutput(&c.buf); pat {
 	case patItemPrompt:
-		// FIXME
+		if strings.TrimSpace(out) != "" {
+			upd.Diff = []byte(out)
+		}
 		return upd.join(c.transitionToReady())
 
 	default:
@@ -636,6 +662,7 @@ var expStartSync = makeExpecter(true, patItemPrompt, patItemHeader, patProceedUp
 
 func (c *Core) procBufStartSync() Update {
 	pat, m, upd, extra := expStartSync(&c.buf)
+	extra = strings.TrimSpace(extra)
 	if extra != "" {
 		return upd.join(c.fatalf(false, "Cannot parse the following output from Unison:\n%s", extra))
 	}
@@ -706,7 +733,9 @@ func (c *Core) procBufSync() Update {
 	case patSomeLine: // something we don't explicitly recognize and consume
 		// (it's not enough to rely on makeExpecter's echo because
 		// at this point we want to echo lines as soon as they come)
-		return upd.join(echo(m[1])).join(c.next())
+		return upd.
+			join(echo(m[1], Info)).
+			join(c.next())
 
 	case none:
 		return upd
@@ -738,9 +767,9 @@ func makeExpecter(raw bool, patterns ...string) func(*bytes.Buffer) (string, []s
 		offset := strings.Index(data, m[0])
 		buf.Next(offset + len(m[0]))
 		if raw {
-			extra = strings.TrimSpace(data[:offset])
+			extra = data[:offset]
 		} else {
-			upd = echo(data[:offset])
+			upd = echo(data[:offset], Info)
 		}
 		for i, pat := range patterns {
 			if len(m[start[i]]) > 0 {
@@ -765,16 +794,17 @@ var (
 	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed)`)
 )
 
-func echo(output string) Update {
+func echo(output string, minImportance Importance) Update {
 	text := strings.TrimSpace(output)
 	if text == "" {
 		return Update{}
 	}
-	msg := Message{text, Info}
-	if expWarning.MatchString(text) {
-		msg.Importance = Warning
-	} else if expError.MatchString(text) {
+	msg := Message{text, minImportance}
+	switch {
+	case msg.Importance < Error && expError.MatchString(text):
 		msg.Importance = Error
+	case msg.Importance < Warning && expWarning.MatchString(text):
+		msg.Importance = Warning
 	}
 	return Update{Messages: []Message{msg}}
 }
