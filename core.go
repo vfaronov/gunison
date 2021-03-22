@@ -291,7 +291,7 @@ func line(pattern string) string {
 var (
 	patSomeLine = line("(.*?)")
 
-	patPrompt             = "\\s*\\[.*\\] $"
+	patPrompt             = " *\\[.*\\] $"
 	patReallyProceed      = "Do you really want to proceed\\?" + patPrompt
 	patPressReturn        = "Press return to continue\\." + patPrompt
 	patContactingServer   = line("Unison [^:\n]+: (Contacting server)\\.\\.\\.")
@@ -300,12 +300,12 @@ var (
 	patLookingForChanges  = line("(Looking for changes)")
 	patFileProgress       = lineBgn + "[-/|\\\\] ([^\r\n]+)"
 	patFileProgressCont   = "^[^\r\n]+"
-	patWaitingForChanges  = line("\\s*(Waiting for changes from server)")
+	patWaitingForChanges  = line(" *(Waiting for changes from server)")
 	patReconcilingChanges = line("(Reconciling changes)")
 
 	patPlanBeginning   = lineBgn + "(.{12})   (.{12}) +\r?" + patItemPrompt
 	patItemPrompt      = lineBgn + patItem + patPrompt
-	patItem            = "\\s*" + patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
+	patItem            = " *" + patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
 	patItemHeader      = line(patItem)
 	patItemSideInfo    = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
@@ -314,16 +314,16 @@ var (
 	patPropagatingUpdates         = line("(Propagating updates)")
 	patStartedFinishedPropagating = line("UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*?")
 	patSyncThreadStatus           = line("\\[(?:BGN|END|CONFLICT)\\] .*?")
-	patSyncProgress               = lineBgn + "\\s*([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
+	patSyncProgress               = lineBgn + " *([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
 	patMergeNoise                 = line("(?:Merge command: .*?" +
 		"|Merge result \\(exited \\(0\\)\\):\n.*?" +
-		"|(?:No|One|Two|Three) outputs? detected\\s*" +
+		"|(?:No|One|Two|Three) outputs? detected *" +
 		"|Two outputs not equal but merge command returned 0.*?" +
 		"|No output from merge cmd and both original files are still present" +
 		"|Merge program (?:made files equal|changed just (?:first|second) input)" +
 		"|Merge program changed both of its inputs in different ways, but returned zero\\." +
-		"|No outputs and (?:first|second) replica has been deleted\\s*)")
-	patWhySkipped  = line("\\s*(?:conflicting updates|skip requested|contents changed on both sides)")
+		"|No outputs and (?:first|second) replica has been deleted *)")
+	patWhySkipped  = line(" *(?:conflicting updates|skip requested|contents changed on both sides)")
 	patShortcut    = line("Shortcut: .+")
 	patSavingState = line("(Saving synchronizer state)")
 )
@@ -463,7 +463,7 @@ func (c *Core) procBufFileProgress() Update {
 
 func (c *Core) makeProcBufPlan() func() Update {
 	items := make([]Item, 0)
-	patItemSide := line("(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ")\\s*" +
+	patItemSide := line("(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ") *" +
 		patItemSideInfo)
 	expPlan := makeExpecter(true, patItemHeader, patItemSide, patItemPrompt)
 
