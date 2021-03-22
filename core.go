@@ -326,7 +326,7 @@ var (
 		"|Merge program (?:made files equal|changed just (?:first|second) input)" +
 		"|Merge program changed both of its inputs in different ways, but returned zero\\." +
 		"|No outputs and (?:first|second) replica has been deleted *)")
-	patWhySkipped  = line(" *(?:conflicting updates|skip requested|contents changed on both sides)")
+	patWhySkipped  = line(" *(?:conflicting updates|skip requested|(?:contents|properties) changed on both sides)")
 	patShortcut    = line("Shortcut: .+")
 	patSavingState = line("(Saving synchronizer state)")
 )
@@ -608,7 +608,7 @@ func (c *Core) procBufDiffSeek() Update {
 	}
 }
 
-var expDiffBegin = makeExpecter(true, patDiffHeader, patItemPrompt)
+var expDiffBegin = makeExpecter(true, patShortcut, patDiffHeader, patItemPrompt)
 
 func (c *Core) procBufDiffBegin() Update {
 	switch pat, _, upd, extra := expDiffBegin(&c.buf); pat {
