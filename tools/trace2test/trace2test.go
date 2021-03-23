@@ -1,3 +1,18 @@
+// Program trace2test converts traces of Unison runs into unit tests for Core.
+// Unison's writes become calls to ProcOutput, Unison's reads become assertions on Update.Input,
+// and so on. It is used in the following workflow:
+//
+// 1. Run Unison under strace:
+//	strace -o /path/to/trace -s 1000000 unison ...
+//
+// 2. Type into Unison the same input that you expect Gunison to send.
+//
+// 3. Convert into code:
+//	go run ./tools/trace2test </path/to/trace >>core_test.go
+//
+// 4. Edit the resulting code. It is far from ready, because trace2test doesn't know
+// which events trigger which, what should Updates contain other than Input, etc.
+//
 // TODO: Doesn't support `strace -f`, making it cumbersome to deal with output from diff/merge commands.
 package main
 
@@ -16,8 +31,9 @@ func main() {
 			"instead of stuffing each write() entirely into one ProcOutput()")
 	flag.Parse()
 
-	fmt.Println("c := NewCore()")
-	fmt.Println("assert.Zero(t, c.ProcStart())")
+	fmt.Println("\nfunc Test???(t *testing.T) {")
+	fmt.Println("\tc := NewCore()")
+	fmt.Println("\tassert.Zero(t, c.ProcStart())")
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(nil, 1024*1024)
 	var output string
@@ -60,16 +76,16 @@ func main() {
 			output += out
 
 		case in != "":
-			fmt.Printf("assertEqual(t, ?,\n\tUpdate{Input: []byte(%q)})\n", in)
+			fmt.Printf("\tassertEqual(t, ?,\n\t\tUpdate{Input: []byte(%q)})\n", in)
 
 		case interrupt:
-			fmt.Print("assertEqual(t, ?,\n\tUpdate{Interrupt: true})\n")
+			fmt.Print("\tassertEqual(t, ?,\n\t\tUpdate{Interrupt: true})\n")
 
 		case kill:
-			fmt.Print("assertEqual(t, ?,\n\tUpdate{Kill: true})\n")
+			fmt.Print("\tassertEqual(t, ?,\n\t\tUpdate{Kill: true})\n")
 
 		case exit:
-			fmt.Printf("assert.Zero(t, c.ProcExit(%d, nil))\n", code)
+			fmt.Printf("\tassert.Zero(t, c.ProcExit(%d, nil))\n", code)
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -79,6 +95,7 @@ func main() {
 	if output != "" {
 		dumpOutput(output, random)
 	}
+	fmt.Println("}")
 }
 
 func dumpOutput(output string, random bool) {
@@ -89,7 +106,7 @@ func dumpOutput(output string, random bool) {
 				chunk = output[:n]
 			}
 		}
-		fmt.Printf("assert.Zero(t, c.ProcOutput([]byte(%q)))\n", chunk)
+		fmt.Printf("\tassert.Zero(t, c.ProcOutput([]byte(%q)))\n", chunk)
 		output = output[len(chunk):]
 	}
 }

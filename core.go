@@ -10,35 +10,51 @@ import (
 	"time"
 )
 
+// Core parses output from Unison, maintains a model of Unison's current state,
+// accepts commands from the user, and produces input to drive Unison to the desired state.
+// Core does not perform I/O itself. Think "sans I/O" protocol implementations,
+// or the "functional core, imperative shell" pattern (but not actually functional).
+// The main "shell" performs all I/O with Unison and the user, feeds events into Core by calling
+// the respective methods/functions, and updates the UI according to the returned Update
+// and the current values of the Core's fields.
 type Core struct {
-	Running          bool
-	Busy             bool
-	Status           string
-	Progress         string  // empty string iff not progressing
-	ProgressFraction float64 // 0 to 1; or -1 for unknown
+	// These fields describe the general state of the Core and the underlying Unison process.
+	Running          bool    // true iff Unison is running
+	Busy             bool    // true iff the core is waiting for events from Unison
+	Status           string  // description of what's currently going on
+	Progress         string  // description of the current operation's progress; empty string iff unknown
+	ProgressFraction float64 // quantitative representation of Progress: 0 to 1, or -1 for "no estimate"
 
-	Left, Right string
-	Items       []Item
-	Plan        map[string]Action
+	// These fields become non-zero once the corresponding information is parsed from Unison.
+	Left, Right string            // names of replicas
+	Items       []Item            // items to synchronize
+	Plan        map[string]Action // what to do on Sync for each Path in Items - can be changed by the UI
 
+	// These functions must be called when the user requests the corresponding action via the UI.
+	// Any of these fields may be nil, which means the action is impossible and must not be offered
+	// to the user.
+	Diff      func(string) Update // load differences for the item with the given Path
+	Sync      func() Update       // start synchronization according to Plan
+	Quit      func() Update       // quit Unison gracefully
+	Abort     func() Update       // abort current operation - often (but not always) same as Interrupt
+	Interrupt func() Update       // interrupt the Unison process
+	Kill      func() Update       // kill the Unison process
+
+	buf        bytes.Buffer
 	procBuffer func() Update
-	ProcExit   func(int, error) Update
-	ProcError  func(error) Update
-	Diff       func(string) Update
-	Sync       func() Update
-	Quit       func() Update
-	Abort      func() Update
-	Interrupt  func() Update
-	Kill       func() Update
-
-	buf  bytes.Buffer
-	seek string
+	exitCodes  map[int]string
+	procError  func(error) Update
+	seek       string
 }
 
+// Core is a kind of a state machine, but it doesn't have a discrete "state" field.
+// Its state is the combination of all its fields. The most important are the various functions
+// returning Update, which specify how to handle incoming events and transition to new states.
+
+// transition replaces the state of c with that of newc, automatically maintaining pieces of state
+// that must be preserved across all transitions. For example, even after Unison exits and there's
+// nothing more to do, the UI is still displaying the tree, for which it still needs c.Items and c.Plan.
 func (c *Core) transition(newc Core) Update {
-	// Some pieces of state have to be preserved in all transitions.
-	// For example, even after Unison exits and there's nothing more to do, the UI is
-	// still displaying the tree, for which it still needs c.Items and c.Plan.
 	if newc.Left == "" {
 		newc.Left = c.Left
 	}
@@ -51,26 +67,27 @@ func (c *Core) transition(newc Core) Update {
 	if newc.Plan == nil {
 		newc.Plan = c.Plan
 	}
-	newc.buf = c.buf
-
-	if newc.ProcError == nil {
-		newc.ProcError = echoError
+	if newc.exitCodes == nil {
+		newc.exitCodes = c.exitCodes
 	}
-
+	newc.buf = c.buf
 	*c = newc
 	return c.next()
 }
 
+// Update describes the I/O that must be performed as a result of some event,
+// before calling any further Update-returning methods/functions on Core.
 type Update struct {
-	Progressed bool
-	Diff       []byte
-	Input      []byte
-	Interrupt  bool
-	Kill       bool
-	Messages   []Message
-	Alert      Alert
+	Progressed bool      // if true, the user is to be informed that progress has been made
+	Diff       []byte    // the diff (previously requested by calling Core.Diff) to be shown to the user
+	Input      []byte    // to be written to Unison's stdin
+	Interrupt  bool      // if true, the Unison process is to be interrupted
+	Kill       bool      // if true, the Unison process is to be killed
+	Messages   []Message // to be shown to the user
+	Alert      Alert     // to be shown to the user if non-zero
 }
 
+// join returns an Update that is equivalent to first performing upd and then performing other.
 func (upd Update) join(other Update) Update {
 	upd = Update{
 		Progressed: upd.Progressed || other.Progressed,
@@ -82,7 +99,7 @@ func (upd Update) join(other Update) Update {
 		Alert:      upd.Alert,
 	}
 	if other.Diff != nil {
-		upd.Diff = other.Diff
+		upd.Diff = other.Diff // should never both be non-nil
 	}
 	if other.Alert.Text != "" {
 		if upd.Alert.Text != "" {
@@ -93,18 +110,20 @@ func (upd Update) join(other Update) Update {
 	return upd
 }
 
+// An Item is what will be synchronized by Unison.
 type Item struct {
 	Path        string
 	Left, Right Content
-	Action      Action
+	Action      Action // original (recommended by Unison) - overridden by Core.Plan
 }
 
+// Content describes an Item in one of the replicas.
 type Content struct {
 	Type     Type
-	Status   Status
-	Props    string
-	Modified time.Time
-	Size     int64
+	Status   Status    // zero if unknown (only when Type == Absent)
+	Props    string    // human-readable description of properties
+	Modified time.Time // zero if unknown
+	Size     int64     // in bytes; zero if unknown
 }
 
 type Type byte
@@ -150,46 +169,56 @@ const (
 	Error
 )
 
+// Alert describes a situation that requires a "proceed/abort" decision by the user.
+// Exactly one of Proceed or Abort must be called before continuing normal calls to Core's
+// methods/functions.
 type Alert struct {
 	Message
 	Proceed func() Update
 	Abort   func() Update
 }
 
+// NewCore returns a Core in its initial state, when Unison is about to be started.
 func NewCore() *Core {
 	c := &Core{
 		Busy:   true,
 		Status: "Starting Unison",
 	}
-	c.ProcError = c.procErrorBeforeStart
+	c.procError = c.procErrorBeforeStart
 	return c
 }
 
+// next processes any events implictly caused by state changes within the Core. For example,
+// when procBuffer has changed, the new one might be able to parse more of the buffer's current contents.
+// As a rule of thumb, whenever c has made some progress and wants to return upd, it must
+// return upd.join(c.next()) instead.
 func (c *Core) next() Update {
 	var upd Update
 	if c.buf.Len() > 0 && c.procBuffer != nil {
 		upd = c.procBuffer()
 	}
 	if c.buf.Len() > 0 {
-		upd = upd.join(c.procBufCommon())
+		upd = upd.join(c.procBufferCommon())
 	}
 	return upd
 }
 
+// ProcStart must be called when the Unison process is started.
 func (c *Core) ProcStart() Update {
 	return c.transition(Core{
 		Running: true,
 		Busy:    true,
 		Status:  "Starting Unison",
 
-		procBuffer: c.procBufStartup,
-		ProcExit:   c.procExitBeforeSync,
-		ProcError:  c.procErrorUnrecoverable,
-		Interrupt:  c.interrupt,
-		Kill:       c.kill,
+		procBuffer: c.procBufferStartup,
+		procError:  c.procErrorUnrecoverable,
+
+		Interrupt: c.interrupt,
+		Kill:      c.kill,
 	})
 }
 
+// ProcOutput must be called when data is received from Unison's stdout or stderr.
 func (c *Core) ProcOutput(data []byte) Update {
 	_, _ = c.buf.Write(data)
 	return c.next()
@@ -201,13 +230,37 @@ func (c *Core) procErrorBeforeStart(err error) Update {
 	}))
 }
 
+// ProcExit must be called when the Unison process exits with the given code
+// and error condition as reported by os/exec.(*Cmd).Wait.
+func (c *Core) ProcExit(code int, err error) Update {
+	output := c.buf.String()
+	c.buf.Reset()
+	status := "Unison exited"
+	if code == 0 {
+		status = "Finished successfully"
+	}
+	if s, ok := c.exitCodes[code]; ok {
+		status = s
+	}
+	return echo(output, Info).
+		join(echoError(err)).
+		join(c.transition(Core{Status: status}))
+}
+
+// ProcError must be called when an I/O error happens with Unison.
+func (c *Core) ProcError(err error) Update {
+	if c.procError != nil {
+		return c.procError(err)
+	}
+	return echoError(err)
+}
+
 func (c *Core) quit() Update {
 	return Update{Input: []byte("q\n")}.join(c.transition(Core{
 		Running: true,
 		Busy:    true,
 		Status:  "Quitting Unison",
 
-		ProcExit:  c.ProcExit,
 		Interrupt: c.interrupt,
 		Kill:      c.kill,
 	}))
@@ -219,8 +272,7 @@ func (c *Core) interrupt() Update {
 		Busy:    true,
 		Status:  "Interrupting Unison",
 
-		ProcExit: c.ProcExit,
-		Kill:     c.kill,
+		Kill: c.kill,
 	}))
 }
 
@@ -229,27 +281,7 @@ func (c *Core) kill() Update {
 		Running: true,
 		Busy:    true,
 		Status:  "Killing Unison",
-
-		ProcExit: c.ProcExit,
 	}))
-}
-
-func (c *Core) handleExit(code int, err error, codeStatus map[int]string) Update {
-	output := c.buf.String()
-	c.buf.Reset()
-	status := "Unison exited"
-	if s, ok := codeStatus[code]; ok {
-		status = s
-	}
-	return echo(output, Info).
-		join(echoError(err)).
-		join(c.transition(Core{Status: status}))
-}
-
-func (c *Core) procExitBeforeSync(code int, err error) Update {
-	return c.handleExit(code, err, map[int]string{
-		0: "Finished successfully",
-	})
 }
 
 func (c *Core) procErrorUnrecoverable(err error) Update {
@@ -303,10 +335,10 @@ var (
 
 	patPlanBeginning   = lineBgn + "(.{12})   (.{12}) +\r?" + patItemPrompt
 	patItemPrompt      = lineBgn + patItem + patPrompt
-	patItem            = " *" + patShortTypeStatus + " " + anyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
+	patItem            = " *" + patShortTypeStatus + " " + AnyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
 	patItemHeader      = line(patItem)
-	patItemSideInfo    = " : (?:(absent|deleted)|" + anyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
+	patItemSideInfo    = " : (?:(absent|deleted)|" + AnyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
 
 	// Unison prepends diff output with a blank line, the command line, and two more blank lines.
 	patDiffHeader = lineBgn + "\r?\n.+?\r?\n\r?\n"
@@ -379,7 +411,7 @@ var parseTypeStatus = map[string]struct {
 
 var expCommon = makeExpecter(true, &patReallyProceed, &patPressReturn)
 
-func (c *Core) procBufCommon() Update {
+func (c *Core) procBufferCommon() Update {
 	switch pat, _, upd, extra := expCommon(&c.buf); pat {
 	case &patReallyProceed:
 		upd.Alert = Alert{
@@ -406,7 +438,7 @@ var expStartup = makeExpecter(false, &patContactingServer, &patPermissionDenied,
 	&patLookingForChanges, &patFileProgress, &patWaitingForChanges, &patReconcilingChanges,
 	&patPlanBeginning)
 
-func (c *Core) procBufStartup() Update {
+func (c *Core) procBufferStartup() Update {
 	switch pat, m, upd, _ := expStartup(&c.buf); pat {
 	case &patContactingServer, &patLookingForChanges, &patWaitingForChanges, &patReconcilingChanges:
 		c.Status = m[1]
@@ -421,7 +453,7 @@ func (c *Core) procBufStartup() Update {
 		upd.Progressed = true
 		c.Progress = m[1]
 		c.ProgressFraction = -1
-		c.procBuffer = c.procBufFileProgress
+		c.procBuffer = c.procBufferFileProgress
 		return upd.join(c.next())
 
 	case &patPlanBeginning:
@@ -434,10 +466,10 @@ func (c *Core) procBufStartup() Update {
 			Status:  "Assembling plan",
 
 			procBuffer: c.makeProcBufPlan(),
-			ProcExit:   c.procExitBeforeSync,
-			ProcError:  c.procErrorUnrecoverable,
-			Interrupt:  c.interrupt,
-			Kill:       c.kill,
+			procError:  c.procErrorUnrecoverable,
+
+			Interrupt: c.interrupt,
+			Kill:      c.kill,
 		}))
 
 	default:
@@ -447,7 +479,7 @@ func (c *Core) procBufStartup() Update {
 
 var expFileProgress = makeExpecter(false, &patFileProgressCont)
 
-func (c *Core) procBufFileProgress() Update {
+func (c *Core) procBufferFileProgress() Update {
 	// We're here when Unison has printed something like "- path/to/file". Because there is
 	// no newline or other delimiter, we can't know if "path/to/file" is the entire path or just
 	// the chunk that happened to fit into some buffer.
@@ -458,7 +490,7 @@ func (c *Core) procBufFileProgress() Update {
 
 	default: // But if there's anything else, we revert to the previous state.
 		// (There has to be something else, because procBuffer is only called on a non-empty buffer.)
-		c.procBuffer = c.procBufStartup
+		c.procBuffer = c.procBufferStartup
 		return upd.join(c.next())
 	}
 }
@@ -534,8 +566,8 @@ func (c *Core) transitionToReady() Update {
 		Running: true,
 		Status:  "Ready to synchronize",
 
-		ProcExit:  c.procExitBeforeSync,
-		ProcError: c.procErrorUnrecoverable,
+		procError: c.procErrorUnrecoverable,
+
 		Diff:      c.diff,
 		Sync:      c.sync,
 		Quit:      c.quit,
@@ -550,17 +582,17 @@ func (c *Core) restorePrompt() Update {
 		Busy:    true,
 		Status:  "Waiting for Unison",
 
-		procBuffer: c.procBufRestorePrompt,
-		ProcExit:   c.procExitBeforeSync,
-		ProcError:  c.procErrorUnrecoverable,
-		Interrupt:  c.interrupt,
-		Kill:       c.kill,
+		procBuffer: c.procBufferRestorePrompt,
+		procError:  c.procErrorUnrecoverable,
+
+		Interrupt: c.interrupt,
+		Kill:      c.kill,
 	})
 }
 
 var expSeek = makeExpecter(false, &patItemPrompt, &patProceedUpdates)
 
-func (c *Core) procBufRestorePrompt() Update {
+func (c *Core) procBufferRestorePrompt() Update {
 	switch pat, _, upd, _ := expSeek(&c.buf); pat {
 	case &patItemPrompt, &patProceedUpdates:
 		return upd.join(c.transitionToReady())
@@ -576,23 +608,23 @@ func (c *Core) diff(path string) Update {
 		Busy:    true,
 		Status:  "Requesting diff",
 
-		procBuffer: c.procBufDiffSeek,
-		ProcExit:   c.procExitBeforeSync,
-		ProcError:  c.procErrorUnrecoverable,
-		Abort:      c.restorePrompt,
-		Interrupt:  c.interrupt,
-		Kill:       c.kill,
+		procBuffer: c.procBufferDiffSeek,
+		procError:  c.procErrorUnrecoverable,
+
+		Abort:     c.restorePrompt,
+		Interrupt: c.interrupt,
+		Kill:      c.kill,
 
 		seek: path,
 	}))
 }
 
-func (c *Core) procBufDiffSeek() Update {
+func (c *Core) procBufferDiffSeek() Update {
 	switch pat, m, upd, _ := expSeek(&c.buf); pat {
 	case &patItemPrompt:
 		if m[2] == c.seek { // found the path to diff
 			upd.Input = []byte("d\n")
-			c.procBuffer = c.procBufDiffBegin
+			c.procBuffer = c.procBufferDiffBegin
 			c.Abort = c.interrupt
 		} else {
 			upd.Input = []byte("n\n")
@@ -610,10 +642,10 @@ func (c *Core) procBufDiffSeek() Update {
 
 var expDiffBegin = makeExpecter(true, &patShortcut, &patDiffHeader, &patItemPrompt)
 
-func (c *Core) procBufDiffBegin() Update {
+func (c *Core) procBufferDiffBegin() Update {
 	switch pat, _, upd, extra := expDiffBegin(&c.buf); pat {
 	case &patDiffHeader:
-		c.procBuffer = c.procBufDiffOutput
+		c.procBuffer = c.procBufferDiffOutput
 		return upd.
 			join(echo(extra, Warning)). // diff's stderr (if any) gets printed before the "header"
 			join(c.next())
@@ -630,7 +662,7 @@ func (c *Core) procBufDiffBegin() Update {
 
 var expDiffOutput = makeExpecter(true, &patItemPrompt)
 
-func (c *Core) procBufDiffOutput() Update {
+func (c *Core) procBufferDiffOutput() Update {
 	switch pat, _, upd, out := expDiffOutput(&c.buf); pat {
 	case &patItemPrompt:
 		if strings.TrimSpace(out) != "" {
@@ -649,21 +681,22 @@ func (c *Core) sync() Update {
 		Busy:    true,
 		Status:  "Starting synchronization",
 
-		procBuffer: c.procBufStartSync,
-		ProcExit:   c.procExitBeforeSync,
-		ProcError:  c.procErrorUnrecoverable,
-		Abort:      c.interrupt,
-		Interrupt:  c.interrupt,
-		Kill:       c.kill,
+		procBuffer: c.procBufferStartSync,
+		procError:  c.procErrorUnrecoverable,
+
+		Abort:     c.interrupt,
+		Interrupt: c.interrupt,
+		Kill:      c.kill,
 	}))
 }
 
 var expStartSync = makeExpecter(true, &patItemPrompt, &patItemHeader, &patProceedUpdates)
 
-func (c *Core) procBufStartSync() Update {
+func (c *Core) procBufferStartSync() Update {
 	pat, m, upd, extra := expStartSync(&c.buf)
 	extra = strings.TrimSpace(extra)
 	if extra != "" {
+		// Any unexpected output at this crucial phase is too risky to ignore (echo).
 		return upd.join(c.fatalf(false, "Cannot parse the following output from Unison:\n%s", extra))
 	}
 
@@ -679,6 +712,9 @@ func (c *Core) procBufStartSync() Update {
 		upd.Input = sendAction[act]
 		return upd.join(c.next())
 
+	case &patItemHeader:
+		return upd.join(c.next())
+
 	case &patProceedUpdates:
 		upd.Input = []byte("y\n")
 		return upd.join(c.transition(Core{
@@ -686,37 +722,30 @@ func (c *Core) procBufStartSync() Update {
 			Busy:    true,
 			Status:  "Starting synchronization",
 
-			procBuffer: c.procBufSync,
-			ProcExit:   c.procExitSync,
-			ProcError:  echoError,
-			Abort:      c.interrupt,
-			Interrupt:  c.interrupt,
-			Kill:       c.kill,
+			procBuffer: c.procBufferSync,
+			exitCodes: map[int]string{
+				// These codes, documented in the Unison manual, actually take on their meaning
+				// only after synchronization begins.
+				0: "Finished successfully",
+				1: "Finished successfully (some files skipped)",
+				2: "Finished with errors",
+			},
+
+			Abort:     c.interrupt,
+			Interrupt: c.interrupt,
+			Kill:      c.kill,
 		}))
 
-	case nil:
-		return upd
-
 	default:
-		return upd.join(c.next())
+		return upd
 	}
-}
-
-func (c *Core) procExitSync(code int, err error) Update {
-	return c.handleExit(code, err, map[int]string{
-		// These codes, documented in the Unison manual, take on their meaning
-		// only after synchronization begins.
-		0: "Finished successfully",
-		1: "Finished successfully (some files skipped)",
-		2: "Finished with errors",
-	})
 }
 
 var expSync = makeExpecter(false, &patPropagatingUpdates, &patStartedFinishedPropagating,
 	&patSyncThreadStatus, &patSyncProgress, &patMergeNoise, &patWhySkipped, &patShortcut,
 	&patSavingState, &patSomeLine)
 
-func (c *Core) procBufSync() Update {
+func (c *Core) procBufferSync() Update {
 	switch pat, m, upd, _ := expSync(&c.buf); pat {
 	case &patPropagatingUpdates, &patSavingState:
 		c.Status = m[1]
@@ -745,7 +774,18 @@ func (c *Core) procBufSync() Update {
 	}
 }
 
-func makeExpecter(raw bool, patterns ...*string) func(*bytes.Buffer) (*string, []string, Update, string) {
+// makeExpecter creates a function to match the buffer's current contents according to regexp patterns.
+// That function returns all zeroes if none of the patterns match. Otherwise, it consumes from the buffer
+// and returns the pattern that matched (exactly one of the given patterns) and its submatches.
+//
+// If multiple patterns match, the one that matches earlier in the buffer (not in the argument list)
+// is used.
+//
+// If there is any text before the match, behavior depends on the raw argument.
+// If raw is true, that text is simply returned as an extra string.
+// Otherwise, it is echoed in the returned Update's Messages.
+func makeExpecter(raw bool, patterns ...*string,
+) func(*bytes.Buffer) (pattern *string, sub []string, upd Update, extra string) {
 	start := make([]int, len(patterns))
 	start[0] = 1
 	combined := ""
@@ -758,7 +798,7 @@ func makeExpecter(raw bool, patterns ...*string) func(*bytes.Buffer) (*string, [
 	}
 	exp := regexp.MustCompile(combined)
 
-	return func(buf *bytes.Buffer) (pattern *string, match []string, upd Update, extra string) {
+	return func(buf *bytes.Buffer) (pattern *string, sub []string, upd Update, extra string) {
 		data := buf.String()
 		m := exp.FindStringSubmatch(data)
 		if m == nil {
@@ -775,14 +815,14 @@ func makeExpecter(raw bool, patterns ...*string) func(*bytes.Buffer) (*string, [
 			if len(m[start[i]]) > 0 {
 				pattern = pat
 				if i < len(patterns)-1 {
-					match = m[start[i]:start[i+1]]
+					sub = m[start[i]:start[i+1]]
 				} else {
-					match = m[start[i]:]
+					sub = m[start[i]:]
 				}
 				break
 			}
 		}
-		log.Printf("match: %q", match)
+		log.Printf("match: %q", sub)
 		return
 	}
 }

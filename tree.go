@@ -44,13 +44,12 @@ func displayItemAction(iter *gtk.TreeIter, act Action) {
 	var color string
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
 	orig := core.Items[idx].Action
-	// This choice of colors is close to that of unison-gtk, but left-to-right is uncolored.
-	// This assymmetry between left-to-right and right-to-left makes them easier to tell apart.
-	// TODO: This is all arbitrary, and may not play well with themes.
+	// TODO: These colors are all arbitrary, and may not play well with themes.
 	// Perhaps colors, as well as strings themselves, should be configurable.
 	if act == orig {
 		switch act {
 		case LeftToRight:
+			// Make it easier to distinguish LeftToRight and RightToLeft by painting them differently.
 			// FIXME: this is supposed to be "uncolored", i.e. "foreground not set", but
 			// setting "foreground-set" from a treestore column doesn't seem to work for me,
 			// should find a proper way
@@ -158,6 +157,7 @@ var (
 		Merge:              "←M→",
 	}
 	describeActionFull = map[Action]string{
+		// TODO: replace "left" and "right" with core.Left and core.Right (also in menus, etc.)
 		Skip:               "skip",
 		LeftToRight:        "propagate from left to right",
 		LeftToRightPartial: "propagate from left to right, partial",
@@ -172,8 +172,11 @@ func iconName(item Item) string {
 	if content.Type == Absent {
 		content = item.Right
 	}
+	// This uses only names from freedesktop.org's Icon Naming Specification, which are surely available.
+	// TODO: There are probably many more names, de-facto common across themes, that we could use.
 	switch content.Type {
 	case File:
+		// TODO: Use GIO's type-from-filename facility? it probably has better coverage
 		switch typ := mime.TypeByExtension(path.Ext(item.Path)); {
 		case strings.HasPrefix(typ, "audio/"):
 			return "audio-x-generic"
@@ -315,7 +318,7 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 	}
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
 	item := core.Items[idx]
-	switch column.GetXOffset() {
+	switch column.GetXOffset() { // don't know how else to determine the column's "identity" from gotk3
 	case pathColumn.GetXOffset():
 		tip.SetText(item.Path)
 	case leftColumn.GetXOffset():

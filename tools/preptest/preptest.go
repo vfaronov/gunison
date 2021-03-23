@@ -1,3 +1,6 @@
+// Program preptest creates a Unison test profile with replicas in a predefined state.
+//
+// See preptest -help for details.
 package main
 
 import (
@@ -14,8 +17,11 @@ import (
 func main() {
 	flag.Usage = func() {
 		fmt.Fprint(flag.CommandLine.Output(), "Usage: preptest [flags] profile left right\n"+
-			"Create unison profile rooted in the left and right directories,\n"+
-			"and fill left and right with example replicas/changes for testing.\n",
+			"Create Unison profile rooted in the left and right directories,\n"+
+			"with replicas in a predefined state, and the corresponding Unison archives.\n"+
+			"The profile.prf and archive files are created in the $UNISON directory, which\n"+
+			"you must set in the environment to avoid interfering with your real ~/.unison.\n"+
+			"After preptest, you're all set to run `gunison profile` or `unison profile`.\n",
 		)
 		flag.PrintDefaults()
 	}
@@ -27,9 +33,10 @@ func main() {
 		err       error
 	)
 	flag.StringVar(&tplName, "template", "assorted",
-		"`name` of the template according to which left and right will be filled")
+		"`name` of the template according to which left and right will be filled\n"+
+			"(see code for available templates)")
 	flag.StringVar(&extra, "extra", "",
-		"extra config text to put into the profile.prf file")
+		"extra config `text` to put into the profile.prf file")
 	flag.StringVar(&rootLeft, "root-left", "",
 		"use `root` instead of left as the Unison root")
 	flag.StringVar(&rootRight, "root-right", "",

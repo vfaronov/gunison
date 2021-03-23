@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var needGTK = false // depending on -tags
-
 func TestMain(m *testing.M) {
 	// Silence debug logging unless running under -v.
 	// TODO: Instead, inject t.Log as logger into code under test,
@@ -24,13 +22,11 @@ func TestMain(m *testing.M) {
 	if !testing.Verbose() {
 		log.SetOutput(io.Discard)
 	}
-
-	if needGTK {
-		gtk.Init(nil)
-	}
-
+	gtk.Init(nil)
 	os.Exit(m.Run())
 }
+
+// These tests are partly generated with tools/trace2test.
 
 func TestMinimal(t *testing.T) {
 	c := NewCore()

@@ -1,5 +1,3 @@
-// +build gtk
-
 package main
 
 import (
@@ -9,10 +7,6 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	needGTK = true
-}
 
 func TestDisplayItems(t *testing.T) {
 	initTreeStore(t)

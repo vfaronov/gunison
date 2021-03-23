@@ -56,7 +56,7 @@ func mustGetObject(b *gtk.Builder, name string) glib.IObject {
 func FitText(obj TextFitter, text string) {
 	w, _ := obj.GetSizeRequest()
 	// TODO: measure actual size of text with Pango instead of this arbitrary and crude approximation
-	// (better yet, find a way to achieve the desired look without this crutch).
+	// (better yet, find a way to achieve the desired look without this whole crutch).
 	maxChars := w / 12
 	if chars := utf8.RuneCountInString(text); chars > maxChars {
 		runes := []rune(text)
@@ -92,8 +92,8 @@ type DialogOption struct {
 	// TODO: also mark button with suggested-action/destructive-action
 }
 
-// More readable than "return true" / "return false".
 const (
+	// For GTK signal handlers, more readable than "return false" / "return true".
 	handleDefault = false
 	blockDefault  = true
 )
@@ -110,7 +110,23 @@ func MustGetColumn(store *gtk.TreeStore, iter *gtk.TreeIter, column int) interfa
 	return v
 }
 
-func anyOf(m interface{}) string {
+// ClearCursor removes the cursor indicating focus on treeview, while keeping the focus itself.
+func ClearCursor(treeview *gtk.TreeView) {
+	for {
+		path, _ := treeview.GetCursor()
+		if path == nil {
+			return
+		}
+		path.Down()
+		// As we keep descending, eventually the path becomes invalid, and
+		// gtk_tree_view_set_cursor's documented "unset" behavior kicks in.
+		treeview.SetCursor(path, nil, false)
+	}
+}
+
+// AnyOf returns a regexp pattern that matches and captures any of the keys in m,
+// which must be a map with string keys.
+func AnyOf(m interface{}) string {
 	pat := "("
 	first := true
 	iter := reflect.ValueOf(m).MapRange()
@@ -123,15 +139,4 @@ func anyOf(m interface{}) string {
 	}
 	pat += ")"
 	return pat
-}
-
-func ClearCursor(treeview *gtk.TreeView) {
-	for {
-		path, _ := treeview.GetCursor()
-		if path == nil {
-			return
-		}
-		path.Down()
-		treeview.SetCursor(path, nil, false)
-	}
 }
