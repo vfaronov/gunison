@@ -55,7 +55,7 @@
     <columns>
       <!-- column-name idx -->
       <column type="gint"/>
-      <!-- column-name path -->
+      <!-- column-name name -->
       <column type="gchararray"/>
       <!-- column-name left -->
       <column type="gchararray"/>
@@ -69,6 +69,8 @@
       <column type="gchararray"/>
       <!-- column-name font-weight -->
       <column type="gint"/>
+      <!-- column-name path -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkWindow" id="window">

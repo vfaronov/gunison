@@ -16,24 +16,26 @@ import (
 
 const (
 	colIdx = iota
-	colPath
+	colName
 	colLeft
 	colRight
 	colAction
 	colIconName
 	colActionColor
 	colFontWeight
+	colPath
 )
 
 func displayItems() {
 	for i, item := range core.Items {
 		iter := treestore.Append(nil)
-		mustf(treestore.SetValue(iter, colPath, item.Path), "set path column")
+		mustf(treestore.SetValue(iter, colName, item.Path), "set name column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 		mustf(treestore.SetValue(iter, colFontWeight, fontWeight(item)), "set font-weight column")
+		mustf(treestore.SetValue(iter, colPath, item.Path), "set path column")
 		displayItemAction(iter, item.Action)
 	}
 }
