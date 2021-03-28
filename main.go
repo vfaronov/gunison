@@ -256,9 +256,10 @@ func update(upd Update) {
 
 	if core.Items != nil && !treeview.GetVisible() {
 		displayItems()
+		treeview.ExpandAll()
 		treeview.SetVisible(true)
 		treeview.GrabFocus()
-		ClearCursor(treeview)
+		ClearCursor(treeview, treeSelection)
 	}
 
 	updateMenuItems()

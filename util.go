@@ -111,7 +111,7 @@ func MustGetColumn(store *gtk.TreeStore, iter *gtk.TreeIter, column int) interfa
 }
 
 // ClearCursor removes the cursor indicating focus on treeview, while keeping the focus itself.
-func ClearCursor(treeview *gtk.TreeView) {
+func ClearCursor(treeview *gtk.TreeView, treesel *gtk.TreeSelection) {
 	for {
 		path, _ := treeview.GetCursor()
 		if path == nil {
@@ -121,6 +121,7 @@ func ClearCursor(treeview *gtk.TreeView) {
 		// As we keep descending, eventually the path becomes invalid, and
 		// gtk_tree_view_set_cursor's documented "unset" behavior kicks in.
 		treeview.SetCursor(path, nil, false)
+		treesel.UnselectAll()
 	}
 }
 

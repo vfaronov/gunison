@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gotk3/gotk3/gtk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +21,7 @@ func TestMain(m *testing.M) {
 	if !testing.Verbose() {
 		log.SetOutput(io.Discard)
 	}
-	gtk.Init(nil)
+	setupTreeTests()
 	os.Exit(m.Run())
 }
 

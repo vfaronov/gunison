@@ -26,16 +26,100 @@ const (
 	colPath
 )
 
+// displayItems makes the treeview display core.Items, one leaf node per Item,
+// possibly arranging them in a tree and generating parent nodes as appropriate.
+// It satisfies several properties defined in tree_test.go.
 func displayItems() {
+	// First, we do a pass over all items to find path prefixes (directories)
+	// covering contiguous runs of items, which we will group into parent nodes.
+	type span struct{ start, end int }
+	covers := make(map[string]span, 2*len(core.Items)) // at least one entry per item, plus some prefixes
+	const invalid = -1
+	for i := range core.Items {
+		path := core.Items[i].Path
+		// Each item must be a leaf node, so need to prevent deriving a parent node for the same path.
+		covers[path] = span{invalid, invalid}
+		for j := 1; j < len(path); j++ { // Iterate over all prefixes of the path.
+			if path[j] != '/' {
+				continue
+			}
+			prefix := path[:j]
+			cover, ok := covers[prefix]
+			switch {
+			case !ok: // new prefix
+				cover.start = i
+				cover.end = i
+			case cover.end == i-1: // continuing prefix
+				cover.end = i
+			default: // discontiguous prefix
+				cover.end = invalid
+			}
+			covers[prefix] = cover
+		}
+	}
+
+	treestore.Clear()
+
+	// Now generate the nodes, keeping a stack of parents.
+	type frame struct {
+		prefix string
+		iter   *gtk.TreeIter
+		end    int
+	}
+	parent := frame{end: len(core.Items) - 1}
+	var stack []frame
 	for i, item := range core.Items {
-		iter := treestore.Append(nil)
-		mustf(treestore.SetValue(iter, colName, item.Path), "set name column")
+		// Close parents (pop frames) as necessary.
+		for i > parent.end {
+			parent = stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+		}
+
+		// Open new parents for the prefixes that begin at this item and cover multiple items.
+		// But postpone creating a parent until we see a prefix with a shorter span,
+		// because if several prefixes cover the same span, we collapse them into one parent.
+		path := item.Path
+		var lastPrefix string
+		lastCover := span{invalid, invalid}
+		dumpPrefix := func() {
+			iter := treestore.Append(parent.iter)
+			name := strings.TrimLeft(lastPrefix[len(parent.prefix):], "/")
+			mustf(treestore.SetValue(iter, colName, name), "set name column")
+			mustf(treestore.SetValue(iter, colIconName, "folder"), "set icon-name column")
+			mustf(treestore.SetValue(iter, colIdx, -1), "set idx column") // FIXME: do I need this?
+			mustf(treestore.SetValue(iter, colPath, lastPrefix), "set path column")
+			stack = append(stack, parent)
+			parent = frame{lastPrefix, iter, lastCover.end}
+		}
+		for j := 1; j < len(path); j++ { // Iterate over all prefixes of the path.
+			if path[j] != '/' {
+				continue
+			}
+			prefix := path[:j]
+			cover := covers[prefix]
+			if cover.start != i || cover.end <= i {
+				continue
+			}
+			if lastCover.end != invalid && lastCover.end > cover.end {
+				dumpPrefix()
+			}
+			lastPrefix = prefix
+			lastCover = cover
+		}
+		if lastCover.end != invalid {
+			dumpPrefix()
+		}
+
+		// Finally, display the item itself.
+		iter := treestore.Append(parent.iter)
+		name := strings.TrimLeft(path[len(parent.prefix):], "/")
+		mustf(treestore.SetValue(iter, colName, name), "set name column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 		mustf(treestore.SetValue(iter, colFontWeight, fontWeight(item)), "set font-weight column")
-		mustf(treestore.SetValue(iter, colPath, item.Path), "set path column")
+		mustf(treestore.SetValue(iter, colPath, path), "set path column")
 		displayItemAction(iter, item.Action)
 	}
 }
@@ -247,15 +331,22 @@ func onTreeSelectionChanged() {
 }
 
 func updateMenuItems() {
-	nsel := treeSelection.CountSelectedRows()
+	selectedItems := 0
+	onlyFiles := true
+	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+		if _, item, ok := selectedItem(li); ok {
+			selectedItems++
+			onlyFiles = onlyFiles && item.Left.Type == File && item.Right.Type == File
+		}
+	}
 
-	allowAction := core.Sync != nil && nsel > 0
+	allowAction := core.Sync != nil && selectedItems > 0
 	leftToRightMenuItem.SetSensitive(allowAction)
 	rightToLeftMenuItem.SetSensitive(allowAction)
-	mergeMenuItem.SetSensitive(allowAction) // TODO: for files only
+	mergeMenuItem.SetSensitive(allowAction && onlyFiles)
 	skipMenuItem.SetSensitive(allowAction)
 
-	diffMenuItem.SetSensitive(core.Diff != nil && nsel == 1) // TODO: for files only
+	diffMenuItem.SetSensitive(core.Diff != nil && selectedItems == 1 && onlyFiles)
 }
 
 func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
@@ -265,19 +356,20 @@ func onSkipMenuItemActivate()        { setAction(Skip) }
 
 func setAction(act Action) {
 	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
-		iter, item := selectedItem(li)
-		core.Plan[item.Path] = act
-		displayItemAction(iter, act)
+		if iter, item, ok := selectedItem(li); ok {
+			core.Plan[item.Path] = act
+			displayItemAction(iter, act)
+		}
 	}
 }
 
 func onDiffMenuItemActivate() {
-	li := treeSelection.GetSelectedRows(treestore)
-	if li == nil {
-		return
+	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+		if _, item, ok := selectedItem(li); ok {
+			update(core.Diff(item.Path))
+			return
+		}
 	}
-	_, item := selectedItem(li)
-	update(core.Diff(item.Path))
 }
 
 func onTreeviewQueryTooltip(_ *gtk.TreeView, x, y int, keyboardMode bool, tip *gtk.Tooltip) bool {
@@ -292,7 +384,11 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 	if li == nil || li.Length() != 1 {
 		return false // only show tooltip when a single row is selected
 	}
-	_, item := selectedItem(li)
+	iter, item, ok := selectedItem(li)
+	if !ok {
+		tip.SetText(MustGetColumn(treestore, iter, colPath).(string))
+		return true
+	}
 	tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>plan</b>:\t%s",
 		html.EscapeString(item.Path),
 		html.EscapeString(core.Left),
@@ -319,6 +415,10 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		return false
 	}
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
+	if idx == -1 {
+		tip.SetText(MustGetColumn(treestore, iter, colPath).(string))
+		return true
+	}
 	item := core.Items[idx]
 	switch column.GetXOffset() { // don't know how else to determine the column's "identity" from gotk3
 	case pathColumn.GetXOffset():
@@ -335,9 +435,12 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 	return true
 }
 
-func selectedItem(li *glib.List) (*gtk.TreeIter, Item) {
+func selectedItem(li *glib.List) (*gtk.TreeIter, Item, bool) {
 	iter, err := treestore.GetIter(li.Data().(*gtk.TreePath))
 	mustf(err, "get tree iter")
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
-	return iter, core.Items[idx]
+	if idx == -1 {
+		return iter, Item{}, false
+	}
+	return iter, core.Items[idx], true
 }
