@@ -41,7 +41,7 @@ func displayItems() {
 }
 
 func displayItemAction(iter *gtk.TreeIter, act Action) {
-	mustf(treestore.SetValue(iter, colAction, describeAction[act]), "set action column")
+	mustf(treestore.SetValue(iter, colAction, actionGlyphs[act]), "set action column")
 
 	var color string
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
@@ -150,7 +150,7 @@ func describeContentFull(c Content) string {
 }
 
 var (
-	describeAction = map[Action]string{
+	actionGlyphs = map[Action]string{
 		Skip:               "←?→",
 		LeftToRight:        "→",
 		LeftToRightPartial: "?→",
@@ -158,7 +158,7 @@ var (
 		RightToLeftPartial: "←?",
 		Merge:              "←M→",
 	}
-	describeActionFull = map[Action]string{
+	actionDescriptions = map[Action]string{
 		// TODO: replace "left" and "right" with core.Left and core.Right (also in menus, etc.)
 		Skip:               "skip",
 		LeftToRight:        "propagate from left to right",
@@ -301,7 +301,7 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 		html.EscapeString(core.Right),
 		html.EscapeString(describeContentFull(item.Right)),
 		html.EscapeString(item.Right.Props),
-		describeActionFull[core.Plan[item.Path]],
+		actionDescriptions[core.Plan[item.Path]],
 	))
 	return true
 }
@@ -328,7 +328,7 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 	case rightColumn.GetXOffset():
 		tip.SetText(fmt.Sprintf("%s: %s %s", core.Right, describeContentFull(item.Right), item.Right.Props))
 	case actionColumn.GetXOffset():
-		tip.SetText(describeActionFull[core.Plan[item.Path]])
+		tip.SetText(actionDescriptions[core.Plan[item.Path]])
 	default:
 		return false
 	}

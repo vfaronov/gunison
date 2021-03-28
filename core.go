@@ -249,10 +249,10 @@ func (c *Core) ProcExit(code int, err error) Update {
 
 // ProcError must be called when an I/O error happens with Unison.
 func (c *Core) ProcError(err error) Update {
-	if c.procError != nil {
-		return c.procError(err)
+	if c.procError == nil {
+		return echoError(err)
 	}
-	return echoError(err)
+	return c.procError(err)
 }
 
 func (c *Core) quit() Update {

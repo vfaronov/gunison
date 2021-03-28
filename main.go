@@ -121,7 +121,7 @@ func watchUnison() {
 	var buf [65536]byte
 	for {
 		n, err := unisonR.Read(buf[:])
-		log.Printf("Unison output: %q %v", buf[:n], err)
+		log.Printf("Unison output: %d bytes: %q %v", n, buf[:n], err)
 		if n > 0 {
 			data := make([]byte, n)
 			copy(data, buf[:n])
@@ -213,7 +213,7 @@ func setupWidgets() {
 }
 
 func recvOutput(d []byte) {
-	log.Printf("processing %d bytes of output", len(d))
+	log.Printf("processing Unison output: %d bytes", len(d))
 	update(core.ProcOutput(d))
 }
 
