@@ -656,7 +656,7 @@ func (c *Core) procBufferDiffBegin() Update {
 			join(c.transitionToReady())
 
 	default:
-		return upd
+		return upd.join(echo(extra, Info))
 	}
 }
 
