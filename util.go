@@ -41,7 +41,8 @@ func shouldConnect(obj Connector, detailedSignal string, f interface{}, userData
 }
 
 func shouldIdleAdd(f interface{}, args ...interface{}) bool { //nolint:unparam
-	_, err := glib.IdleAdd(f, args...)
+	handle, err := glib.IdleAdd(f, args...)
+	log.Println("IdleAdd:", handle, err)
 	return shouldf(err, "IdleAdd(%#v)", f)
 }
 
