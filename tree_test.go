@@ -24,40 +24,113 @@ func setupTreeTests() {
 func TestDisplayItems(t *testing.T) {
 	core.Items = []Item{
 		{
-			Path: "seventeen",
-			Left: Content{File, Created, "modified on 2021-02-06 at 18:42:07  size 0         rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 0},
-			Right:  Content{Absent, Unchanged, "", time.Time{}, 0},
+			Path: "", // entire replica
+			Left: Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Right: Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x",
+				time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 0},
 			Action: LeftToRight,
 		},
 		{
-			Path: "six/eight",
-			Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:42:07  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 42, 7, 0, time.Local), 1146},
-			Right: Content{File, Modified, "modified on 2021-02-06 at 18:42:08  size 1147000   rw-rw-r--",
-				time.Date(2021, 2, 6, 18, 42, 8, 0, time.Local), 1147000},
-			Action: RightToLeft,
+			Path: "foo/baz/789",
+			Left: Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+			Right: Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Action: Skip,
 		},
+		ltr("bar"),
+		rtl("foo/123/456/789"),
+		rtl("foo/123/456/000"),
+		rtl("foo/123/abc"),
+		ltr("foo/bar/baz"),
+		rtl("foo/bar/qux"),
+		ltr("foo/baz/123"),
+		{
+			Path: "foo/baz/456",
+			Left: Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------",
+				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Right: Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x",
+				time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 0},
+			Action: LeftToRight,
+		},
+		ltr("foo/baz/456/file1"),
+		ltr("foo/baz/456/file2"),
+		rtl("foo/baz/xyzzy/a"),
+		rtl("foo/baz/xyzzy/b"),
+		ltr("foo/qux/123"),
+		ltr("foo/qux/456"),
+		ltr("foo/qux/789/subdir/a"),
+		ltr("foo/qux/789/subdir/b"),
 	}
+
 	displayItems()
 
-	assertEqual(t, probeRow(t, treestore, "1", colName, colLeft, colAction, colRight),
-		[]interface{}{"six/eight", "", "←", "changed"})
+	cols := []int{colName, colAction}
+	assertEqual(t, probeRow(t, "0", cols...), []interface{}{"", "→"})
+	assertEqual(t, probeRow(t, "1", cols...), []interface{}{"foo/baz/789", "←?→"})
+	assertEqual(t, probeRow(t, "2", cols...), []interface{}{"bar", "→"})
+	assertEqual(t, probeRow(t, "3", cols...), []interface{}{"foo/123", ""})
+	assertEqual(t, probeRow(t, "3:0", cols...), []interface{}{"456", ""})
+	assertEqual(t, probeRow(t, "3:0:0", cols...), []interface{}{"789", "←"})
+	assertEqual(t, probeRow(t, "3:0:1", cols...), []interface{}{"000", "←"})
+	assertEqual(t, probeRow(t, "3:1", cols...), []interface{}{"abc", "←"})
+	assertEqual(t, probeRow(t, "4", cols...), []interface{}{"foo/bar", ""})
+	assertEqual(t, probeRow(t, "4:0", cols...), []interface{}{"baz", "→"})
+	assertEqual(t, probeRow(t, "4:1", cols...), []interface{}{"qux", "←"})
+	assertEqual(t, probeRow(t, "5", cols...), []interface{}{"foo/baz/123", "→"})
+	assertEqual(t, probeRow(t, "6", cols...), []interface{}{"foo/baz/456", "→"})
+	assertEqual(t, probeRow(t, "7", cols...), []interface{}{"foo/baz/456/file1", "→"})
+	assertEqual(t, probeRow(t, "8", cols...), []interface{}{"foo/baz/456/file2", "→"})
+	assertEqual(t, probeRow(t, "9", cols...), []interface{}{"foo/baz/xyzzy", ""})
+	assertEqual(t, probeRow(t, "9:0", cols...), []interface{}{"a", "←"})
+	assertEqual(t, probeRow(t, "9:1", cols...), []interface{}{"b", "←"})
+	assertEqual(t, probeRow(t, "10", cols...), []interface{}{"foo/qux", ""})
+	assertEqual(t, probeRow(t, "10:0", cols...), []interface{}{"123", "→"})
+	assertEqual(t, probeRow(t, "10:1", cols...), []interface{}{"456", "→"})
+	assertEqual(t, probeRow(t, "10:2", cols...), []interface{}{"789/subdir", ""})
+	assertEqual(t, probeRow(t, "10:2:0", cols...), []interface{}{"a", "→"})
+	assertEqual(t, probeRow(t, "10:2:1", cols...), []interface{}{"b", "→"})
+
+	total := 0
+	forEachNode(func(*gtk.TreeIter) { total++ })
+	assertEqual(t, total, 24)
 }
 
-func probeRow(t *testing.T, store *gtk.TreeStore, path string, cols ...int) []interface{} {
+func ltr(path string) Item {
+	return Item{
+		Path: path,
+		Left: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+			time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+		Right: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+			time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 1146},
+		Action: LeftToRight,
+	}
+}
+
+func rtl(path string) Item {
+	return Item{
+		Path: path,
+		Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+			time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 1146},
+		Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
+			time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+		Action: RightToLeft,
+	}
+}
+
+func probeRow(t *testing.T, path string, cols ...int) []interface{} {
 	t.Helper()
 	p, err := gtk.TreePathNewFromString(path)
 	require.NoError(t, err)
-	iter, err := store.GetIter(p)
+	iter, err := treestore.GetIter(p)
 	require.NoError(t, err)
 
 	row := make([]interface{}, len(cols))
 	for i, col := range cols {
-		v, err := store.GetValue(iter, col)
+		v, err := treestore.GetValue(iter, col)
 		require.NoError(t, err)
-		row[i], err = v.GetString()
-		require.NoError(t, err)
+		row[i], _ = v.GetString()
 	}
 	return row
 }
@@ -66,45 +139,42 @@ func genItems(t *rapid.T) []Item {
 	items := make([]Item, rapid.IntRange(0, 99).Draw(t, "len").(int))
 	seen := make(map[string]bool)
 	for i := 0; i < len(items); i++ {
-		// For these tests, we don't care strongly about fields other than Path.
-		// Fill them with something, just in case.
-		items[i] = Item{
-			Left:   Content{Type: File, Status: Modified},
-			Right:  Content{Type: File, Status: Modified},
-			Action: Skip,
-		}
-
 		// To generate a new Path, take the previous Path (if any),
 		// chop off some of its final segments, and append some new segments.
+		newpath := ""
 		if i > 0 {
-			items[i].Path = items[i-1].Path
+			newpath = items[i-1].Path
 			if rapid.IntRange(0, 99).Draw(t, "choppy").(int) == 0 { // Occasionally
 				// we may have e.g. "foo/bar" (dir props changed) and "foo/bar/baz" (modified).
 				// To simulate this, don't chop off "bar", just append "baz".
 				items[i-1].Left = Content{Type: Directory, Status: PropsChanged}
 				items[i-1].Right = Content{Type: Directory, Status: PropsChanged}
 			} else {
-				maxchop := strings.Count(items[i].Path, "/") + 1
+				maxchop := strings.Count(newpath, "/") + 1
 				for nchop := rapid.IntRange(1, maxchop).Draw(t, "nchop").(int); nchop > 0; nchop-- {
-					items[i].Path = path.Dir(items[i].Path)
+					newpath = path.Dir(newpath)
 				}
-				if items[i].Path == "." { // returned by path.Dir
-					items[i].Path = ""
+				if newpath == "." { // returned by path.Dir
+					newpath = ""
 				}
 			}
 		}
 		if rapid.IntRange(0, 99).Draw(t, "empty").(int) > 0 { // Path may be empty ("entire replica").
 			for ngrow := rapid.IntRange(1, 5).Draw(t, "ngrow").(int); ngrow > 0; ngrow-- {
 				segment := rapid.StringMatching(`[a-z]{1,5}`).Draw(t, "segment").(string)
-				items[i].Path = path.Join(items[i].Path, segment)
+				newpath = path.Join(newpath, segment)
 			}
 		}
 
 		// Avoid duplicate paths.
-		for seen[items[i].Path] {
-			items[i].Path += rapid.StringMatching(`[0-9]`).Draw(t, "uniq").(string)
+		for seen[newpath] {
+			newpath += rapid.StringMatching(`[0-9]`).Draw(t, "uniq").(string)
 		}
-		seen[items[i].Path] = true
+		seen[newpath] = true
+
+		// For these tests, we don't care strongly about fields other than Path.
+		// Let it be a typical left-to-right modified file.
+		items[i] = ltr(newpath)
 	}
 	return items
 }
