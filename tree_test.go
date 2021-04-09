@@ -191,7 +191,7 @@ func TestDisplayItemsContiguous(t *testing.T) {
 		forEachNode(func(iter *gtk.TreeIter) {
 			idx := MustGetColumn(treestore, iter, colIdx).(int)
 			if treestore.IterHasChild(iter) { // not a leaf node
-				assert.Equal(t, -1, idx)
+				assert.Equal(t, invalid, idx)
 				return
 			}
 			assert.Less(t, idx, len(core.Items))

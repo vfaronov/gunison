@@ -259,7 +259,7 @@ func update(upd Update) {
 		treeview.ExpandAll()
 		treeview.SetVisible(true)
 		treeview.GrabFocus()
-		ClearCursor(treeview, treeSelection)
+		_ = ClearCursor(treeview)
 	}
 
 	updateMenuItems()

@@ -27,7 +27,7 @@ import (
 func main() {
 	var random bool
 	flag.BoolVar(&random, "random", false,
-		"simulate chunks of output from Unison getting buffered randomly, "+
+		"simulate chunks of output from Unison getting buffered randomly,\n"+
 			"instead of stuffing each write() entirely into one ProcOutput()")
 	flag.Parse()
 

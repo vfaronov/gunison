@@ -112,11 +112,15 @@ func MustGetColumn(store *gtk.TreeStore, iter *gtk.TreeIter, column int) interfa
 }
 
 // ClearCursor removes the cursor indicating focus on treeview, while keeping the focus itself.
-func ClearCursor(treeview *gtk.TreeView, treesel *gtk.TreeSelection) {
+func ClearCursor(treeview *gtk.TreeView) error {
+	treesel, err := treeview.GetSelection()
+	if err != nil {
+		return fmt.Errorf("failed to get tree selection: %w", err)
+	}
 	for {
 		path, _ := treeview.GetCursor()
 		if path == nil {
-			return
+			return nil
 		}
 		path.Down()
 		// As we keep descending, eventually the path becomes invalid, and
