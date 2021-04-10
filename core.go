@@ -335,7 +335,7 @@ var (
 	patItem            = " *" + patShortTypeStatus + " " + AnyOf(parseAction) + " " + patShortTypeStatus + "   (.*?)  "
 	patShortTypeStatus = "(?:        |deleted |new file|file    |changed |props   |new link|link    |chgd lnk|new dir |dir     |chgd dir|props   )"
 	patItemHeader      = line(patItem)
-	patItemSideInfo    = " : (?:(absent|deleted)|" + AnyOf(parseTypeStatus) + "  (modified on ([0-9-]{10} at [ 0-9:]{8})  size ([0-9]+) .*?))"
+	patItemSideInfo    = " : (?:(absent|deleted)|" + AnyOf(parseTypeStatus) + "  (.*?))"
 
 	// Unison prepends diff output with a blank line, the command line, and two more blank lines.
 	patDiffHeader = lineBgn + "\r?\n.+?\r?\n\r?\n"
