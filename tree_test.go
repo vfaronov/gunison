@@ -150,7 +150,7 @@ func genItems(t *rapid.T) []Item {
 		}
 		if rapid.IntRange(0, 99).Draw(t, "empty").(int) > 0 { // Path may be empty ("entire replica").
 			for ngrow := rapid.IntRange(1, 5).Draw(t, "ngrow").(int); ngrow > 0; ngrow-- {
-				segment := rapid.StringMatching(`[a-z]{1,5}`).Draw(t, "segment").(string)
+				segment := rapid.StringMatching(`[a-z]{1,2}`).Draw(t, "segment").(string)
 				newpath = path.Join(newpath, segment)
 			}
 		}
