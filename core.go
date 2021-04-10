@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // Core parses output from Unison, maintains a model of Unison's current state,
@@ -119,11 +118,9 @@ type Item struct {
 
 // Content describes an Item in one of the replicas.
 type Content struct {
-	Type     Type
-	Status   Status    // zero if unknown (only when Type == Absent)
-	Props    string    // human-readable description of properties
-	Modified time.Time // zero if unknown
-	Size     int64     // in bytes; zero if unknown
+	Type   Type
+	Status Status // zero if unknown (only when Type == Absent)
+	Props  string // human-readable description of properties
 }
 
 type Type byte
@@ -542,8 +539,6 @@ func (c *Core) makeProcBufPlan() func() Update {
 				side.Type = ts.Type
 				side.Status = ts.Status
 				side.Props = m[4]
-				side.Modified, _ = time.ParseInLocation("2006-01-02 at 15:04:05", m[5], time.Local)
-				side.Size, _ = strconv.ParseInt(m[6], 10, 64)
 			}
 			return upd.join(c.next())
 

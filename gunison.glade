@@ -67,8 +67,6 @@
       <column type="gchararray"/>
       <!-- column-name action-color -->
       <column type="gchararray"/>
-      <!-- column-name font-weight -->
-      <column type="gint"/>
       <!-- column-name path -->
       <column type="gchararray"/>
     </columns>
@@ -132,7 +130,6 @@
                       <object class="GtkCellRendererText" id="path-renderer"/>
                       <attributes>
                         <attribute name="text">1</attribute>
-                        <attribute name="weight">7</attribute>
                       </attributes>
                     </child>
                   </object>

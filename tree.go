@@ -6,12 +6,10 @@ import (
 	"mime"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
-	"github.com/gotk3/gotk3/pango"
 )
 
 const (
@@ -22,7 +20,6 @@ const (
 	colAction
 	colIconName
 	colActionColor
-	colFontWeight
 	colPath
 )
 
@@ -119,7 +116,6 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
-		mustf(treestore.SetValue(iter, colFontWeight, fontWeight(item)), "set font-weight column")
 		mustf(treestore.SetValue(iter, colPath, path), "set path column")
 		displayItemAction(iter, item.Action)
 	}
@@ -285,26 +281,6 @@ func iconName(item Item) string {
 	default:
 		return ""
 	}
-}
-
-const (
-	highlightSize = 1024 * 1024        // 1 MiB
-	highlightAge  = 7 * 24 * time.Hour // 1 week
-)
-
-func fontWeight(item Item) pango.Weight {
-	if item.Left.Size > highlightSize || item.Right.Size > highlightSize {
-		return pango.WEIGHT_BOLD
-	}
-
-	if !item.Left.Modified.IsZero() && !item.Right.Modified.IsZero() {
-		diff := item.Left.Modified.Sub(item.Right.Modified)
-		if diff > highlightAge || -diff > highlightAge {
-			return pango.WEIGHT_BOLD
-		}
-	}
-
-	return pango.WEIGHT_NORMAL
 }
 
 func onTreeviewPopupMenu() {

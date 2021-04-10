@@ -4,7 +4,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/stretchr/testify/assert"
@@ -24,19 +23,15 @@ func setupTreeTests() {
 func TestDisplayItems(t *testing.T) {
 	core.Items = []Item{
 		{
-			Path: "", // entire replica
-			Left: Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------",
-				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
-			Right: Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x",
-				time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 0},
+			Path:   "", // entire replica
+			Left:   Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
+			Right:  Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
 			Action: LeftToRight,
 		},
 		{
-			Path: "foo/baz/789",
-			Left: Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
-				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
-			Right: Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x",
-				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
+			Path:   "foo/baz/789",
+			Left:   Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:  Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
 			Action: Skip,
 		},
 		ltr("bar"),
@@ -47,11 +42,9 @@ func TestDisplayItems(t *testing.T) {
 		rtl("foo/bar/qux"),
 		ltr("foo/baz/123"),
 		{
-			Path: "foo/baz/456",
-			Left: Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------",
-				time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 0},
-			Right: Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x",
-				time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 0},
+			Path:   "foo/baz/456",
+			Left:   Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
+			Right:  Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
 			Action: LeftToRight,
 		},
 		ltr("foo/baz/456/file1"),
@@ -99,22 +92,18 @@ func TestDisplayItems(t *testing.T) {
 
 func ltr(path string) Item {
 	return Item{
-		Path: path,
-		Left: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
-			time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
-		Right: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
-			time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 1146},
+		Path:   path,
+		Left:   Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Right:  Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
 		Action: LeftToRight,
 	}
 }
 
 func rtl(path string) Item {
 	return Item{
-		Path: path,
-		Left: Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
-			time.Date(2021, 2, 5, 18, 41, 58, 0, time.Local), 1146},
-		Right: Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--",
-			time.Date(2021, 2, 6, 18, 41, 58, 0, time.Local), 1146},
+		Path:   path,
+		Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
 		Action: RightToLeft,
 	}
 }
