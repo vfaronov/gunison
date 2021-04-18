@@ -332,6 +332,7 @@ func onMergeMenuItemActivate()       { setAction(Merge) }
 func onSkipMenuItemActivate()        { setAction(Skip) }
 
 func setAction(act Action) {
+	// TODO: this crashes when many (thousands) items are selected: see tools/treecrash
 	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
 		if iter, item, ok := selectedItem(li); ok {
 			core.Plan[item.Path] = act
