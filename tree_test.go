@@ -18,10 +18,11 @@ func setupTreeTests() {
 		panic(err)
 	}
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
+	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
 }
 
 func TestDisplayItems(t *testing.T) {
-	core.Items = []Item{
+	core.setItems([]Item{
 		{
 			Path:   "", // entire replica
 			Left:   Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
@@ -55,7 +56,7 @@ func TestDisplayItems(t *testing.T) {
 		ltr("foo/qux/456"),
 		ltr("foo/qux/789/subdir/a"),
 		ltr("foo/qux/789/subdir/b"),
-	}
+	})
 
 	displayItems()
 
@@ -174,7 +175,7 @@ func genItems(t *rapid.T) []Item {
 // never rearranges them.
 func TestDisplayItemsContiguous(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
 		displayItems()
 		cur := 0
 		forEachNode(func(iter *gtk.TreeIter) {
@@ -195,7 +196,7 @@ func TestDisplayItemsContiguous(t *testing.T) {
 // and the names of its ancestors (in reverse order).
 func TestDisplayItemsNamesPaths(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			var names []string
@@ -223,7 +224,7 @@ func TestDisplayItemsNamesPaths(t *testing.T) {
 // In other words, displayItems generates a parent node only when it can contain all the relevant items.
 func TestDisplayItemsAncestors(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
 		displayItems()
 		forEachNode(func(iter1 *gtk.TreeIter) {
 			path1 := MustGetColumn(treestore, iter1, colPath).(string)
@@ -247,11 +248,40 @@ func TestDisplayItemsAncestors(t *testing.T) {
 // (because if there's only one child, it can be subsumed into the parent).
 func TestDisplayItemsMultipleChildren(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			assert.NotEqual(t, 1, treestore.IterNChildren(iter))
 		})
+	})
+}
+
+// TestSetActionAsIfOriginal checks the following property:
+// After selecting some nodes and setting some action for them, the tree shows all the same actions
+// as if they were the plan originally, before displayItems().
+func TestSetActionAsIfOriginal(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+		displayItems()
+		forEachNode(func(iter *gtk.TreeIter) {
+			if rapid.Bool().Draw(t, "selected").(bool) {
+				treeSelection.SelectIter(iter)
+			}
+		})
+		var allActions = []Action{Skip, LeftToRight, RightToLeft, Merge}
+		setAction(rapid.SampledFrom(allActions).Draw(t, "action").(Action))
+		var actions1 []string
+		forEachNode(func(iter *gtk.TreeIter) {
+			actions1 = append(actions1, MustGetColumn(treestore, iter, colAction).(string))
+		})
+
+		displayItems()
+		var actions2 []string
+		forEachNode(func(iter *gtk.TreeIter) {
+			actions2 = append(actions2, MustGetColumn(treestore, iter, colAction).(string))
+		})
+
+		assert.Equal(t, actions2, actions1)
 	})
 }
 

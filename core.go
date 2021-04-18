@@ -543,16 +543,20 @@ func (c *Core) makeProcBufPlan() func() Update {
 			return upd.join(c.next())
 
 		case &patItemPrompt:
-			c.Items = items
-			c.Plan = make(map[string]Action, len(items))
-			for _, item := range items {
-				c.Plan[item.Path] = item.Action
-			}
+			c.setItems(items)
 			return upd.join(c.transitionToReady())
 
 		default:
 			return upd
 		}
+	}
+}
+
+func (c *Core) setItems(items []Item) {
+	c.Items = items
+	c.Plan = make(map[string]Action, len(items))
+	for _, item := range items {
+		c.Plan[item.Path] = item.Action
 	}
 }
 

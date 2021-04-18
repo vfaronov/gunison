@@ -117,7 +117,7 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 		mustf(treestore.SetValue(iter, colPath, path), "set path column")
-		displayItemAction(iter, item.Action)
+		displayItemAction(iter, core.Plan[path])
 	}
 }
 
