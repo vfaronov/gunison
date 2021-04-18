@@ -126,6 +126,7 @@ func probeRow(t *testing.T, path string, cols ...int) []interface{} {
 }
 
 func genItems(t *rapid.T) []Item {
+	// XXX: this algorithm is duplicated in tools/mockunison
 	items := make([]Item, rapid.IntRange(0, 99).Draw(t, "len").(int))
 	seen := make(map[string]bool)
 	for i := 0; i < len(items); i++ {
