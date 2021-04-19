@@ -780,17 +780,16 @@ func (c *Core) procBufferSync() Update {
 // If multiple patterns match, the one that matches earlier in the buffer (not in the argument list)
 // is used.
 //
-// If there is any text before the match, behavior depends on the raw argument.
-// If raw is true, that text is simply returned as an extra string.
-// Otherwise, it is echoed in the returned Update's Messages.
+// Any text before the match is returned as the extra string. Additionally,
+// if raw is false, it is echoed in the returned Update's Messages.
 func makeExpecter(raw bool, patterns ...*string,
 ) func(*bytes.Buffer) (pattern *string, sub []string, upd Update, extra string) {
 	start := make([]int, len(patterns))
-	start[0] = 1
+	start[0] = 2
 	combined := ""
 	for i, pat := range patterns {
 		if i > 0 {
-			start[i] = start[i-1] + regexp.MustCompile(*patterns[i-1]).NumSubexp() + 1
+			start[i] = start[i-1] + 2*(1+regexp.MustCompile(*patterns[i-1]).NumSubexp())
 			combined += "|"
 		}
 		combined += "(" + *pat + ")"
@@ -798,25 +797,23 @@ func makeExpecter(raw bool, patterns ...*string,
 	exp := regexp.MustCompile(combined)
 
 	return func(buf *bytes.Buffer) (pattern *string, sub []string, upd Update, extra string) {
-		data := buf.String()
-		m := exp.FindStringSubmatch(data)
+		data := buf.Bytes() // not String: we'll only take small slices, shouldn't keep it all in memory
+		m := exp.FindSubmatchIndex(data)
 		if m == nil {
 			return
 		}
-		offset := strings.Index(data, m[0])
-		buf.Next(offset + len(m[0]))
-		if raw {
-			extra = data[:offset]
-		} else {
-			upd = echo(data[:offset], Info)
+		buf.Next(m[1])
+		extra = string(data[:m[0]])
+		if !raw {
+			upd = echo(extra, Info)
 		}
 		for i, pat := range patterns {
-			if len(m[start[i]]) > 0 {
+			if m[start[i]] != -1 {
 				pattern = pat
 				if i < len(patterns)-1 {
-					sub = m[start[i]:start[i+1]]
+					sub = SliceString(data, m[start[i]:start[i+1]])
 				} else {
-					sub = m[start[i]:]
+					sub = SliceString(data, m[start[i]:])
 				}
 				break
 			}

@@ -31,6 +31,18 @@ func shouldf(err error, format string, args ...interface{}) bool {
 	return true
 }
 
+// SliceString returns slices of data between pairs of indices given in idx, ignoring -1.
+func SliceString(data []byte, idx []int) []string {
+	ss := make([]string, len(idx)/2)
+	for i := range ss {
+		if idx[2*i] == -1 {
+			continue
+		}
+		ss[i] = string(data[idx[2*i]:idx[2*i+1]])
+	}
+	return ss
+}
+
 type Connector interface {
 	Connect(string, interface{}, ...interface{}) (glib.SignalHandle, error)
 }
