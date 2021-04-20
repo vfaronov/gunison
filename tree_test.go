@@ -13,12 +13,7 @@ import (
 
 func setupTreeTests() {
 	gtk.Init(nil)
-	builder, err := gtk.BuilderNewFromString(ui)
-	if err != nil {
-		panic(err)
-	}
-	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
-	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
+	setupWidgets()
 }
 
 func TestDisplayItems(t *testing.T) {

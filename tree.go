@@ -56,6 +56,11 @@ func displayItems() {
 		}
 	}
 
+	// Disconnect the view from the model for while we're actively changing the latter.
+	// On my system, this makes the following code 30% faster on a large plan.
+	treeview.SetModel(nil)
+	defer treeview.SetModel(treestore)
+
 	treestore.Clear()
 
 	// Now generate the nodes, keeping a stack of parents.
@@ -111,6 +116,9 @@ func displayItems() {
 		// Finally, display the item itself.
 		iter := treestore.Append(parent.iter)
 		name := strings.TrimLeft(path[len(parent.prefix):], "/")
+		// TODO: here and elsewhere: optimization opportunities that need more bindings in gotk3:
+		// - set multiple columns in one cgo call to gtk_tree_store_set
+		// - reuse GValues for left, right, icon-name, instead of allocating them anew for each node
 		mustf(treestore.SetValue(iter, colName, name), "set name column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")

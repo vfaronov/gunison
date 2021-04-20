@@ -72,6 +72,7 @@ func main() {
 	log.SetFlags(0)
 	gtk.Init(nil)
 	setupWidgets()
+	window.Show()
 	startUnison(os.Args[1:]...)
 	log.Print("starting main loop")
 	gtk.Main()
@@ -208,8 +209,6 @@ func setupWidgets() {
 	shouldConnect(closeButton, "clicked", onCloseButtonClicked)
 
 	update(Update{})
-
-	window.Show()
 }
 
 func recvOutput(d []byte) {
