@@ -266,7 +266,7 @@ func update(upd Update) {
 	spinner.SetVisible(core.Busy)
 	statusLabel.SetText(core.Status)
 	progressbar.SetVisible(core.Progress != "")
-	FitText(progressbar, core.Progress)
+	progressbar.SetText(core.Progress)
 	if core.ProgressFraction >= 0 {
 		progressbar.SetFraction(core.ProgressFraction)
 	} else if upd.Progressed {
