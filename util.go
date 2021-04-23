@@ -122,6 +122,21 @@ func ClearCursor(treeview *gtk.TreeView) error {
 	}
 }
 
+// DetachModel temporarily detaches the model from treeview for faster batch updates,
+// and returns a function to restore it.
+func DetachModel(treeview *gtk.TreeView) func() {
+	model, err := treeview.GetModel()
+	if !shouldf(err, "get treeview model") {
+		return func() {}
+	}
+	searchColumn := treeview.GetSearchColumn() // is reset to -1 when the model is changed
+	treeview.SetModel(nil)
+	return func() {
+		treeview.SetModel(model)
+		treeview.SetSearchColumn(searchColumn)
+	}
+}
+
 // AnyOf returns a regexp pattern that matches and captures any of the keys in m,
 // which must be a map with string keys.
 func AnyOf(m interface{}) string {

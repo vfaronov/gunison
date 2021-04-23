@@ -56,10 +56,9 @@ func displayItems() {
 		}
 	}
 
-	// Disconnect the view from the model for while we're actively changing the latter.
 	// On my system, this makes the following code 30% faster on a large plan.
-	treeview.SetModel(nil)
-	defer treeview.SetModel(treestore)
+	reattach := DetachModel(treeview)
+	defer reattach()
 
 	treestore.Clear()
 
