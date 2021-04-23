@@ -226,6 +226,7 @@
                           <object class="GtkLabel" id="infobar-label">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="hexpand">True</property>
                             <property name="wrap">True</property>
                             <property name="wrap_mode">word-char</property>
                             <property name="selectable">True</property>
