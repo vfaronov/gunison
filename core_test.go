@@ -63,10 +63,11 @@ func TestMinimal(t *testing.T) {
 	assert.False(t, c.Busy)
 	assertEqual(t, c.Items, []Item{
 		{
-			Path:   "one",
-			Left:   Content{File, Modified, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--"},
-			Right:  Content{File, Unchanged, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--"},
-			Action: LeftToRight,
+			Path:           "one",
+			Left:           Content{File, Modified, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--"},
+			Right:          Content{File, Unchanged, "modified on 2021-02-08 at 18:30:50  size 1146      rw-r--r--"},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
 	})
 	require.NotNil(t, c.Sync)
@@ -117,7 +118,6 @@ func TestMinimal(t *testing.T) {
 	assert.False(t, c.Busy)
 	assert.False(t, c.Running)
 	assert.NotNil(t, c.Items)
-	assert.NotNil(t, c.Plan)
 }
 
 func TestTerse(t *testing.T) { // unison -terse
@@ -540,7 +540,7 @@ func TestDiffBadItem(t *testing.T) {
 
 func TestMerge(t *testing.T) {
 	c := initCoreMinimalReady(t)
-	c.Plan["one"] = Merge
+	c.Items[0].Action = Merge
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
@@ -567,7 +567,7 @@ func TestMerge(t *testing.T) {
 
 func TestMergeFailed(t *testing.T) {
 	c := initCoreMinimalReady(t)
-	c.Plan["one"] = Merge
+	c.Items[0].Action = Merge
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
@@ -601,7 +601,7 @@ func TestMergeDir(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("new dir  ---->            one  \n")))
 	assert.Zero(t, c.ProcOutput([]byte("left         : new dir            modified on 2021-02-25 at 17:06:22  size 0         rwxrwxr-x\nright        : absent\n")))
 	assert.Zero(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")))
-	c.Plan["one"] = Merge
+	c.Items[0].Action = Merge
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("new dir  ---->            one  [f] ")),
@@ -627,7 +627,7 @@ func TestMergeDir(t *testing.T) {
 
 func TestMergeBadProgram(t *testing.T) { // unison -merge 'Name * -> nonexistent-program'
 	c := initCoreMinimalReady(t)
-	c.Plan["one"] = Merge
+	c.Items[0].Action = Merge
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
@@ -678,10 +678,11 @@ func TestReplicaMissing(t *testing.T) {
 	assertEqual(t, c.Status, "Ready to synchronize")
 	assertEqual(t, c.Items, []Item{
 		{
-			Path:   "",
-			Left:   Content{Directory, Unchanged, "modified on 2021-02-06 at 18:31:42  size 1146      rwxr-xr-x"},
-			Right:  Content{Absent, Deleted, ""},
-			Action: RightToLeft,
+			Path:           "",
+			Left:           Content{Directory, Unchanged, "modified on 2021-02-06 at 18:31:42  size 1146      rwxr-xr-x"},
+			Right:          Content{Absent, Deleted, ""},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 	})
 	assert.False(t, c.Busy)
@@ -803,134 +804,132 @@ func TestAssorted(t *testing.T) {
 
 	assertEqual(t, c.Items, []Item{
 		{
-			Path:   "one hundred/one hundred one",
-			Left:   Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--"},
-			Right:  Content{Directory, Created, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x"},
-			Action: Skip,
+			Path:           "one hundred/one hundred one",
+			Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--"},
+			Right:          Content{Directory, Created, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x"},
+			Action:         Skip,
+			Recommendation: Skip,
 		},
 		{
-			Path:   "one hundred/one hundred two",
-			Left:   Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{Absent, Deleted, ""},
-			Action: Skip,
+			Path:           "one hundred/one hundred two",
+			Left:           Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{Absent, Deleted, ""},
+			Action:         Skip,
+			Recommendation: Skip,
 		},
 		{
-			Path:   "six/nine",
-			Left:   Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--"},
-			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--"},
-			Action: Skip,
+			Path:           "six/nine",
+			Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--"},
+			Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--"},
+			Action:         Skip,
+			Recommendation: Skip,
 		},
 		{
-			Path:   "twenty one",
-			Left:   Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
-			Action: Skip,
+			Path:           "twenty one",
+			Left:           Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
+			Action:         Skip,
+			Recommendation: Skip,
 		},
 		{
-			Path:   "deeply/nested/sub/directory/with/file",
-			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
-			Action: RightToLeft,
+			Path:           "deeply/nested/sub/directory/with/file",
+			Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "eighteen",
-			Left:   Content{Symlink, Created, "modified on 1970-01-01 at  3:00:00  size 0         unknown permissions"},
-			Right:  Content{Type: Absent},
-			Action: LeftToRight,
+			Path:           "eighteen",
+			Left:           Content{Symlink, Created, "modified on 1970-01-01 at  3:00:00  size 0         unknown permissions"},
+			Right:          Content{Type: Absent},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
 		{
-			Path:   "here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ",
-			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
-			Action: RightToLeft,
+			Path:           "here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ",
+			Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "seventeen",
-			Left:   Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--"},
-			Right:  Content{Type: Absent},
-			Action: LeftToRight,
+			Path:           "seventeen",
+			Left:           Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--"},
+			Right:          Content{Type: Absent},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
 		{
-			Path:   "six/eight",
-			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--"},
-			Action: RightToLeft,
+			Path:           "six/eight",
+			Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-rw-r--"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "six/eleven",
-			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 10000000  rw-r--r--"},
-			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 10000000  rw-rw-r--"},
-			Action: RightToLeft,
+			Path:           "six/eleven",
+			Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 10000000  rw-r--r--"},
+			Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 10000000  rw-rw-r--"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "six/fourteen",
-			Left:   Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x"},
-			Right:  Content{Type: Absent, Status: Deleted},
-			Action: RightToLeft,
+			Path:           "six/fourteen",
+			Left:           Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 2292      rwxr-xr-x"},
+			Right:          Content{Type: Absent, Status: Deleted},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "six/seven",
-			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--"},
-			Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
-			Action: RightToLeft,
+			Path:           "six/seven",
+			Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 0         rw-r--r--"},
+			Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-rw-r--"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "six/ten",
-			Left:   Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1000      rwx------"},
-			Right:  Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--"},
-			Action: LeftToRight,
+			Path:           "six/ten",
+			Left:           Content{File, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 1000      rwx------"},
+			Right:          Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1000      rw-r--r--"},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
 		{
-			Path:   "three",
-			Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--"},
-			Right:  Content{Type: Absent, Status: Deleted},
-			Action: RightToLeft,
+			Path:           "three",
+			Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1147000   rw-r--r--"},
+			Right:          Content{Type: Absent, Status: Deleted},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "twelve",
-			Left:   Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x"},
-			Right:  Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
-			Action: RightToLeft,
+			Path:           "twelve",
+			Left:           Content{Directory, Unchanged, "modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x"},
+			Right:          Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "twenty",
-			Left:   Content{Type: Absent},
-			Right:  Content{Directory, Created, "modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x"},
-			Action: RightToLeft,
+			Path:           "twenty",
+			Left:           Content{Type: Absent},
+			Right:          Content{Directory, Created, "modified on 2021-02-06 at 18:41:58  size 0         rwxr-xr-x"},
+			Action:         RightToLeft,
+			Recommendation: RightToLeft,
 		},
 		{
-			Path:   "two",
-			Left:   Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Action: LeftToRight,
+			Path:           "two",
+			Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
-	})
-	assertEqual(t, c.Plan, map[string]Action{
-		"one hundred/one hundred one":           Skip,
-		"one hundred/one hundred two":           Skip,
-		"six/nine":                              Skip,
-		"twenty one":                            Skip,
-		"deeply/nested/sub/directory/with/file": RightToLeft,
-		"eighteen":                              LeftToRight,
-		"here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ": RightToLeft,
-		"seventeen":    LeftToRight,
-		"six/eight":    RightToLeft,
-		"six/eleven":   RightToLeft,
-		"six/fourteen": RightToLeft,
-		"six/seven":    RightToLeft,
-		"six/ten":      LeftToRight,
-		"three":        RightToLeft,
-		"twelve":       RightToLeft,
-		"twenty":       RightToLeft,
-		"two":          LeftToRight,
 	})
 
-	c.Plan["one hundred/one hundred one"] = LeftToRight
-	c.Plan["six/nine"] = RightToLeft
-	c.Plan["twenty one"] = RightToLeft
-	c.Plan["here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ"] = LeftToRight
-	c.Plan["twelve"] = Skip
-	c.Plan["two"] = Merge
+	c.Items[0].Action = LeftToRight
+	c.Items[2].Action = RightToLeft
+	c.Items[3].Action = RightToLeft
+	c.Items[6].Action = LeftToRight
+	c.Items[14].Action = Skip
+	c.Items[16].Action = Merge
 
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
@@ -1152,31 +1151,11 @@ func TestAssortedRandom(t *testing.T) {
 	assert.Zero(t, c.ProcOutput([]byte("n 2021-02-26 at 15:42:40  size 0         rwxr-xr-x\n  changed  ---->            two  \nleft         : changed ")))
 	assert.Zero(t, c.ProcOutput([]byte("file       modified on 2021-02-26 at 15:42:40  size 1146      rw-r--r--\nright        : unchanged file     modified on 2021-02-26 at 15:42:40  size 1146      rw-r--r--\nchanged  <-?-> new dir    one hundred/one hundred one  [] ")))
 
-	assertEqual(t, c.Plan, map[string]Action{
-		"one hundred/one hundred one":           Skip,
-		"one hundred/one hundred two":           Skip,
-		"six/nine":                              Skip,
-		"deeply/nested/sub/directory/with/file": RightToLeft,
-		"eighteen":                              LeftToRight,
-		"here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ": RightToLeft,
-		"seventeen":       LeftToRight,
-		"six/eight":       RightToLeft,
-		"six/eleven":      RightToLeft,
-		"six/fourteen":    RightToLeft,
-		"six/funny name!": RightToLeft,
-		"six/seven":       RightToLeft,
-		"six/ten":         LeftToRight,
-		"three":           RightToLeft,
-		"twelve":          RightToLeft,
-		"twenty":          RightToLeft,
-		"two":             LeftToRight,
-	})
-
-	c.Plan["one hundred/one hundred one"] = LeftToRight
-	c.Plan["six/nine"] = RightToLeft
-	c.Plan["here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ/here is a rather long and funny file name, 社會科學院語學研究所\t\v\f \u0085 \u1680\u2002\u2003\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u202f\u205f\u3000ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ"] = LeftToRight
-	c.Plan["twelve"] = Skip
-	c.Plan["two"] = Merge
+	c.Items[0].Action = LeftToRight
+	c.Items[2].Action = RightToLeft
+	c.Items[5].Action = LeftToRight
+	c.Items[14].Action = Skip
+	c.Items[16].Action = Merge
 
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
@@ -1358,7 +1337,7 @@ func TestExtraneousOutput2(t *testing.T) {
 
 func TestExtraneousOutput3(t *testing.T) {
 	c := initCoreMinimalReady(t)
-	c.Plan["one"] = RightToLeft
+	c.Items[0].Action = RightToLeft
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("some unexpected line here\nchanged  ---->            one  [f] ")),
@@ -1370,9 +1349,8 @@ func TestExtraneousOutput3(t *testing.T) {
 		})
 	assertEqual(t, c.Status, "Interrupting Unison")
 
-	// The plan, once initialized, always remains available because the UI still needs it.
+	// Items, once initialized, always remain available because the UI still needs them.
 	assert.NotNil(t, c.Items)
-	assert.NotNil(t, c.Plan)
 }
 
 func TestModifiedDuringSync(t *testing.T) {
@@ -1422,7 +1400,6 @@ func TestConnectionLostDuringSync(t *testing.T) {
 	assertEqual(t, c.Status, "Unison exited")
 	assert.False(t, c.Busy)
 	assert.NotNil(t, c.Items)
-	assert.NotNil(t, c.Plan)
 }
 
 func TestErrorDuringStart(t *testing.T) {
@@ -1452,7 +1429,6 @@ func TestErrorBeforeSync(t *testing.T) {
 	assert.Nil(t, c.Interrupt)
 	assert.NotNil(t, c.Kill)
 	assert.NotNil(t, c.Items)
-	assert.NotNil(t, c.Plan)
 	assert.Zero(t, c.ProcOutput([]byte("Terminated!\n")))
 	assertEqual(t, c.ProcExit(3, nil),
 		Update{Messages: []Message{
@@ -1476,7 +1452,7 @@ func TestErrorDuringSync(t *testing.T) {
 
 func TestPlanMissing(t *testing.T) {
 	c := initCoreMinimalReady(t)
-	delete(c.Plan, "one")
+	c.Items[0].Path = "two"
 	assertEqual(t, c.Sync(),
 		Update{Input: []byte("0\n")})
 	assertEqual(t, c.ProcOutput([]byte("changed  ---->            one  [f] ")),
@@ -1567,14 +1543,12 @@ func initCoreMinimalReady(t *testing.T) *Core { //nolint:thelper
 	assertEqual(t, c.Right, "right")
 	assertEqual(t, c.Items, []Item{
 		{
-			Path:   "one",
-			Left:   Content{File, Modified, "modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--"},
-			Right:  Content{File, Unchanged, "modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--"},
-			Action: LeftToRight,
+			Path:           "one",
+			Left:           Content{File, Modified, "modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--"},
+			Right:          Content{File, Unchanged, "modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--"},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
-	})
-	assertEqual(t, c.Plan, map[string]Action{
-		"one": LeftToRight,
 	})
 
 	require.NotNil(t, c.Diff)

@@ -25,15 +25,14 @@ type Core struct {
 	ProgressFraction float64 // quantitative representation of Progress: 0 to 1, or -1 for "no estimate"
 
 	// These fields become non-zero once the corresponding information is parsed from Unison.
-	Left, Right string            // names of replicas
-	Items       []Item            // items to synchronize
-	Plan        map[string]Action // what to do on Sync for each Path in Items - can be changed by the UI
+	Left, Right string // names of replicas
+	Items       []Item // items to synchronize - updated by the UI to set the desired Action
 
 	// These functions must be called when the user requests the corresponding action via the UI.
 	// Any of these fields may be nil, which means the action is impossible and must not be offered
 	// to the user.
 	Diff      func(string) Update // load differences for the item with the given Path
-	Sync      func() Update       // start synchronization according to Plan
+	Sync      func() Update       // start synchronization according to the Action of each of Items
 	Quit      func() Update       // quit Unison gracefully
 	Abort     func() Update       // abort current operation - often (but not always) same as Interrupt
 	Interrupt func() Update       // interrupt the Unison process
@@ -52,7 +51,7 @@ type Core struct {
 
 // transition replaces the state of c with that of newc, automatically maintaining pieces of state
 // that must be preserved across all transitions. For example, even after Unison exits and there's
-// nothing more to do, the UI is still displaying the tree, for which it still needs c.Items and c.Plan.
+// nothing more to do, the UI is still displaying the tree, for which it still needs c.Items.
 func (c *Core) transition(newc Core) Update {
 	if newc.Left == "" {
 		newc.Left = c.Left
@@ -62,9 +61,6 @@ func (c *Core) transition(newc Core) Update {
 	}
 	if newc.Items == nil {
 		newc.Items = c.Items
-	}
-	if newc.Plan == nil {
-		newc.Plan = c.Plan
 	}
 	if newc.exitCodes == nil {
 		newc.exitCodes = c.exitCodes
@@ -111,9 +107,10 @@ func (upd Update) join(other Update) Update {
 
 // An Item is what will be synchronized by Unison.
 type Item struct {
-	Path        string
-	Left, Right Content
-	Action      Action // original (recommended by Unison) - overridden by Core.Plan
+	Path           string
+	Left, Right    Content
+	Action         Action // to be applied by Core.Sync
+	Recommendation Action // original from Unison
 }
 
 // Content describes an Item in one of the replicas.
@@ -145,12 +142,14 @@ const (
 type Action byte
 
 const (
-	Skip Action = 1 + iota
+	NoAction Action = iota
+	Skip
 	LeftToRight
 	LeftToRightPartial
 	RightToLeft
 	RightToLeftPartial
 	Merge
+	Mixed
 )
 
 type Message struct {
@@ -507,9 +506,11 @@ func (c *Core) makeProcBufPlan() func() Update {
 
 		switch pat {
 		case &patItemHeader:
+			action := parseAction[m[1]]
 			items = append(items, Item{
-				Action: parseAction[m[1]],
-				Path:   m[2],
+				Action:         action,
+				Recommendation: action,
+				Path:           m[2],
 			})
 			return upd.join(c.next())
 
@@ -543,20 +544,12 @@ func (c *Core) makeProcBufPlan() func() Update {
 			return upd.join(c.next())
 
 		case &patItemPrompt:
-			c.setItems(items)
+			c.Items = items
 			return upd.join(c.transitionToReady())
 
 		default:
 			return upd
 		}
-	}
-}
-
-func (c *Core) setItems(items []Item) {
-	c.Items = items
-	c.Plan = make(map[string]Action, len(items))
-	for _, item := range items {
-		c.Plan[item.Path] = item.Action
 	}
 }
 
@@ -680,7 +673,7 @@ func (c *Core) sync() Update {
 		Busy:    true,
 		Status:  "Starting synchronization",
 
-		procBuffer: c.procBufferStartSync,
+		procBuffer: c.makeProcBufferStartSync(),
 		procError:  c.procErrorUnrecoverable,
 
 		Abort:     c.interrupt,
@@ -691,52 +684,59 @@ func (c *Core) sync() Update {
 
 var expStartSync = makeExpecter(true, &patItemPrompt, &patItemHeader, &patProceedUpdates)
 
-func (c *Core) procBufferStartSync() Update {
-	pat, m, upd, extra := expStartSync(&c.buf)
-	extra = strings.TrimSpace(extra)
-	if extra != "" {
-		// Any unexpected output at this crucial phase is too risky to ignore (echo).
-		return upd.join(c.fatalf(false, "Cannot parse the following output from Unison:\n%s", extra))
+func (c *Core) makeProcBufferStartSync() func() Update {
+	plan := make(map[string]Action, len(c.Items))
+	for _, item := range c.Items {
+		plan[item.Path] = item.Action
 	}
 
-	switch pat {
-	case &patItemPrompt:
-		path := m[2]
-		act, ok := c.Plan[path]
-		if !ok {
-			return upd.join(c.fatalf(false,
-				"Failed to start synchronization because this path is missing from Gunison's plan: %s",
-				path))
+	return func() Update {
+		pat, m, upd, extra := expStartSync(&c.buf)
+		extra = strings.TrimSpace(extra)
+		if extra != "" {
+			// Any unexpected output at this crucial phase is too risky to ignore (echo).
+			return upd.join(c.fatalf(false, "Cannot parse the following output from Unison:\n%s", extra))
 		}
-		upd.Input = sendAction[act]
-		return upd.join(c.next())
 
-	case &patItemHeader:
-		return upd.join(c.next())
+		switch pat {
+		case &patItemPrompt:
+			path := m[2]
+			act, ok := plan[path]
+			if !ok {
+				return upd.join(c.fatalf(false,
+					"Failed to start synchronization because this path is missing from Gunison's plan: %s",
+					path))
+			}
+			upd.Input = sendAction[act]
+			return upd.join(c.next())
 
-	case &patProceedUpdates:
-		upd.Input = []byte("y\n")
-		return upd.join(c.transition(Core{
-			Running: true,
-			Busy:    true,
-			Status:  "Starting synchronization",
+		case &patItemHeader:
+			return upd.join(c.next())
 
-			procBuffer: c.procBufferSync,
-			exitCodes: map[int]string{
-				// These codes, documented in the Unison manual, actually take on their meaning
-				// only after synchronization begins.
-				0: "Finished successfully",
-				1: "Finished successfully (some files skipped)",
-				2: "Finished with errors",
-			},
+		case &patProceedUpdates:
+			upd.Input = []byte("y\n")
+			return upd.join(c.transition(Core{
+				Running: true,
+				Busy:    true,
+				Status:  "Starting synchronization",
 
-			Abort:     c.interrupt,
-			Interrupt: c.interrupt,
-			Kill:      c.kill,
-		}))
+				procBuffer: c.procBufferSync,
+				exitCodes: map[int]string{
+					// These codes, documented in the Unison manual, actually take on their meaning
+					// only after synchronization begins.
+					0: "Finished successfully",
+					1: "Finished successfully (some files skipped)",
+					2: "Finished with errors",
+				},
 
-	default:
-		return upd
+				Abort:     c.interrupt,
+				Interrupt: c.interrupt,
+				Kill:      c.kill,
+			}))
+
+		default:
+			return upd
+		}
 	}
 }
 

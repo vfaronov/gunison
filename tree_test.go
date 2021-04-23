@@ -17,18 +17,20 @@ func setupTreeTests() {
 }
 
 func TestDisplayItems(t *testing.T) {
-	core.setItems([]Item{
+	core.Items = []Item{
 		{
-			Path:   "", // entire replica
-			Left:   Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
-			Right:  Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Action: LeftToRight,
+			Path:           "", // entire replica
+			Left:           Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
+			Right:          Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
 		{
-			Path:   "foo/baz/789",
-			Left:   Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:  Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Action: Skip,
+			Path:           "foo/baz/789",
+			Left:           Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+			Right:          Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
+			Action:         Skip,
+			Recommendation: Skip,
 		},
 		ltr("bar"),
 		rtl("foo/123/456/789"),
@@ -38,10 +40,11 @@ func TestDisplayItems(t *testing.T) {
 		rtl("foo/bar/qux"),
 		ltr("foo/baz/123"),
 		{
-			Path:   "foo/baz/456",
-			Left:   Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
-			Right:  Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Action: LeftToRight,
+			Path:           "foo/baz/456",
+			Left:           Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
+			Right:          Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
+			Action:         LeftToRight,
+			Recommendation: LeftToRight,
 		},
 		ltr("foo/baz/456/file1"),
 		ltr("foo/baz/456/file2"),
@@ -51,7 +54,7 @@ func TestDisplayItems(t *testing.T) {
 		ltr("foo/qux/456"),
 		ltr("foo/qux/789/subdir/a"),
 		ltr("foo/qux/789/subdir/b"),
-	})
+	}
 
 	displayItems()
 
@@ -59,25 +62,25 @@ func TestDisplayItems(t *testing.T) {
 	assertEqual(t, probeRow(t, "0", cols...), []interface{}{"", "→"})
 	assertEqual(t, probeRow(t, "1", cols...), []interface{}{"foo/baz/789", "←?→"})
 	assertEqual(t, probeRow(t, "2", cols...), []interface{}{"bar", "→"})
-	assertEqual(t, probeRow(t, "3", cols...), []interface{}{"foo/123", ""})
-	assertEqual(t, probeRow(t, "3:0", cols...), []interface{}{"456", ""})
+	assertEqual(t, probeRow(t, "3", cols...), []interface{}{"foo/123", "←"})
+	assertEqual(t, probeRow(t, "3:0", cols...), []interface{}{"456", "←"})
 	assertEqual(t, probeRow(t, "3:0:0", cols...), []interface{}{"789", "←"})
 	assertEqual(t, probeRow(t, "3:0:1", cols...), []interface{}{"000", "←"})
 	assertEqual(t, probeRow(t, "3:1", cols...), []interface{}{"abc", "←"})
-	assertEqual(t, probeRow(t, "4", cols...), []interface{}{"foo/bar", ""})
+	assertEqual(t, probeRow(t, "4", cols...), []interface{}{"foo/bar", "•••"})
 	assertEqual(t, probeRow(t, "4:0", cols...), []interface{}{"baz", "→"})
 	assertEqual(t, probeRow(t, "4:1", cols...), []interface{}{"qux", "←"})
 	assertEqual(t, probeRow(t, "5", cols...), []interface{}{"foo/baz/123", "→"})
 	assertEqual(t, probeRow(t, "6", cols...), []interface{}{"foo/baz/456", "→"})
 	assertEqual(t, probeRow(t, "7", cols...), []interface{}{"foo/baz/456/file1", "→"})
 	assertEqual(t, probeRow(t, "8", cols...), []interface{}{"foo/baz/456/file2", "→"})
-	assertEqual(t, probeRow(t, "9", cols...), []interface{}{"foo/baz/xyzzy", ""})
+	assertEqual(t, probeRow(t, "9", cols...), []interface{}{"foo/baz/xyzzy", "←"})
 	assertEqual(t, probeRow(t, "9:0", cols...), []interface{}{"a", "←"})
 	assertEqual(t, probeRow(t, "9:1", cols...), []interface{}{"b", "←"})
-	assertEqual(t, probeRow(t, "10", cols...), []interface{}{"foo/qux", ""})
+	assertEqual(t, probeRow(t, "10", cols...), []interface{}{"foo/qux", "→"})
 	assertEqual(t, probeRow(t, "10:0", cols...), []interface{}{"123", "→"})
 	assertEqual(t, probeRow(t, "10:1", cols...), []interface{}{"456", "→"})
-	assertEqual(t, probeRow(t, "10:2", cols...), []interface{}{"789/subdir", ""})
+	assertEqual(t, probeRow(t, "10:2", cols...), []interface{}{"789/subdir", "→"})
 	assertEqual(t, probeRow(t, "10:2:0", cols...), []interface{}{"a", "→"})
 	assertEqual(t, probeRow(t, "10:2:1", cols...), []interface{}{"b", "→"})
 
@@ -88,19 +91,21 @@ func TestDisplayItems(t *testing.T) {
 
 func ltr(path string) Item {
 	return Item{
-		Path:   path,
-		Left:   Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Right:  Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Action: LeftToRight,
+		Path:           path,
+		Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Right:          Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Action:         LeftToRight,
+		Recommendation: LeftToRight,
 	}
 }
 
 func rtl(path string) Item {
 	return Item{
-		Path:   path,
-		Left:   Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Right:  Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Action: RightToLeft,
+		Path:           path,
+		Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Action:         RightToLeft,
+		Recommendation: RightToLeft,
 	}
 }
 
@@ -171,7 +176,7 @@ func genItems(t *rapid.T) []Item {
 // never rearranges them.
 func TestDisplayItemsContiguous(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
 		displayItems()
 		cur := 0
 		forEachNode(func(iter *gtk.TreeIter) {
@@ -192,7 +197,7 @@ func TestDisplayItemsContiguous(t *testing.T) {
 // and the names of its ancestors (in reverse order).
 func TestDisplayItemsNamesPaths(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			var names []string
@@ -220,7 +225,7 @@ func TestDisplayItemsNamesPaths(t *testing.T) {
 // In other words, displayItems generates a parent node only when it can contain all the relevant items.
 func TestDisplayItemsAncestors(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
 		displayItems()
 		forEachNode(func(iter1 *gtk.TreeIter) {
 			path1 := MustGetColumn(treestore, iter1, colPath).(string)
@@ -244,7 +249,7 @@ func TestDisplayItemsAncestors(t *testing.T) {
 // (because if there's only one child, it can be subsumed into the parent).
 func TestDisplayItemsMultipleChildren(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			assert.NotEqual(t, 1, treestore.IterNChildren(iter))
@@ -257,7 +262,7 @@ func TestDisplayItemsMultipleChildren(t *testing.T) {
 // as if they were the plan originally, before displayItems().
 func TestSetActionAsIfOriginal(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
 
 		displayItems()
 		treeview.ExpandAll() // nodes whose parents are collapsed cannot be selected
