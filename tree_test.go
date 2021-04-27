@@ -258,14 +258,19 @@ func TestDisplayItemsMultipleChildren(t *testing.T) {
 func TestSetActionAsIfOriginal(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.setItems(rapid.Custom(genItems).Draw(t, "items").([]Item))
+
 		displayItems()
-		forEachNode(func(iter *gtk.TreeIter) {
-			if rapid.Bool().Draw(t, "selected").(bool) {
-				treeSelection.SelectIter(iter)
-			}
-		})
-		var allActions = []Action{Skip, LeftToRight, RightToLeft, Merge}
-		setAction(rapid.SampledFrom(allActions).Draw(t, "action").(Action))
+		treeview.ExpandAll() // nodes whose parents are collapsed cannot be selected
+		for i := 0; i < 3; i++ {
+			treeSelection.UnselectAll()
+			forEachNode(func(iter *gtk.TreeIter) {
+				if rapid.Bool().Draw(t, "selected").(bool) {
+					treeSelection.SelectIter(iter)
+				}
+			})
+			var allActions = []Action{Skip, LeftToRight, RightToLeft, Merge}
+			setAction(rapid.SampledFrom(allActions).Draw(t, "action").(Action))
+		}
 		var actions1 []string
 		forEachNode(func(iter *gtk.TreeIter) {
 			actions1 = append(actions1, MustGetColumn(treestore, iter, colAction).(string))
