@@ -155,7 +155,9 @@
                     <property name="title" translatable="yes">Action</property>
                     <property name="reorderable">True</property>
                     <child>
-                      <object class="GtkCellRendererText" id="action-renderer"/>
+                      <object class="GtkCellRendererText" id="action-renderer">
+                        <property name="scale">1.3</property>
+                      </object>
                       <attributes>
                         <attribute name="foreground">6</attribute>
                         <attribute name="text">4</attribute>

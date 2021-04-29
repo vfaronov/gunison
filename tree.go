@@ -151,26 +151,24 @@ func displayAction(iter *gtk.TreeIter, act Action) {
 	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
 		recomm = core.Items[idx].Recommendation
 	}
-	// TODO: These colors are all arbitrary, and may not play well with themes.
-	// Perhaps colors, as well as strings themselves, should be configurable (but beware unActionGlyphs).
+	// TODO: Colors and glyphs should be configurable by the user (but beware unActionGlyphs).
 	if act == recomm || recomm == NoAction {
 		switch act {
 		case LeftToRight:
 			// Make it easier to distinguish LeftToRight and RightToLeft by painting them differently.
-			// FIXME: this is supposed to be "uncolored", i.e. "foreground not set", but
-			// setting "foreground-set" from a treestore column doesn't seem to work for me,
-			// should find a proper way
-			color = "#000000"
+			color = "#60C1F8"
 		case RightToLeft:
-			color = "#3ea8d6"
-		case Merge, Mixed:
-			color = "#8f9660"
+			color = "#B980FF"
+		case Merge:
+			color = "#FDB363"
 		case Skip, LeftToRightPartial, RightToLeftPartial:
-			color = "#d46526"
+			color = "#FF9780"
+		case Mixed:
+			color = "#BABABA"
 		case NoAction:
 		}
 	} else {
-		color = "#5db55c"
+		color = "#4BC74A"
 	}
 	mustf(treestore.SetValue(iter, colActionColor, color), "set action-color column")
 }
