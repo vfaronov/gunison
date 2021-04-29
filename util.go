@@ -137,6 +137,21 @@ func DetachModel(treeview *gtk.TreeView) func() {
 	}
 }
 
+// DisplaySort makes view display a sort indicator (only) on column for order.
+func DisplaySort(view *gtk.TreeView, column *gtk.TreeViewColumn, order gtk.SortType) {
+	for li := view.GetColumns(); li != nil; li = li.Next() {
+		col := li.Data().(*gtk.TreeViewColumn)
+		col.SetSortIndicator(SameColumn(col, column))
+		col.SetSortOrder(order)
+	}
+}
+
+// SameColumn returns true if col1 and col2 refer to the same column.
+func SameColumn(col1, col2 *gtk.TreeViewColumn) bool {
+	// TODO: there should be a better way but I can't find one in gotk3
+	return col1.GetXOffset() == col2.GetXOffset()
+}
+
 // AnyOf returns a regexp pattern that matches and captures any of the keys in m,
 // which must be a map with string keys.
 func AnyOf(m interface{}) string {

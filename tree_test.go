@@ -86,11 +86,13 @@ func TestDisplayItems(t *testing.T) {
 	assertEqual(t, total, 24)
 }
 
+var dontCare = Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"}
+
 func ltr(path string) Item {
 	return Item{
 		Path:           path,
-		Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Right:          Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Left:           dontCare,
+		Right:          dontCare,
 		Recommendation: LeftToRight,
 	}
 }
@@ -98,8 +100,8 @@ func ltr(path string) Item {
 func rtl(path string) Item {
 	return Item{
 		Path:           path,
-		Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
+		Left:           dontCare,
+		Right:          dontCare,
 		Recommendation: RightToLeft,
 	}
 }
@@ -124,6 +126,7 @@ func genItems(t *rapid.T) []Item {
 	// XXX: this algorithm is duplicated in tools/mockunison
 	items := make([]Item, rapid.IntRange(0, 99).Draw(t, "len").(int))
 	seen := make(map[string]bool)
+	actions := []Action{LeftToRight, RightToLeft, Merge, Skip}
 	for i := 0; i < len(items); i++ {
 		// To generate a new Path, take the previous Path (if any),
 		// chop off some of its final segments, and append some new segments.
@@ -158,9 +161,12 @@ func genItems(t *rapid.T) []Item {
 		}
 		seen[newpath] = true
 
-		// For these tests, we don't care strongly about fields other than Path.
-		// Let it be a typical left-to-right modified file.
-		items[i] = ltr(newpath)
+		items[i] = Item{
+			Path:           newpath,
+			Left:           dontCare,
+			Right:          dontCare,
+			Recommendation: rapid.SampledFrom(actions).Draw(t, "action").(Action),
+		}
 	}
 	return items
 }
@@ -248,6 +254,42 @@ func TestDisplayItemsMultipleChildren(t *testing.T) {
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			assert.NotEqual(t, 1, treestore.IterNChildren(iter))
+		})
+	})
+}
+
+// TestDisplayItemsSorted checks the following property:
+// Parent nodes are inserted by displayItems only where they respect the current sort order
+// (if viewed as applying to the entire list of nodes, top to bottom).
+func TestDisplayItemsSorted(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		var allSortRules = []sortRule{
+			{pathColumn, gtk.SORT_ASCENDING},
+			{pathColumn, gtk.SORT_DESCENDING},
+			{actionColumn, gtk.SORT_ASCENDING},
+			{actionColumn, gtk.SORT_DESCENDING},
+		}
+		setSort(rapid.SampledFrom(allSortRules).Draw(t, "sortRule").(sortRule)) // calls displayItems
+
+		var last interface{}
+		forEachNode(func(iter *gtk.TreeIter) {
+			var cur interface{}
+			switch currentSort.column {
+			case pathColumn:
+				cur = MustGetColumn(treestore, iter, colPath)
+			case actionColumn:
+				cur = actionFromIter(iter)
+			}
+			if last != nil {
+				switch currentSort.order {
+				case gtk.SORT_ASCENDING:
+					assert.LessOrEqual(t, last, cur)
+				case gtk.SORT_DESCENDING:
+					assert.GreaterOrEqual(t, last, cur)
+				}
+			}
+			last = cur
 		})
 	})
 }

@@ -170,8 +170,10 @@ func setupWidgets() {
 
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
 	pathColumn = mustGetObject(builder, "path-column").(*gtk.TreeViewColumn)
+	shouldConnect(pathColumn, "clicked", onPathColumnClicked)
 	leftColumn = mustGetObject(builder, "left-column").(*gtk.TreeViewColumn)
 	actionColumn = mustGetObject(builder, "action-column").(*gtk.TreeViewColumn)
+	shouldConnect(actionColumn, "clicked", onActionColumnClicked)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
 
 	itemMenu = mustGetObject(builder, "item-menu").(*gtk.Menu)
@@ -255,7 +257,6 @@ func update(upd Update) {
 
 	if core.Items != nil && !treeview.GetVisible() {
 		displayItems()
-		treeview.ExpandAll()
 		treeview.SetVisible(true)
 		treeview.GrabFocus()
 		_ = ClearCursor(treeview)

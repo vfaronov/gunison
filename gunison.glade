@@ -117,6 +117,7 @@
                     <property name="fixed_width">350</property>
                     <property name="title" translatable="yes">Path</property>
                     <property name="expand">True</property>
+                    <property name="clickable">True</property>
                     <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererPixbuf" id="icon-renderer">
@@ -153,6 +154,7 @@
                     <property name="resizable">True</property>
                     <property name="fixed_width">100</property>
                     <property name="title" translatable="yes">Action</property>
+                    <property name="clickable">True</property>
                     <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="action-renderer">

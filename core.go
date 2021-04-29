@@ -154,12 +154,12 @@ type Action byte
 
 const (
 	NoAction Action = iota
-	Skip
 	LeftToRight
 	LeftToRightPartial
 	RightToLeft
 	RightToLeftPartial
 	Merge
+	Skip
 	Mixed
 )
 

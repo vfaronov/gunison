@@ -5,6 +5,7 @@ import (
 	"html"
 	"mime"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -64,6 +65,8 @@ func displayItems() {
 		}
 	}
 
+	defer treeview.ExpandAll() // needs to happen after reattach() deferred below
+
 	// On my system, this makes the following code 30% faster on a large plan.
 	reattach := DetachModel(treeview)
 	defer reattach()
@@ -117,6 +120,18 @@ func displayItems() {
 			if cover.start != i || cover.end <= i {
 				continue
 			}
+
+			// Make sure that the selected sort order is respected.
+			if currentSort.column == actionColumn && cover.action != item.Action() {
+				continue
+			}
+			if currentSort.column == pathColumn && currentSort.order == gtk.SORT_DESCENDING {
+				// A parent node's path is necessarily "less than" all of its children's.
+				// TODO: Does sorting by path like this even make sense,
+				// given that the column actually shows names, not paths?
+				continue
+			}
+
 			if lastCover.end > cover.end {
 				openParent(lastPrefix)
 			}
@@ -318,6 +333,52 @@ func iconName(item Item) string {
 	}
 }
 
+type sortRule struct {
+	column *gtk.TreeViewColumn
+	order  gtk.SortType
+}
+
+var currentSort sortRule
+
+func onPathColumnClicked()   { cycleSort(pathColumn) }
+func onActionColumnClicked() { cycleSort(actionColumn) }
+
+func cycleSort(col *gtk.TreeViewColumn) {
+	switch currentSort {
+	case sortRule{col, gtk.SORT_ASCENDING}:
+		setSort(sortRule{col, gtk.SORT_DESCENDING})
+	default:
+		setSort(sortRule{col, gtk.SORT_ASCENDING})
+	}
+}
+
+func setSort(rule sortRule) {
+	// We don't use GtkTreeModelSortable and its associated facilities, because we
+	// don't just sort the nodes that are already being shown in the tree; instead,
+	// we sort the flat list of Items and *then* rearrange them into a tree, which
+	// becomes very different depending on the sort rule.
+	currentSort = rule
+	if rule != (sortRule{}) {
+		sort.SliceStable(core.Items, func(i, j int) bool {
+			// TODO: remember the original order as produced by Unison, fall back to it on equals,
+			// and allow the user to return to that original order.
+			switch rule {
+			case sortRule{pathColumn, gtk.SORT_ASCENDING}:
+				return core.Items[i].Path < core.Items[j].Path
+			case sortRule{pathColumn, gtk.SORT_DESCENDING}:
+				return core.Items[i].Path > core.Items[j].Path
+			case sortRule{actionColumn, gtk.SORT_ASCENDING}:
+				return core.Items[i].Action() < core.Items[j].Action()
+			case sortRule{actionColumn, gtk.SORT_DESCENDING}:
+				return core.Items[i].Action() > core.Items[j].Action()
+			}
+			panic("impossible case")
+		})
+		displayItems()
+	}
+	DisplaySort(treeview, rule.column, rule.order)
+}
+
 func onTreeviewPopupMenu() {
 	// TODO: position at the selected row
 	itemMenu.PopupAtWidget(treeview, gdk.GDK_GRAVITY_SOUTH_EAST, gdk.GDK_GRAVITY_SOUTH_EAST, nil)
@@ -381,6 +442,10 @@ func setAction(act Action) {
 				refreshParentAction(treepathS)
 			}
 		}
+	}
+
+	if currentSort.column == actionColumn {
+		setSort(sortRule{})
 	}
 }
 
@@ -507,14 +572,14 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		return false
 	}
 
-	switch column.GetXOffset() { // don't know how else to determine the column's "identity" from gotk3
-	case pathColumn.GetXOffset():
+	switch {
+	case SameColumn(column, pathColumn):
 		tip.SetText(pathFromIter(iter))
 
-	case actionColumn.GetXOffset():
+	case SameColumn(column, actionColumn):
 		tip.SetText(actionDescriptions[actionFromIter(iter)])
 
-	case leftColumn.GetXOffset(), rightColumn.GetXOffset():
+	case SameColumn(column, leftColumn), SameColumn(column, rightColumn):
 		idx := MustGetColumn(treestore, iter, colIdx).(int)
 		if idx == invalid {
 			return false
