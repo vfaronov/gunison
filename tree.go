@@ -35,6 +35,7 @@ func displayItems() {
 	type span struct {
 		start, end int
 		action     Action
+		overridden bool
 	}
 	covers := make(map[string]span, 2*len(core.Items)) // at least one entry per item, plus some prefixes
 	for i, item := range core.Items {
@@ -51,12 +52,14 @@ func displayItems() {
 			case !ok: // new prefix
 				cover.start = i
 				cover.end = i
+				cover.overridden = item.IsOverridden()
 			case cover.end == i-1: // continuing prefix
 				cover.end = i
 			default: // discontiguous prefix
 				cover.end = invalid
 			}
-			cover.action = combineAction(cover.action, item.Action)
+			cover.action = combineAction(cover.action, item.Action())
+			cover.overridden = cover.overridden && item.IsOverridden()
 			covers[prefix] = cover
 		}
 	}
@@ -84,7 +87,7 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colIconName, "folder"), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, invalid), "set idx column")
 		mustf(treestore.SetValue(iter, colPath, prefix), "set path column")
-		displayAction(iter, covers[prefix].action)
+		displayAction(iter, covers[prefix].action, covers[prefix].overridden)
 		stack = append(stack, parent)
 		parent = frame{prefix, iter, covers[prefix].end}
 	}
@@ -136,39 +139,19 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 		mustf(treestore.SetValue(iter, colPath, path), "set path column")
-		displayAction(iter, item.Action)
+		displayAction(iter, item.Action(), item.IsOverridden())
 	}
 	for len(stack) > 0 {
 		closeParent()
 	}
 }
 
-func displayAction(iter *gtk.TreeIter, act Action) {
-	mustf(treestore.SetValue(iter, colAction, actionGlyphs[act]), "set action column")
-
-	var color string
-	var recomm Action
-	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
-		recomm = core.Items[idx].Recommendation
-	}
+func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
 	// TODO: Colors and glyphs should be configurable by the user (but beware unActionGlyphs).
-	if act == recomm || recomm == NoAction {
-		switch act {
-		case LeftToRight:
-			// Make it easier to distinguish LeftToRight and RightToLeft by painting them differently.
-			color = "#60C1F8"
-		case RightToLeft:
-			color = "#B980FF"
-		case Merge:
-			color = "#FDB363"
-		case Skip, LeftToRightPartial, RightToLeftPartial:
-			color = "#FF9780"
-		case Mixed:
-			color = "#BABABA"
-		case NoAction:
-		}
-	} else {
-		color = "#4BC74A"
+	mustf(treestore.SetValue(iter, colAction, actionGlyphs[act]), "set action column")
+	color := actionColors[act]
+	if overridden {
+		color = overriddenColor
 	}
 	mustf(treestore.SetValue(iter, colActionColor, color), "set action-color column")
 }
@@ -263,6 +246,7 @@ func describeContentFull(c Content) string {
 }
 
 var (
+	// TODO: Action glyphs and colors should be user-customizable (but beware unActionGlyphs).
 	actionGlyphs = map[Action]string{
 		Skip:               "←?→",
 		LeftToRight:        "→",
@@ -272,7 +256,17 @@ var (
 		Merge:              "←M→",
 		Mixed:              "•••",
 	}
-	unActionGlyphs     = map[string]Action{}
+	unActionGlyphs = map[string]Action{}
+	actionColors   = map[Action]string{
+		LeftToRight:        "#60C1F8",
+		RightToLeft:        "#B980FF",
+		Merge:              "#FDB363",
+		Skip:               "#FF9780",
+		LeftToRightPartial: "#FF9780",
+		RightToLeftPartial: "#FF9780",
+		Mixed:              "#BABABA",
+	}
+	overriddenColor    = "#4BC74A"
 	actionDescriptions = map[Action]string{
 		// TODO: replace "left" and "right" with core.Left and core.Right (also in menus, etc.)
 		Skip:               "skip",
@@ -406,9 +400,9 @@ func setActionInner(
 	iter, err := treestore.GetIter(treepath)
 	mustf(err, "get tree iter for %s", treepath)
 	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
-		core.Items[idx].Action = act
+		core.Items[idx].Override = act
 	}
-	displayAction(iter, act)
+	displayAction(iter, act, true)
 
 	// Invalidate all ancestors of the node.
 	for treepath.Up() {
@@ -448,13 +442,15 @@ func refreshParentAction(treepathS string) {
 		return
 	}
 	var action Action
+	overridden := true
 	for {
 		action = combineAction(action, actionFromIter(child))
+		overridden = overridden && isOverriddenFromIter(child)
 		if !treestore.IterNext(child) {
 			break
 		}
 	}
-	displayAction(iter, action)
+	displayAction(iter, action, overridden)
 }
 
 func onDiffMenuItemActivate() {
@@ -487,7 +483,7 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 			html.EscapeString(core.Right),
 			html.EscapeString(describeContentFull(item.Right)),
 			html.EscapeString(item.Right.Props),
-			actionDescriptions[item.Action],
+			actionDescriptions[item.Action()],
 		))
 	} else {
 		tip.SetMarkup(fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>plan</b>:\t%s",
@@ -552,4 +548,8 @@ func pathFromIter(iter *gtk.TreeIter) string {
 
 func actionFromIter(iter *gtk.TreeIter) Action {
 	return unActionGlyphs[MustGetColumn(treestore, iter, colAction).(string)]
+}
+
+func isOverriddenFromIter(iter *gtk.TreeIter) bool {
+	return MustGetColumn(treestore, iter, colActionColor).(string) == overriddenColor
 }

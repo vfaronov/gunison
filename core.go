@@ -109,8 +109,19 @@ func (upd Update) join(other Update) Update {
 type Item struct {
 	Path           string
 	Left, Right    Content
-	Action         Action // to be applied by Core.Sync
+	Override       Action // set explicitly by the user (if any)
 	Recommendation Action // original from Unison
+}
+
+func (it Item) Action() Action {
+	if it.Override != NoAction {
+		return it.Override
+	}
+	return it.Recommendation
+}
+
+func (it Item) IsOverridden() bool {
+	return it.Override != NoAction
 }
 
 // Content describes an Item in one of the replicas.
@@ -506,10 +517,8 @@ func (c *Core) makeProcBufPlan() func() Update {
 
 		switch pat {
 		case &patItemHeader:
-			action := parseAction[m[1]]
 			items = append(items, Item{
-				Action:         action,
-				Recommendation: action,
+				Recommendation: parseAction[m[1]],
 				Path:           m[2],
 			})
 			return upd.join(c.next())
@@ -687,7 +696,7 @@ var expStartSync = makeExpecter(true, &patItemPrompt, &patItemHeader, &patProcee
 func (c *Core) makeProcBufferStartSync() func() Update {
 	plan := make(map[string]Action, len(c.Items))
 	for _, item := range c.Items {
-		plan[item.Path] = item.Action
+		plan[item.Path] = item.Action()
 	}
 
 	return func() Update {

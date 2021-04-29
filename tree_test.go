@@ -22,14 +22,12 @@ func TestDisplayItems(t *testing.T) {
 			Path:           "", // entire replica
 			Left:           Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
 			Right:          Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Action:         LeftToRight,
 			Recommendation: LeftToRight,
 		},
 		{
 			Path:           "foo/baz/789",
 			Left:           Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
 			Right:          Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Action:         Skip,
 			Recommendation: Skip,
 		},
 		ltr("bar"),
@@ -43,7 +41,6 @@ func TestDisplayItems(t *testing.T) {
 			Path:           "foo/baz/456",
 			Left:           Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
 			Right:          Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Action:         LeftToRight,
 			Recommendation: LeftToRight,
 		},
 		ltr("foo/baz/456/file1"),
@@ -94,7 +91,6 @@ func ltr(path string) Item {
 		Path:           path,
 		Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
 		Right:          Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Action:         LeftToRight,
 		Recommendation: LeftToRight,
 	}
 }
@@ -104,7 +100,6 @@ func rtl(path string) Item {
 		Path:           path,
 		Left:           Content{File, Unchanged, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
 		Right:          Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-		Action:         RightToLeft,
 		Recommendation: RightToLeft,
 	}
 }
