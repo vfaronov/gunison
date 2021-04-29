@@ -77,6 +77,7 @@ func printPlan(paths []string) {
 }
 
 func runUpdates() {
+	fmt.Print("\nPropagating updates\n")
 	for p := 1; p <= 100; p++ {
 		if p > 1 {
 			fmt.Print("\r               \r")
