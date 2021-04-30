@@ -126,6 +126,8 @@ func watchUnison() {
 		if n > 0 {
 			data := make([]byte, n)
 			copy(data, buf[:n])
+			// TODO: use a different mechanism for communicating with the main thread:
+			// see https://discourse.gnome.org/t/g-idle-add-ordering/6088
 			shouldIdleAdd(recvOutput, data)
 		}
 		if err != nil {
@@ -381,6 +383,11 @@ func onWindowDeleteEvent() bool {
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
+			if core.Interrupt == nil { // may have changed while the user was responding
+				log.Println("cannot interrupt: core.Interrupt is already nil")
+				update(Update{})
+				break
+			}
 			update(core.Interrupt())
 		}
 
@@ -391,6 +398,11 @@ func onWindowDeleteEvent() bool {
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
+			if core.Kill == nil {
+				log.Println("cannot kill: core.Kill is already nil")
+				update(Update{})
+				break
+			}
 			update(core.Kill())
 		}
 	}
@@ -404,6 +416,11 @@ func onInfobarResponse() {
 }
 
 func onSyncButtonClicked() {
+	if core.Sync == nil {
+		log.Println("cannot sync: core.Sync is already nil")
+		update(Update{})
+		return
+	}
 	treeSelection.UnselectAll() // looks better
 	update(core.Sync())
 }
@@ -414,11 +431,21 @@ func onAbortButtonClicked() {
 		DialogOption{Text: "_Abort", Response: gtk.RESPONSE_YES},
 	)
 	if resp == gtk.RESPONSE_YES {
+		if core.Abort == nil { // may have changed while the user was responding
+			log.Println("cannot abort: core.Abort is already nil")
+			update(Update{})
+			return
+		}
 		update(core.Abort())
 	}
 }
 
 func onKillButtonClicked() {
+	if core.Kill == nil {
+		log.Println("cannot kill: core.Kill is already nil")
+		update(Update{})
+		return
+	}
 	update(core.Kill())
 }
 

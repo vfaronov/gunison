@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html"
+	"log"
 	"mime"
 	"path"
 	"sort"
@@ -519,6 +520,11 @@ func refreshParentAction(treepathS string) {
 }
 
 func onDiffMenuItemActivate() {
+	if core.Diff == nil {
+		log.Println("cannot diff: core.Diff is already nil")
+		update(Update{})
+		return
+	}
 	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
 		if _, item, ok := selectedItem(li); ok {
 			update(core.Diff(item.Path))
