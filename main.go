@@ -252,9 +252,7 @@ func update(upd Update) {
 	}
 
 	if core.Left != "" && core.Right != "" {
-		headerbar.SetSubtitle(core.Left + " — " + core.Right)
-		leftColumn.SetTitle(core.Left)
-		rightColumn.SetTitle(core.Right)
+		setReplicaNames(core.Left, core.Right)
 	}
 
 	if core.Items != nil && !treeview.GetVisible() {
@@ -313,6 +311,25 @@ func update(upd Update) {
 	if upd.Alert.Text != "" {
 		showAlert(upd.Alert)
 	}
+}
+
+func setReplicaNames(left, right string) {
+	if headerbar.GetSubtitle() != "" {
+		return // already set
+	}
+	headerbar.SetSubtitle(left + " — " + right)
+	leftColumn.SetTitle(left)
+	rightColumn.SetTitle(right)
+	replaceIn := func(s string) string {
+		s = strings.ReplaceAll(s, "left", left)
+		s = strings.ReplaceAll(s, "right", right)
+		return s
+	}
+	for k, s := range actionDescriptions {
+		actionDescriptions[k] = replaceIn(s)
+	}
+	leftToRightMenuItem.SetLabel(replaceIn(leftToRightMenuItem.GetLabel()))
+	rightToLeftMenuItem.SetLabel(replaceIn(rightToLeftMenuItem.GetLabel()))
 }
 
 func updateInfobar() {

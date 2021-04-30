@@ -283,7 +283,6 @@ var (
 	}
 	overriddenColor    = "#4BC74A"
 	actionDescriptions = map[Action]string{
-		// TODO: replace "left" and "right" with core.Left and core.Right (also in menus, etc.)
 		Skip:               "skip",
 		LeftToRight:        "propagate from left to right",
 		LeftToRightPartial: "propagate from left to right, partial",
