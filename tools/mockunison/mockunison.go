@@ -60,17 +60,26 @@ loop:
 	}
 }
 
+var actions = []string{
+	"changed  ---->        ",
+	"         <---- changed",
+	"changed  <-M-> changed",
+	"changed  <-?-> changed",
+}
+
 func printPrompt(paths []string, i int) {
 	if i == len(paths) {
 		fmt.Print("\nProceed with propagating updates? [] ")
 		return
 	}
-	fmt.Print("\nchanged  ---->            ", paths[i], "  [f] ")
+	action := actions[rand.Intn(len(actions))]
+	fmt.Print("\n", action, "    ", paths[i], "  [f] ")
 }
 
 func printPlan(paths []string) {
 	for _, path := range paths {
-		fmt.Print("changed  ---->            ", path, "  \n")
+		action := actions[rand.Intn(len(actions))]
+		fmt.Print(action, "    ", path, "  \n")
 		fmt.Print("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
 		fmt.Print("right        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
 	}
