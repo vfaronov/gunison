@@ -8,19 +8,19 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gotk3/gotk3/gtk"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
 	// Silence debug logging unless running under -v.
-	// TODO: Instead, inject t.Log as logger into code under test,
-	// so that it gets enabled magically for failing tests?
 	flag.Parse()
 	if !testing.Verbose() {
 		log.SetOutput(io.Discard)
 	}
-	setupTreeTests()
+	gtk.Init(nil)
+	setupWidgets()
 	os.Exit(m.Run())
 }
 

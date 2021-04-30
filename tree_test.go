@@ -11,11 +11,6 @@ import (
 	"pgregory.net/rapid"
 )
 
-func setupTreeTests() {
-	gtk.Init(nil)
-	setupWidgets()
-}
-
 func TestDisplayItems(t *testing.T) {
 	core.Items = []Item{
 		{

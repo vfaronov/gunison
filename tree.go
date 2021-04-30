@@ -163,7 +163,6 @@ func displayItems() {
 }
 
 func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
-	// TODO: Colors and glyphs should be configurable by the user (but beware unActionGlyphs).
 	mustf(treestore.SetValue(iter, colAction, actionGlyphs[act]), "set action column")
 	color := actionColors[act]
 	if overridden {

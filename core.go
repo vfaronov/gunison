@@ -369,7 +369,6 @@ var (
 )
 
 var parseAction = map[string]Action{
-	// FIXME: "error"
 	"<-?->": Skip,
 	"<=?=>": Skip,
 	"---->": LeftToRight,
@@ -382,6 +381,7 @@ var parseAction = map[string]Action{
 	"<=?==": RightToLeftPartial,
 	"<-M->": Merge,
 	"<=M=>": Merge,
+	// TODO: "error"
 }
 
 var sendAction = map[Action][]byte{

@@ -13,7 +13,7 @@
 // 4. Edit the resulting code. It is far from ready, because trace2test doesn't know
 // which events trigger which, what should Updates contain other than Input, etc.
 //
-// TODO: Doesn't support `strace -f`, making it cumbersome to deal with output from diff/merge commands.
+// NB: This doesn't support `strace -f`, so output from diff/merge commands will be missing.
 package main
 
 import (
