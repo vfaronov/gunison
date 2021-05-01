@@ -576,21 +576,21 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		return false
 	}
 
-	switch {
-	case SameColumn(column, pathColumn):
+	switch column.Native() {
+	case pathColumn.Native():
 		tip.SetText(pathFromIter(iter))
 
-	case SameColumn(column, actionColumn):
+	case actionColumn.Native():
 		tip.SetText(actionDescriptions[actionFromIter(iter)])
 
-	case SameColumn(column, leftColumn), SameColumn(column, rightColumn):
+	case leftColumn.Native(), rightColumn.Native():
 		idx := MustGetColumn(treestore, iter, colIdx).(int)
 		if idx == invalid {
 			return false
 		}
 		item := core.Items[idx]
 		side, content := core.Left, item.Left
-		if column.GetXOffset() == rightColumn.GetXOffset() {
+		if column.Native() == rightColumn.Native() {
 			side, content = core.Right, item.Right
 		}
 		tip.SetText(fmt.Sprintf("%s: %s %s", side, describeContentFull(content), content.Props))
