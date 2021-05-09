@@ -192,7 +192,9 @@ func setupWidgets() {
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
+	mustf(mustGetObject(builder, "left-renderer").(*gtk.CellRendererText).Set("xalign", 0.5), "set xalign")
 	mustf(mustGetObject(builder, "action-renderer").(*gtk.CellRendererText).Set("xalign", 0.5), "set xalign")
+	mustf(mustGetObject(builder, "right-renderer").(*gtk.CellRendererText).Set("xalign", 0.5), "set xalign")
 
 	statusLabel = mustGetObject(builder, "status-label").(*gtk.Label)
 

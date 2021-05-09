@@ -140,6 +140,7 @@
                     <property name="resizable">True</property>
                     <property name="fixed_width">130</property>
                     <property name="title" translatable="yes">Left</property>
+                    <property name="alignment">0.5</property>
                     <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="left-renderer"/>
@@ -155,6 +156,7 @@
                     <property name="fixed_width">100</property>
                     <property name="title" translatable="yes">Action</property>
                     <property name="clickable">True</property>
+                    <property name="alignment">0.5</property>
                     <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="action-renderer">
@@ -172,6 +174,7 @@
                     <property name="resizable">True</property>
                     <property name="fixed_width">130</property>
                     <property name="title" translatable="yes">Right</property>
+                    <property name="alignment">0.5</property>
                     <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="right-renderer"/>
