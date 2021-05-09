@@ -834,7 +834,7 @@ func makeExpecter(raw bool, patterns ...*string,
 
 var (
 	expWarning = regexp.MustCompile(`(?i)^(?:warning|synchronization incomplete|merge result)`)
-	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed)`)
+	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed|uncaught|invalid)`)
 )
 
 func echo(output string, minImportance Importance) Update {
