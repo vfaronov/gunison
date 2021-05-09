@@ -141,7 +141,7 @@ func DetachModel(treeview *gtk.TreeView) func() {
 func DisplaySort(view *gtk.TreeView, column *gtk.TreeViewColumn, order gtk.SortType) {
 	for li := view.GetColumns(); li != nil; li = li.Next() {
 		col := li.Data().(*gtk.TreeViewColumn)
-		col.SetSortIndicator(col.Native() == column.Native())
+		col.SetSortIndicator(column != nil && col.Native() == column.Native())
 		col.SetSortOrder(order)
 	}
 }
