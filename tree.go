@@ -60,8 +60,8 @@ func displayItems() {
 			default: // discontiguous prefix
 				cover.end = invalid
 			}
-			cover.action = combineAction(cover.action, item.Action())
-			cover.overridden = cover.overridden && item.IsOverridden()
+			cover.action, cover.overridden = combineAction(cover.action, cover.overridden,
+				item.Action(), item.IsOverridden())
 			covers[prefix] = cover
 		}
 	}
@@ -157,12 +157,10 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colPath, path), "set path column")
 		displayAction(iter, item.Action(), item.IsOverridden())
 	}
-	for len(stack) > 0 {
-		closeParent()
-	}
 }
 
 func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
+	// XXX: The values set here are not just for display: they are later used in actionFromIter, etc.
 	mustf(treestore.SetValue(iter, colAction, actionGlyphs[act]), "set action column")
 	color := actionColors[act]
 	if overridden {
@@ -171,13 +169,15 @@ func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
 	mustf(treestore.SetValue(iter, colActionColor, color), "set action-color column")
 }
 
-func combineAction(act1, act2 Action) Action {
+func combineAction(act1 Action, overrid1 bool, act2 Action, overrid2 bool) (act Action, overrid bool) {
 	switch act1 {
 	case NoAction, act2:
-		return act2
+		act = act2
 	default:
-		return Mixed
+		act = Mixed
 	}
+	overrid = overrid1 && overrid2
+	return
 }
 
 func describeContent(c Content) string {
@@ -271,7 +271,7 @@ var (
 		Merge:              "←M→",
 		Mixed:              "•••",
 	}
-	unActionGlyphs = map[string]Action{}
+	unActionGlyphs = map[string]Action{} // filled in init below
 	actionColors   = map[Action]string{
 		LeftToRight:        "#60C1F8",
 		RightToLeft:        "#B980FF",
@@ -282,7 +282,7 @@ var (
 		Mixed:              "#BABABA",
 	}
 	overriddenColor    = "#4BC74A"
-	actionDescriptions = map[Action]string{
+	actionDescriptions = map[Action]string{ // XXX: later changed by setReplicaNames
 		Skip:               "skip",
 		LeftToRight:        "propagate from left to right",
 		LeftToRightPartial: "propagate from left to right, partial",
@@ -371,6 +371,7 @@ func setSort(rule sortRule) {
 			case sortRule{actionColumn, gtk.SORT_DESCENDING}:
 				return core.Items[i].Action() > core.Items[j].Action()
 			}
+			// XXX: When adding new sort rules, don't forget to update TestDisplayItemsSorted.
 			panic("impossible case")
 		})
 		displayItems()
@@ -443,6 +444,8 @@ func setAction(act Action) {
 		}
 	}
 
+	// If the tree was sorted by action, we now have to either sort (and displayItems) again, or
+	// just indicate that it's no longer sorted, which is easier and probably more useful.
 	if currentSort.column == actionColumn {
 		setSort(sortRule{})
 	}
@@ -481,8 +484,7 @@ func setActionInner(
 	}
 
 	// Recursively update children, if any.
-	child, err := treestore.GetIterFromString("0")
-	mustf(err, "get tree iter for children")
+	child, _ := treestore.GetIterFirst()
 	if treestore.IterChildren(iter, child) {
 		for {
 			treepath, err := treestore.GetPath(child)
@@ -499,17 +501,16 @@ func setActionInner(
 
 func refreshParentAction(treepathS string) {
 	iter, err := treestore.GetIterFromString(treepathS)
-	mustf(err, "get iter for parent from %s", treepathS)
-	child, err := treestore.GetIterFromString(treepathS)
-	mustf(err, "get iter for child from %s", treepathS)
+	mustf(err, "get tree iter for parent from %s", treepathS)
+	child, _ := treestore.GetIterFirst()
 	if !treestore.IterChildren(iter, child) {
 		return
 	}
 	var action Action
 	overridden := true
 	for {
-		action = combineAction(action, actionFromIter(child))
-		overridden = overridden && isOverriddenFromIter(child)
+		action, overridden = combineAction(action, overridden,
+			actionFromIter(child), isOverriddenFromIter(child))
 		if !treestore.IterNext(child) {
 			break
 		}
@@ -519,7 +520,7 @@ func refreshParentAction(treepathS string) {
 
 func onDiffMenuItemActivate() {
 	if core.Diff == nil {
-		log.Println("cannot diff: core.Diff is already nil")
+		log.Println("cannot invoke core.Diff because it is already nil")
 		update(Update{})
 		return
 	}
@@ -572,7 +573,7 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 	}
 	treeview.SetTooltipCell(tip, treepath, column, nil)
 	iter, err := treestore.GetIter(treepath)
-	if !shouldf(err, "get treestore iter for %v", treepath) {
+	if !shouldf(err, "get tree iter for %v", treepath) {
 		return false
 	}
 

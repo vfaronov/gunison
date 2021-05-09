@@ -472,7 +472,7 @@ func (c *Core) procBufferStartup() Update {
 			Busy:    true,
 			Status:  "Assembling plan",
 
-			procBuffer: c.makeProcBufPlan(),
+			procBuffer: c.makeProcBufferPlan(),
 			procError:  c.procErrorUnrecoverable,
 
 			Interrupt: c.interrupt,
@@ -502,7 +502,7 @@ func (c *Core) procBufferFileProgress() Update {
 	}
 }
 
-func (c *Core) makeProcBufPlan() func() Update {
+func (c *Core) makeProcBufferPlan() func() Update {
 	items := make([]Item, 0)
 	patItemSide := line("(" + regexp.QuoteMeta(c.Left) + "|" + regexp.QuoteMeta(c.Right) + ") *" +
 		patItemSideInfo)

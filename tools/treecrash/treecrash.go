@@ -29,13 +29,13 @@ func main() {
 	_, err = window.Connect("destroy", func() { gtk.MainQuit() })
 	check(err)
 
-	hbox, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 0)
+	vbox, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 0)
 	check(err)
-	window.Add(hbox)
+	window.Add(vbox)
 
 	scrollwin, err := gtk.ScrolledWindowNew(nil, nil)
 	check(err)
-	hbox.PackStart(scrollwin, true, true, 0)
+	vbox.PackStart(scrollwin, true, true, 0)
 
 	view, err := gtk.TreeViewNew()
 	check(err)
@@ -82,7 +82,7 @@ func main() {
 		}
 	})
 	check(err)
-	hbox.PackEnd(button, false, false, 0)
+	vbox.PackEnd(button, false, false, 0)
 
 	window.ShowAll()
 	gtk.Main()

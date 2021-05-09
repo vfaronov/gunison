@@ -313,6 +313,16 @@ func update(upd Update) {
 	}
 }
 
+func invokeUpdate(f func() Update) {
+	// Methods on core may have become nil while we were interacting with the user.
+	if f == nil {
+		log.Println("cannot invoke method because it is already nil")
+		update(Update{})
+		return
+	}
+	update(f())
+}
+
 func setReplicaNames(left, right string) {
 	if headerbar.GetSubtitle() != "" {
 		return // already set
@@ -400,12 +410,7 @@ func onWindowDeleteEvent() bool {
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
-			if core.Interrupt == nil { // may have changed while the user was responding
-				log.Println("cannot interrupt: core.Interrupt is already nil")
-				update(Update{})
-				break
-			}
-			update(core.Interrupt())
+			invokeUpdate(core.Interrupt)
 		}
 
 	case core.Kill != nil:
@@ -415,12 +420,7 @@ func onWindowDeleteEvent() bool {
 		)
 		if resp == gtk.RESPONSE_YES {
 			wantQuit = true
-			if core.Kill == nil {
-				log.Println("cannot kill: core.Kill is already nil")
-				update(Update{})
-				break
-			}
-			update(core.Kill())
+			invokeUpdate(core.Kill)
 		}
 	}
 
@@ -433,13 +433,8 @@ func onInfobarResponse() {
 }
 
 func onSyncButtonClicked() {
-	if core.Sync == nil {
-		log.Println("cannot sync: core.Sync is already nil")
-		update(Update{})
-		return
-	}
 	treeSelection.UnselectAll() // looks better
-	update(core.Sync())
+	invokeUpdate(core.Sync)
 }
 
 func onAbortButtonClicked() {
@@ -448,22 +443,12 @@ func onAbortButtonClicked() {
 		DialogOption{Text: "_Abort", Response: gtk.RESPONSE_YES},
 	)
 	if resp == gtk.RESPONSE_YES {
-		if core.Abort == nil { // may have changed while the user was responding
-			log.Println("cannot abort: core.Abort is already nil")
-			update(Update{})
-			return
-		}
-		update(core.Abort())
+		invokeUpdate(core.Abort)
 	}
 }
 
 func onKillButtonClicked() {
-	if core.Kill == nil {
-		log.Println("cannot kill: core.Kill is already nil")
-		update(Update{})
-		return
-	}
-	update(core.Kill())
+	invokeUpdate(core.Kill)
 }
 
 func onCloseButtonClicked() {

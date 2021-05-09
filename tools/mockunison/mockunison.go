@@ -33,7 +33,7 @@ func main() {
 	}
 
 	i := 0
-	fmt.Print("\nleft           right              ")
+	fmt.Print("\nalpha          beta               ")
 	printPrompt(paths, i)
 	scanner := bufio.NewScanner(os.Stdin)
 loop:
@@ -80,8 +80,8 @@ func printPlan(paths []string) {
 	for _, path := range paths {
 		action := actions[rand.Intn(len(actions))]
 		fmt.Print(action, "    ", path, "  \n")
-		fmt.Print("left         : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
-		fmt.Print("right        : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
+		fmt.Print("alpha        : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
+		fmt.Print("beta         : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
 	}
 }
 
