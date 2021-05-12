@@ -134,6 +134,10 @@ var templates = map[string]template{
 			put(p(root, "one hundred", "one hundred two", "one hundred four"), smallText)
 			put(p(root, "twenty one"), smallText)
 			put(p(root, "deeply", "nested", "sub", "directory", "with", "file"), smallText)
+			put(p(root, "twenty two", "twenty three"), smallText)
+			symlink(p(root, "twenty two", "twenty four", "twenty five", "twenty seven"), "twenty six")
+			mkdir(p(root, "twenty two", "twenty eight", "twenty nine", "❖❖❖"))
+			put(p(root, "twenty two", "twenty eight", "thirty"), smallText)
 		},
 		changeLeft: func(root string) {
 			put(p(root, "seventeen"), empty)
@@ -148,6 +152,10 @@ var templates = map[string]template{
 				put(p(root, "twelve", fmt.Sprintf("small file %02d", i)), smallText)
 			}
 			tweak(p(root, "twenty one"), 100)
+			tweak(p(root, "twenty two", "twenty three"), 100)
+			put(p(root, "twenty two", "twenty four", "twenty five", "twenty six"), smallText)
+			rm(p(root, "twenty two", "twenty eight", "twenty nine", "❖❖❖"))
+			tweak(p(root, "twenty two", "twenty eight", "thirty"), 100)
 		},
 		changeRight: func(root string) {
 			rm(p(root, "three"))
@@ -164,6 +172,7 @@ var templates = map[string]template{
 			tweak(p(root, funnyName, funnyName), 200)
 			tweak(p(root, "twenty one"), 100)
 			tweak(p(root, "deeply", "nested", "sub", "directory", "with", "file"), 200)
+			rm(p(root, "twenty two", "twenty four", "twenty five", "twenty seven"))
 		},
 	},
 
