@@ -66,11 +66,8 @@ func displayItems() {
 		}
 	}
 
-	defer treeview.ExpandAll() // needs to happen after reattach() deferred below
-
 	// On my system, this makes the following code 30% faster on a large plan.
-	reattach := DetachModel(treeview)
-	defer reattach()
+	reattachModel := DetachModel(treeview)
 
 	treestore.Clear()
 
@@ -156,6 +153,13 @@ func displayItems() {
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 		mustf(treestore.SetValue(iter, colPath, path), "set path column")
 		displayAction(iter, item.Action(), item.IsOverridden())
+	}
+
+	reattachModel()
+
+	// Kick off recursively expanding the tree (triggering onTreeviewRowExpanded) as necessary.
+	for iter, ok := treestore.GetIterFirst(); ok; ok = treestore.IterNext(iter) {
+		maybeExpandRow(iter)
 	}
 }
 
@@ -589,6 +593,31 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		return false
 	}
 	return true
+}
+
+func onTreeviewRowExpanded(_ *gtk.TreeView, iter *gtk.TreeIter) {
+	delete(collapsed, pathAt(iter))
+	// Automatically expand children unless they have been collapsed by the user.
+	// (This will trigger the row-expanded signal on each child, and so proceed recursively.)
+	child, _ := treestore.GetIterFirst()
+	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
+		maybeExpandRow(child)
+	}
+}
+
+func onTreeviewRowCollapsed(_ *gtk.TreeView, iter *gtk.TreeIter) {
+	collapsed[pathAt(iter)] = true
+}
+
+func maybeExpandRow(iter *gtk.TreeIter) {
+	if collapsed[pathAt(iter)] {
+		return
+	}
+	treepath, err := treestore.GetPath(iter)
+	if !shouldf(err, "get treepath from iter") {
+		return
+	}
+	treeview.ExpandRow(treepath, false)
 }
 
 func selectedItem(li *glib.List) (*gtk.TreeIter, *Item, bool) {

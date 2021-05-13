@@ -2,13 +2,16 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -54,6 +57,8 @@ var (
 	messages = []Message{}
 	wantQuit bool
 
+	collapsed = map[string]bool{} // TODO: use a more efficient structure for this, like a trie?
+
 	success = errors.New("success")
 )
 
@@ -72,10 +77,12 @@ func main() {
 	log.SetFlags(0)
 	gtk.Init(nil)
 	setupWidgets()
+	loadState()
 	window.Show()
 	startUnison(os.Args[1:]...)
 	log.Print("starting main loop")
 	gtk.Main()
+	saveState()
 }
 
 func startUnison(args ...string) {
@@ -166,6 +173,8 @@ func setupWidgets() {
 	shouldConnect(treeview, "popup-menu", onTreeviewPopupMenu)
 	shouldConnect(treeview, "button-press-event", onTreeviewButtonPressEvent)
 	shouldConnect(treeview, "query-tooltip", onTreeviewQueryTooltip)
+	shouldConnect(treeview, "row-expanded", onTreeviewRowExpanded)
+	shouldConnect(treeview, "row-collapsed", onTreeviewRowCollapsed)
 
 	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
 	shouldConnect(treeSelection, "changed", onTreeSelectionChanged)
@@ -455,6 +464,57 @@ func onKillButtonClicked() {
 
 func onCloseButtonClicked() {
 	window.Destroy()
+}
+
+type state struct {
+	Collapsed []string
+}
+
+func statePath() string {
+	return filepath.Join(unisonDir(), "gunison.state.json")
+}
+
+func loadState() {
+	statePath := statePath()
+	log.Println("loading UI state from", statePath)
+	f, err := os.Open(statePath)
+	if !shouldf(err, "open state file") {
+		return
+	}
+	defer f.Close()
+	var state state
+	if err := json.NewDecoder(f).Decode(&state); !shouldf(err, "decode state JSON") {
+		return
+	}
+	collapsed = map[string]bool{}
+	for _, path := range state.Collapsed {
+		collapsed[path] = true
+	}
+}
+
+func saveState() {
+	statePath := statePath()
+	log.Println("saving UI state to", statePath)
+	f, err := os.Create(statePath)
+	if !shouldf(err, "create state file") {
+		return
+	}
+	defer f.Close()
+	state := state{Collapsed: make([]string, 0, len(collapsed))}
+	for path := range collapsed {
+		state.Collapsed = append(state.Collapsed, path)
+	}
+	sort.Strings(state.Collapsed)
+	shouldf(json.NewEncoder(f).Encode(state), "encode state JSON")
+}
+
+func unisonDir() string {
+	if dir := os.Getenv("UNISON"); dir != "" {
+		return dir
+	}
+	home, err := os.UserHomeDir()
+	shouldf(err, "get user home directory")
+	return filepath.Join(home, ".unison")
 }
 
 func checkf(err error, format string, args ...interface{}) bool { // TODO: vs. shouldf

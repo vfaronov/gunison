@@ -27,9 +27,15 @@ but, due to an inefficiency in Gunison, loading large diffs may be very slow.
 
 Keyboard navigation is via common GTK features:
 
+* press - (minus) or Shift+Left to collapse a directory
+* press + (plus) to expand a directory, Shift+Right to expand with all its children
 * press Ctrl+F1 to toggle a tooltip with details for the selected file
 * press Menu or Shift+F10 to pop up an action menu for the selected files
 * use mnemonics (underlined keys) to access buttons and menu items, e.g. Alt+S for Sync
+
+At exit, Gunison saves some UI state (which paths have been collapsed) to a file
+named `gunison.state.json` in your `~/.unison` (or `$UNISON`) directory.
+You can prevent this state persistence by symlinking that file to `/dev/null`.
 
 [prefs]: https://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#prefs
 [Meld]: https://meldmerge.org/
