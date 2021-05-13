@@ -485,15 +485,10 @@ func setActionInner(
 
 	// Recursively update children, if any.
 	child, _ := treestore.GetIterFirst()
-	if treestore.IterChildren(iter, child) {
-		for {
-			treepath, err := treestore.GetPath(child)
-			mustf(err, "get tree path")
-			setActionInner(treepath, act, updated, invalidated) // safe to ignore returned value here
-			if !treestore.IterNext(child) {
-				break
-			}
-		}
+	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
+		treepath, err := treestore.GetPath(child)
+		mustf(err, "get tree path")
+		setActionInner(treepath, act, updated, invalidated) // safe to ignore returned value here
 	}
 
 	return invalidated
@@ -502,18 +497,12 @@ func setActionInner(
 func refreshParentAction(treepathS string) {
 	iter, err := treestore.GetIterFromString(treepathS)
 	mustf(err, "get tree iter for parent from %s", treepathS)
-	child, _ := treestore.GetIterFirst()
-	if !treestore.IterChildren(iter, child) {
-		return
-	}
 	var action Action
 	overridden := true
-	for {
+	child, _ := treestore.GetIterFirst()
+	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
 		action, overridden = combineAction(action, overridden,
-			actionFromIter(child), isOverriddenFromIter(child))
-		if !treestore.IterNext(child) {
-			break
-		}
+			actionAt(child), isOverriddenAt(child))
 	}
 	displayAction(iter, action, overridden)
 }
@@ -557,8 +546,8 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 		))
 	} else {
 		tip.SetMarkup(fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>plan</b>:\t%s",
-			html.EscapeString(pathFromIter(iter)),
-			actionDescriptions[actionFromIter(iter)],
+			html.EscapeString(pathAt(iter)),
+			actionDescriptions[actionAt(iter)],
 		))
 	}
 	return true
@@ -579,10 +568,10 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 
 	switch column.Native() {
 	case pathColumn.Native():
-		tip.SetText(pathFromIter(iter))
+		tip.SetText(pathAt(iter))
 
 	case actionColumn.Native():
-		tip.SetText(actionDescriptions[actionFromIter(iter)])
+		tip.SetText(actionDescriptions[actionAt(iter)])
 
 	case leftColumn.Native(), rightColumn.Native():
 		idx := MustGetColumn(treestore, iter, colIdx).(int)
@@ -612,14 +601,14 @@ func selectedItem(li *glib.List) (*gtk.TreeIter, *Item, bool) {
 	return iter, &core.Items[idx], true
 }
 
-func pathFromIter(iter *gtk.TreeIter) string {
+func pathAt(iter *gtk.TreeIter) string {
 	return MustGetColumn(treestore, iter, colPath).(string)
 }
 
-func actionFromIter(iter *gtk.TreeIter) Action {
+func actionAt(iter *gtk.TreeIter) Action {
 	return unActionGlyphs[MustGetColumn(treestore, iter, colAction).(string)]
 }
 
-func isOverriddenFromIter(iter *gtk.TreeIter) bool {
+func isOverriddenAt(iter *gtk.TreeIter) bool {
 	return MustGetColumn(treestore, iter, colActionColor).(string) == overriddenColor
 }

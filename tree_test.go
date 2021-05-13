@@ -274,7 +274,7 @@ func TestDisplayItemsSorted(t *testing.T) {
 			case pathColumn:
 				cur = MustGetColumn(treestore, iter, colPath)
 			case actionColumn:
-				cur = actionFromIter(iter)
+				cur = actionAt(iter)
 			}
 			if last != nil {
 				switch currentSort.order {
