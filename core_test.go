@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/gotk3/gotk3/gtk"
@@ -19,6 +20,7 @@ func TestMain(m *testing.M) {
 	if !testing.Verbose() {
 		log.SetOutput(io.Discard)
 	}
+	runtime.GOMAXPROCS(1) // force tests to run on the same (main) thread that gtk.Init is called on
 	gtk.Init(nil)
 	setupWidgets()
 	os.Exit(m.Run())

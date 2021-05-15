@@ -173,6 +173,7 @@ func genItems(t *rapid.T) []Item {
 func TestDisplayItemsContiguous(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		currentSort = sortRule{}
 		displayItems()
 		cur := 0
 		forEachNode(func(iter *gtk.TreeIter) {
@@ -194,6 +195,7 @@ func TestDisplayItemsContiguous(t *testing.T) {
 func TestDisplayItemsNamesPaths(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		currentSort = sortRule{}
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			var names []string
@@ -222,6 +224,7 @@ func TestDisplayItemsNamesPaths(t *testing.T) {
 func TestDisplayItemsAncestors(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		currentSort = sortRule{}
 		displayItems()
 		forEachNode(func(iter1 *gtk.TreeIter) {
 			path1 := MustGetColumn(treestore, iter1, colPath).(string)
@@ -246,6 +249,7 @@ func TestDisplayItemsAncestors(t *testing.T) {
 func TestDisplayItemsMultipleChildren(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		currentSort = sortRule{}
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
 			assert.NotEqual(t, 1, treestore.IterNChildren(iter))
@@ -295,6 +299,7 @@ func TestDisplayItemsSorted(t *testing.T) {
 func TestSetActionAsIfOriginal(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		currentSort = sortRule{}
 
 		displayItems()
 		treeview.ExpandAll() // nodes whose parents are collapsed cannot be selected
