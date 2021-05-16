@@ -77,12 +77,13 @@ func main() {
 	log.SetFlags(0)
 	gtk.Init(nil)
 	setupWidgets()
-	loadState()
+	loadUIState()
 	window.Show()
 	startUnison(os.Args[1:]...)
 	log.Print("starting main loop")
 	gtk.Main()
-	saveState()
+	// saveUIState is not called here (unlike loadUIState), because it needs the current window size,
+	// which is not available when the window has already been destroyed.
 }
 
 func startUnison(args ...string) {
@@ -221,7 +222,7 @@ func setupWidgets() {
 	shouldConnect(killButton, "clicked", onKillButtonClicked)
 
 	closeButton = mustGetObject(builder, "close-button").(*gtk.Button)
-	shouldConnect(closeButton, "clicked", onCloseButtonClicked)
+	shouldConnect(closeButton, "clicked", exit)
 
 	update(Update{})
 }
@@ -254,7 +255,7 @@ func update(upd Update) {
 	log.Printf("applying update: %+v (wantQuit = %v)", upd, wantQuit)
 
 	if wantQuit && !core.Running {
-		window.Destroy()
+		exit()
 		return
 	}
 
@@ -386,6 +387,11 @@ func showAlert(a Alert) {
 	}
 }
 
+func exit() {
+	saveUIState()
+	window.Destroy()
+}
+
 var importanceToMessageType = map[Importance]gtk.MessageType{
 	Info:    gtk.MESSAGE_INFO,
 	Warning: gtk.MESSAGE_WARNING,
@@ -408,7 +414,7 @@ func displayDiff(diff []byte) {
 func onWindowDeleteEvent() bool {
 	switch {
 	case !core.Running:
-		return handleDefault
+		exit()
 
 	case core.Quit != nil:
 		wantQuit = true
@@ -462,50 +468,67 @@ func onKillButtonClicked() {
 	invokeUpdate(core.Kill)
 }
 
-func onCloseButtonClicked() {
-	window.Destroy()
+type uiState struct {
+	Width, Height int
+	ColumnWidth   []int
+	Collapsed     []string
 }
 
-type state struct {
-	Collapsed []string
-}
-
-func statePath() string {
+func uiStatePath() string {
 	return filepath.Join(unisonDir(), "gunison.state.json")
 }
 
-func loadState() {
-	statePath := statePath()
+func loadUIState() {
+	statePath := uiStatePath()
 	log.Println("loading UI state from", statePath)
 	f, err := os.Open(statePath)
-	if !shouldf(err, "open state file") {
+	if !shouldf(err, "open UI state file") {
 		return
 	}
 	defer f.Close()
-	var state state
-	if err := json.NewDecoder(f).Decode(&state); !shouldf(err, "decode state JSON") {
+	var state uiState
+	if err := json.NewDecoder(f).Decode(&state); !shouldf(err, "decode UI state JSON") {
 		return
 	}
+
+	window.SetDefaultSize(state.Width, state.Height)
+
+	for i, li := 0, treeview.GetColumns(); li != nil; i, li = i+1, li.Next() {
+		li.Data().(*gtk.TreeViewColumn).SetFixedWidth(state.ColumnWidth[i])
+	}
+
 	collapsed = map[string]bool{}
 	for _, path := range state.Collapsed {
 		collapsed[path] = true
 	}
 }
 
-func saveState() {
-	statePath := statePath()
+func saveUIState() {
+	statePath := uiStatePath()
 	log.Println("saving UI state to", statePath)
 	f, err := os.Create(statePath)
-	if !shouldf(err, "create state file") {
+	if !shouldf(err, "create UI state file") {
 		return
 	}
 	defer f.Close()
-	state := state{Collapsed: make([]string, 0, len(collapsed))}
+	var state uiState
+
+	state.Width, state.Height = window.GetSize()
+
+	for li := treeview.GetColumns(); li != nil; li = li.Next() {
+		column := li.Data().(*gtk.TreeViewColumn)
+		state.ColumnWidth = append(state.ColumnWidth, column.GetWidth())
+	}
+
+	state.Collapsed = make([]string, 0, len(collapsed))
 	for path := range collapsed {
 		state.Collapsed = append(state.Collapsed, path)
 	}
 	sort.Strings(state.Collapsed)
-	shouldf(json.NewEncoder(f).Encode(state), "encode state JSON")
+
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	shouldf(enc.Encode(state), "encode UI state JSON")
 }
 
 func unisonDir() string {

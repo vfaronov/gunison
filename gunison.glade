@@ -114,11 +114,10 @@
                     <property name="resizable">True</property>
                     <property name="spacing">6</property>
                     <property name="sizing">fixed</property>
-                    <property name="fixed_width">350</property>
+                    <property name="fixed_width">440</property>
                     <property name="title" translatable="yes">Path</property>
                     <property name="expand">True</property>
                     <property name="clickable">True</property>
-                    <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererPixbuf" id="icon-renderer">
                         <property name="stock_size">5</property>
@@ -141,7 +140,6 @@
                     <property name="fixed_width">130</property>
                     <property name="title" translatable="yes">Left</property>
                     <property name="alignment">0.5</property>
-                    <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="left-renderer"/>
                       <attributes>
@@ -157,7 +155,6 @@
                     <property name="title" translatable="yes">Action</property>
                     <property name="clickable">True</property>
                     <property name="alignment">0.5</property>
-                    <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="action-renderer">
                         <property name="scale">1.3</property>
@@ -175,7 +172,6 @@
                     <property name="fixed_width">130</property>
                     <property name="title" translatable="yes">Right</property>
                     <property name="alignment">0.5</property>
-                    <property name="reorderable">True</property>
                     <child>
                       <object class="GtkCellRendererText" id="right-renderer"/>
                       <attributes>
