@@ -22,9 +22,10 @@ import (
 var (
 	core = NewCore()
 
-	unison  *exec.Cmd
-	unisonR io.ReadCloser
-	unisonW io.WriteCloser
+	unison      *exec.Cmd
+	unisonR     io.ReadCloser
+	unisonW     io.WriteCloser
+	sysProcAttr *syscall.SysProcAttr
 
 	//go:embed gunison.glade
 	ui string
@@ -91,9 +92,7 @@ func startUnison(args ...string) {
 
 	args = append(args, "-dumbtty")
 	unison = exec.Command("unison", args...)
-	unison.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
-	}
+	unison.SysProcAttr = sysProcAttr
 
 	unisonW, err = unison.StdinPipe()
 	if err != nil {

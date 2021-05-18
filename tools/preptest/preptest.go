@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 func main() {
@@ -235,11 +237,14 @@ Facere asperiores unde rerum dignissimos id. Nihil maiores sequi accusamus eum r
 	largeBinary = make([]byte, 10000000)
 )
 
-const funnyName = `here is a rather long and funny file name, 社會科學院語學研究所	              ​    　ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ`
+var funnyName = `here is a rather long and funny file name, 社會科學院語學研究所	              ​    　ﾟ･✿ヾ╲(｡◕‿◕｡)╱✿･ﾟ`
 
 func init() {
 	_, _ = rand.Read(smallBinary)
 	_, _ = rand.Read(largeBinary)
+	if runtime.GOOS == "windows" { // disallows codepoints <0x20 in filenames
+		funnyName = strings.ReplaceAll(funnyName, "	", "---")
+	}
 }
 
 func p(elem ...string) string {
@@ -257,6 +262,10 @@ func put(path string, data []byte) {
 }
 
 func symlink(path, target string) {
+	if runtime.GOOS == "windows" { // requires special privileges
+		log.Println("skipping symlink on Windows:", path)
+		return
+	}
 	rm(path)
 	mkdir(p(path, ".."))
 	must(os.Symlink(target, path))
