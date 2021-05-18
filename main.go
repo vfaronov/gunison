@@ -490,6 +490,8 @@ func loadUIState() {
 		return
 	}
 
+	log.Printf("state: Width:%v Height:%v ColumnWidth:%v", state.Width, state.Height, state.ColumnWidth)
+
 	window.SetDefaultSize(state.Width, state.Height)
 
 	for i, li := 0, treeview.GetColumns(); li != nil; i, li = i+1, li.Next() {
@@ -524,6 +526,8 @@ func saveUIState() {
 		state.Collapsed = append(state.Collapsed, path)
 	}
 	sort.Strings(state.Collapsed)
+
+	log.Printf("state: Width:%v Height:%v ColumnWidth:%v", state.Width, state.Height, state.ColumnWidth)
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
