@@ -518,7 +518,11 @@ func saveUIState() {
 
 	for li := treeview.GetColumns(); li != nil; li = li.Next() {
 		column := li.Data().(*gtk.TreeViewColumn)
-		state.ColumnWidth = append(state.ColumnWidth, column.GetWidth())
+		width := column.GetWidth()
+		if width == 0 { // treeview is not shown
+			width = column.GetFixedWidth()
+		}
+		state.ColumnWidth = append(state.ColumnWidth, width)
 	}
 
 	state.Collapsed = make([]string, 0, len(collapsed))
