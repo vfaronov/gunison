@@ -371,7 +371,7 @@ func updateInfobar() {
 	}
 	infobarLabel.SetText(text.String())
 	infobar.SetMessageType(importanceToMessageType[importance])
-	shouldf(infobar.Set("revealed", true), "reveal infobar")
+	mustf(infobar.Set("revealed", true), "reveal infobar")
 }
 
 func showAlert(a Alert) {
@@ -543,7 +543,7 @@ func unisonDir() string {
 		return dir
 	}
 	home, err := os.UserHomeDir()
-	shouldf(err, "get user home directory")
+	mustf(err, "get user home directory")
 	return filepath.Join(home, ".unison")
 }
 

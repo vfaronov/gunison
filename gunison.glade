@@ -114,7 +114,7 @@
                     <property name="resizable">True</property>
                     <property name="spacing">6</property>
                     <property name="sizing">fixed</property>
-                    <property name="fixed_width">440</property>
+                    <property name="fixed_width">430</property>
                     <property name="title" translatable="yes">Path</property>
                     <property name="expand">True</property>
                     <property name="clickable">True</property>

@@ -195,7 +195,7 @@ func NewCore() *Core {
 	return c
 }
 
-// next processes any events implictly caused by state changes within the Core. For example,
+// next processes any events implicitly caused by state changes within the Core. For example,
 // when procBuffer has changed, the new one might be able to parse more of the buffer's current contents.
 // As a rule of thumb, whenever c has made some progress and wants to return upd, it must
 // return upd.join(c.next()) instead.

@@ -164,7 +164,7 @@ func displayItems() {
 }
 
 func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
-	// XXX: The values set here are not just for display: they are later used in actionFromIter, etc.
+	// XXX: The values set here are not just for display: they are later used in actionAt, etc.
 	mustf(treestore.SetValue(iter, colAction, actionGlyphs[act]), "set action column")
 	color := actionColors[act]
 	if overridden {
@@ -347,10 +347,9 @@ func onPathColumnClicked()   { cycleSort(pathColumn) }
 func onActionColumnClicked() { cycleSort(actionColumn) }
 
 func cycleSort(col *gtk.TreeViewColumn) {
-	switch currentSort {
-	case sortRule{col, gtk.SORT_ASCENDING}:
+	if currentSort == (sortRule{col, gtk.SORT_ASCENDING}) {
 		setSort(sortRule{col, gtk.SORT_DESCENDING})
-	default:
+	} else {
 		setSort(sortRule{col, gtk.SORT_ASCENDING})
 	}
 }
@@ -505,8 +504,7 @@ func refreshParentAction(treepathS string) {
 	overridden := true
 	child, _ := treestore.GetIterFirst()
 	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
-		action, overridden = combineAction(action, overridden,
-			actionAt(child), isOverriddenAt(child))
+		action, overridden = combineAction(action, overridden, actionAt(child), isOverriddenAt(child))
 	}
 	displayAction(iter, action, overridden)
 }
@@ -538,7 +536,7 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 		return false // only show tooltip when a single row is selected
 	}
 	if iter, item, ok := selectedItem(li); ok {
-		tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>plan</b>:\t%s",
+		tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>action</b>:\t%s",
 			html.EscapeString(item.Path),
 			html.EscapeString(core.Left),
 			html.EscapeString(describeContentFull(item.Left)),
@@ -549,7 +547,7 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 			actionDescriptions[item.Action()],
 		))
 	} else {
-		tip.SetMarkup(fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>plan</b>:\t%s",
+		tip.SetMarkup(fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>action</b>:\t%s",
 			html.EscapeString(pathAt(iter)),
 			actionDescriptions[actionAt(iter)],
 		))
