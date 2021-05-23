@@ -33,7 +33,7 @@ Keyboard navigation is via common GTK features:
 * press Menu or Shift+F10 to pop up an action menu for the selected files
 * use mnemonics (underlined keys) to access buttons and menu items, e.g. Alt+S for Sync
 
-At exit, Gunison saves some UI state (window and column size, which directories are collapsed) 
+At exit, Gunison saves some UI state (collapsed directories, window geometry, column order)
 to a file named `gunison.state.json` in your `~/.unison` (or `$UNISON`) directory.
 You can prevent this by symlinking that file to `/dev/null`.
 

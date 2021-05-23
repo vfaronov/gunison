@@ -41,6 +41,7 @@ var (
 	leftColumn          *gtk.TreeViewColumn
 	actionColumn        *gtk.TreeViewColumn
 	rightColumn         *gtk.TreeViewColumn
+	columns             []*gtk.TreeViewColumn
 	itemMenu            *gtk.Menu
 	leftToRightMenuItem *gtk.MenuItem
 	rightToLeftMenuItem *gtk.MenuItem
@@ -186,6 +187,10 @@ func setupWidgets() {
 	actionColumn = mustGetObject(builder, "action-column").(*gtk.TreeViewColumn)
 	mustConnect(actionColumn, "clicked", onActionColumnClicked)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
+	// Pin down the original order of columns (before the user reorders them) for loadUIState/saveUIState.
+	for li := treeview.GetColumns(); li != nil; li = li.Next() {
+		columns = append(columns, li.Data().(*gtk.TreeViewColumn))
+	}
 
 	itemMenu = mustGetObject(builder, "item-menu").(*gtk.Menu)
 	leftToRightMenuItem = mustGetObject(builder, "left-to-right-menuitem").(*gtk.MenuItem)
@@ -470,7 +475,8 @@ func onKillButtonClicked() {
 type uiState struct {
 	Width, Height int
 	Maximized     bool
-	ColumnWidth   []int
+	ColumnOrder   []int // indices match var columns
+	ColumnWidth   []int // indices match var columns
 	Collapsed     []string
 }
 
@@ -491,16 +497,28 @@ func loadUIState() {
 		return
 	}
 
-	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnWidth:%v",
-		state.Width, state.Height, state.Maximized, state.ColumnWidth)
+	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnOrder:%v ColumnWidth:%v",
+		state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
 
 	window.SetDefaultSize(state.Width, state.Height)
 	if state.Maximized {
 		window.Maximize()
 	}
 
-	for i, li := 0, treeview.GetColumns(); li != nil; i, li = i+1, li.Next() {
-		li.Data().(*gtk.TreeViewColumn).SetFixedWidth(state.ColumnWidth[i])
+	var prev *gtk.TreeViewColumn
+	for ord := range state.ColumnOrder { // For each position in the order of columns,
+		// find the column that should be at this position, and move it there.
+		for i, x := range state.ColumnOrder {
+			if ord == x {
+				treeview.MoveColumnAfter(columns[i], prev)
+				prev = columns[i]
+				break
+			}
+		}
+	}
+
+	for i, column := range columns {
+		column.SetFixedWidth(state.ColumnWidth[i])
 	}
 
 	collapsed = map[string]bool{}
@@ -526,8 +544,17 @@ func saveUIState() {
 		state.Width, state.Height = window.GetSize()
 	}
 
-	for li := treeview.GetColumns(); li != nil; li = li.Next() {
-		column := li.Data().(*gtk.TreeViewColumn)
+	state.ColumnOrder = make([]int, len(columns))
+	for ord, li := 0, treeview.GetColumns(); li != nil; ord, li = ord+1, li.Next() {
+		for i, column := range columns {
+			if column.Native() == li.Data().(*gtk.TreeViewColumn).Native() {
+				state.ColumnOrder[i] = ord
+				break
+			}
+		}
+	}
+
+	for _, column := range columns {
 		width := column.GetWidth()
 		if width == 0 { // treeview is not shown
 			width = column.GetFixedWidth()
