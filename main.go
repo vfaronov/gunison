@@ -469,6 +469,7 @@ func onKillButtonClicked() {
 
 type uiState struct {
 	Width, Height int
+	Maximized     bool
 	ColumnWidth   []int
 	Collapsed     []string
 }
@@ -490,9 +491,13 @@ func loadUIState() {
 		return
 	}
 
-	log.Printf("state: Width:%v Height:%v ColumnWidth:%v", state.Width, state.Height, state.ColumnWidth)
+	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnWidth:%v",
+		state.Width, state.Height, state.Maximized, state.ColumnWidth)
 
 	window.SetDefaultSize(state.Width, state.Height)
+	if state.Maximized {
+		window.Maximize()
+	}
 
 	for i, li := 0, treeview.GetColumns(); li != nil; i, li = i+1, li.Next() {
 		li.Data().(*gtk.TreeViewColumn).SetFixedWidth(state.ColumnWidth[i])
@@ -514,7 +519,12 @@ func saveUIState() {
 	defer f.Close()
 	var state uiState
 
-	state.Width, state.Height = window.GetSize()
+	if window.IsMaximized() {
+		state.Maximized = true
+		state.Width, state.Height = window.GetDefaultSize()
+	} else {
+		state.Width, state.Height = window.GetSize()
+	}
 
 	for li := treeview.GetColumns(); li != nil; li = li.Next() {
 		column := li.Data().(*gtk.TreeViewColumn)
@@ -531,7 +541,8 @@ func saveUIState() {
 	}
 	sort.Strings(state.Collapsed)
 
-	log.Printf("state: Width:%v Height:%v ColumnWidth:%v", state.Width, state.Height, state.ColumnWidth)
+	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnWidth:%v",
+		state.Width, state.Height, state.Maximized, state.ColumnWidth)
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
