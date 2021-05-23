@@ -298,10 +298,19 @@ func update(upd Update) {
 
 	syncButton.SetVisible(core.Sync != nil)
 	abortButton.SetVisible(core.Abort != nil)
-	killButton.SetVisible(wantQuit && core.Kill != nil)
 	closeButton.SetVisible(!core.Running)
 	if closeButton.GetVisible() {
 		closeButton.GrabFocus()
+	}
+
+	// If we just show the kill button right away, like the other buttons above, it flashes menacingly
+	// during normal quit, due to the brief delay between sending "q" to Unison and receiving its exit.
+	if offerKill := func() bool { return wantQuit && core.Kill != nil }; offerKill() {
+		if !killButton.GetVisible() {
+			mustIdleAdd(func() { killButton.SetVisible(offerKill()) })
+		}
+	} else {
+		killButton.SetVisible(false)
 	}
 
 	if len(upd.Input) > 0 {
