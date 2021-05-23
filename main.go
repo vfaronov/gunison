@@ -47,6 +47,7 @@ var (
 	rightToLeftMenuItem *gtk.MenuItem
 	mergeMenuItem       *gtk.MenuItem
 	skipMenuItem        *gtk.MenuItem
+	revertMenuItem      *gtk.MenuItem
 	diffMenuItem        *gtk.MenuItem
 	statusLabel         *gtk.Label
 	spinner             *gtk.Spinner
@@ -201,6 +202,8 @@ func setupWidgets() {
 	mustConnect(mergeMenuItem, "activate", onMergeMenuItemActivate)
 	skipMenuItem = mustGetObject(builder, "skip-menuitem").(*gtk.MenuItem)
 	mustConnect(skipMenuItem, "activate", onSkipMenuItemActivate)
+	revertMenuItem = mustGetObject(builder, "revert-menuitem").(*gtk.MenuItem)
+	mustConnect(revertMenuItem, "activate", onRevertMenuItemActivate)
 	diffMenuItem = mustGetObject(builder, "diff-menuitem").(*gtk.MenuItem)
 	mustConnect(diffMenuItem, "activate", onDiffMenuItemActivate)
 

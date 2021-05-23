@@ -37,6 +37,14 @@
       </object>
     </child>
     <child>
+      <object class="GtkMenuItem" id="revert-menuitem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">_Revert to Unison’s recommendation</property>
+        <property name="use_underline">True</property>
+      </object>
+    </child>
+    <child>
       <object class="GtkSeparatorMenuItem">
         <property name="visible">True</property>
         <property name="can_focus">False</property>

@@ -414,6 +414,7 @@ func updateMenuItems() {
 	rightToLeftMenuItem.SetSensitive(allowAction)
 	mergeMenuItem.SetSensitive(allowAction) // TODO: for files only
 	skipMenuItem.SetSensitive(allowAction)
+	revertMenuItem.SetSensitive(allowAction)
 
 	diffMenuItem.SetSensitive(core.Diff != nil && nsel == 1) // TODO: for files only
 }
@@ -422,6 +423,7 @@ func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
 func onRightToLeftMenuItemActivate() { setAction(RightToLeft) }
 func onMergeMenuItemActivate()       { setAction(Merge) }
 func onSkipMenuItemActivate()        { setAction(Skip) }
+func onRevertMenuItemActivate()      { setAction(NoAction) }
 
 func setAction(act Action) {
 	// TODO: this crashes when many (thousands) items are selected: see tools/treecrash
@@ -464,15 +466,22 @@ func setActionInner(
 	if updated[treepath.String()] {
 		return invalidated
 	}
-	updated[treepath.String()] = true
 
-	// Set the new action on the node and its corresponding plan item (if any).
 	iter, err := treestore.GetIter(treepath)
 	mustf(err, "get tree iter for %s", treepath)
+
+	// Set the new action on the node and its corresponding plan item (if any).
 	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
-		core.Items[idx].Override = act
+		item := &core.Items[idx]
+		item.Override = act
+		displayAction(iter, item.Action(), item.IsOverridden())
+		updated[treepath.String()] = true
+	} else if act != NoAction { // For parent nodes, this only works if we're actually *setting* action,
+		// not resetting to Unison's recommendation, because we don't have a parent node's recommendation
+		// precomputed. Instead, that will be updated in refreshParentAction.
+		displayAction(iter, act, true)
+		updated[treepath.String()] = true
 	}
-	displayAction(iter, act, true)
 
 	// Invalidate all ancestors of the node.
 	for treepath.Up() {
@@ -491,7 +500,7 @@ func setActionInner(
 	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
 		treepath, err := treestore.GetPath(child)
 		mustf(err, "get tree path")
-		setActionInner(treepath, act, updated, invalidated) // safe to ignore returned value here
+		invalidated = setActionInner(treepath, act, updated, invalidated)
 	}
 
 	return invalidated

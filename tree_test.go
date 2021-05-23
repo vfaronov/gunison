@@ -310,21 +310,24 @@ func TestSetActionAsIfOriginal(t *testing.T) {
 					treeSelection.SelectIter(iter)
 				}
 			})
-			var allActions = []Action{Skip, LeftToRight, RightToLeft, Merge}
+			var allActions = []Action{NoAction, Skip, LeftToRight, RightToLeft, Merge}
 			setAction(rapid.SampledFrom(allActions).Draw(t, "action").(Action))
 		}
-		var actions1 []string
+		var actions1, colors1 []string
 		forEachNode(func(iter *gtk.TreeIter) {
 			actions1 = append(actions1, MustGetColumn(treestore, iter, colAction).(string))
+			colors1 = append(colors1, MustGetColumn(treestore, iter, colActionColor).(string))
 		})
 
 		displayItems()
-		var actions2 []string
+		var actions2, colors2 []string
 		forEachNode(func(iter *gtk.TreeIter) {
 			actions2 = append(actions2, MustGetColumn(treestore, iter, colAction).(string))
+			colors2 = append(colors2, MustGetColumn(treestore, iter, colActionColor).(string))
 		})
 
 		assert.Equal(t, actions2, actions1)
+		assert.Equal(t, colors2, colors1)
 	})
 }
 
