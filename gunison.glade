@@ -8,7 +8,7 @@
       <object class="GtkMenuItem" id="left-to-right-menuitem">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="label" translatable="yes">Propagate from _left to right</property>
+        <property name="label" translatable="yes">Propagate from left _to right</property>
         <property name="use_underline">True</property>
       </object>
     </child>
@@ -16,7 +16,7 @@
       <object class="GtkMenuItem" id="right-to-left-menuitem">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="label" translatable="yes">Propagate from _right to left</property>
+        <property name="label" translatable="yes">Propagate _from right to left</property>
         <property name="use_underline">True</property>
       </object>
     </child>
