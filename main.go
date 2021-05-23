@@ -135,11 +135,11 @@ func watchUnison() {
 			copy(data, buf[:n])
 			// TODO: use a different mechanism for communicating with the main thread:
 			// see https://discourse.gnome.org/t/g-idle-add-ordering/6088
-			shouldIdleAdd(recvOutput, data)
+			mustIdleAdd(recvOutput, data)
 		}
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				shouldIdleAdd(recvError, err)
+				mustIdleAdd(recvError, err)
 			}
 			break
 		}
@@ -151,7 +151,7 @@ func watchUnison() {
 	if e == nil {
 		e = success // nil doesn't seem to work with IdleAdd
 	}
-	shouldIdleAdd(recvExit, e)
+	mustIdleAdd(recvExit, e)
 }
 
 func setupWidgets() {
@@ -159,45 +159,45 @@ func setupWidgets() {
 	mustf(err, "load GtkBuilder")
 
 	window = mustGetObject(builder, "window").(*gtk.Window)
-	shouldConnect(window, "delete-event", onWindowDeleteEvent)
-	shouldConnect(window, "destroy", gtk.MainQuit)
+	mustConnect(window, "delete-event", onWindowDeleteEvent)
+	mustConnect(window, "destroy", gtk.MainQuit)
 
 	infobar = mustGetObject(builder, "infobar").(*gtk.InfoBar)
-	shouldConnect(infobar, "response", onInfobarResponse)
+	mustConnect(infobar, "response", onInfobarResponse)
 
 	infobarLabel = mustGetObject(builder, "infobar-label").(*gtk.Label)
 
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
-	shouldConnect(treeview, "popup-menu", onTreeviewPopupMenu)
-	shouldConnect(treeview, "button-press-event", onTreeviewButtonPressEvent)
-	shouldConnect(treeview, "query-tooltip", onTreeviewQueryTooltip)
-	shouldConnect(treeview, "row-expanded", onTreeviewRowExpanded)
-	shouldConnect(treeview, "row-collapsed", onTreeviewRowCollapsed)
+	mustConnect(treeview, "popup-menu", onTreeviewPopupMenu)
+	mustConnect(treeview, "button-press-event", onTreeviewButtonPressEvent)
+	mustConnect(treeview, "query-tooltip", onTreeviewQueryTooltip)
+	mustConnect(treeview, "row-expanded", onTreeviewRowExpanded)
+	mustConnect(treeview, "row-collapsed", onTreeviewRowCollapsed)
 
 	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
-	shouldConnect(treeSelection, "changed", onTreeSelectionChanged)
+	mustConnect(treeSelection, "changed", onTreeSelectionChanged)
 
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
 	pathColumn = mustGetObject(builder, "path-column").(*gtk.TreeViewColumn)
-	shouldConnect(pathColumn, "clicked", onPathColumnClicked)
+	mustConnect(pathColumn, "clicked", onPathColumnClicked)
 	leftColumn = mustGetObject(builder, "left-column").(*gtk.TreeViewColumn)
 	actionColumn = mustGetObject(builder, "action-column").(*gtk.TreeViewColumn)
-	shouldConnect(actionColumn, "clicked", onActionColumnClicked)
+	mustConnect(actionColumn, "clicked", onActionColumnClicked)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
 
 	itemMenu = mustGetObject(builder, "item-menu").(*gtk.Menu)
 	leftToRightMenuItem = mustGetObject(builder, "left-to-right-menuitem").(*gtk.MenuItem)
-	shouldConnect(leftToRightMenuItem, "activate", onLeftToRightMenuItemActivate)
+	mustConnect(leftToRightMenuItem, "activate", onLeftToRightMenuItemActivate)
 	rightToLeftMenuItem = mustGetObject(builder, "right-to-left-menuitem").(*gtk.MenuItem)
-	shouldConnect(rightToLeftMenuItem, "activate", onRightToLeftMenuItemActivate)
+	mustConnect(rightToLeftMenuItem, "activate", onRightToLeftMenuItemActivate)
 	mergeMenuItem = mustGetObject(builder, "merge-menuitem").(*gtk.MenuItem)
-	shouldConnect(mergeMenuItem, "activate", onMergeMenuItemActivate)
+	mustConnect(mergeMenuItem, "activate", onMergeMenuItemActivate)
 	skipMenuItem = mustGetObject(builder, "skip-menuitem").(*gtk.MenuItem)
-	shouldConnect(skipMenuItem, "activate", onSkipMenuItemActivate)
+	mustConnect(skipMenuItem, "activate", onSkipMenuItemActivate)
 	diffMenuItem = mustGetObject(builder, "diff-menuitem").(*gtk.MenuItem)
-	shouldConnect(diffMenuItem, "activate", onDiffMenuItemActivate)
+	mustConnect(diffMenuItem, "activate", onDiffMenuItemActivate)
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
@@ -212,16 +212,16 @@ func setupWidgets() {
 	progressbar = mustGetObject(builder, "progressbar").(*gtk.ProgressBar)
 
 	syncButton = mustGetObject(builder, "sync-button").(*gtk.Button)
-	shouldConnect(syncButton, "clicked", onSyncButtonClicked)
+	mustConnect(syncButton, "clicked", onSyncButtonClicked)
 
 	abortButton = mustGetObject(builder, "abort-button").(*gtk.Button)
-	shouldConnect(abortButton, "clicked", onAbortButtonClicked)
+	mustConnect(abortButton, "clicked", onAbortButtonClicked)
 
 	killButton = mustGetObject(builder, "kill-button").(*gtk.Button)
-	shouldConnect(killButton, "clicked", onKillButtonClicked)
+	mustConnect(killButton, "clicked", onKillButtonClicked)
 
 	closeButton = mustGetObject(builder, "close-button").(*gtk.Button)
-	shouldConnect(closeButton, "clicked", exit)
+	mustConnect(closeButton, "clicked", exit)
 
 	update(Update{})
 }
@@ -547,7 +547,7 @@ func unisonDir() string {
 	return filepath.Join(home, ".unison")
 }
 
-func checkf(err error, format string, args ...interface{}) bool { // TODO: vs. shouldf
+func checkf(err error, format string, args ...interface{}) bool {
 	if false { // enable govet printf checking
 		log.Printf(format, args...)
 	}

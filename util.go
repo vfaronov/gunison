@@ -46,15 +46,15 @@ type Connector interface {
 	Connect(string, interface{}, ...interface{}) (glib.SignalHandle, error)
 }
 
-func shouldConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) bool { //nolint:unparam
+func mustConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) { //nolint:unparam
 	_, err := obj.Connect(detailedSignal, f, userData...)
-	return shouldf(err, "Connect(%#v, %#v)", detailedSignal, f)
+	mustf(err, "Connect(%#v, %#v)", detailedSignal, f)
 }
 
-func shouldIdleAdd(f interface{}, args ...interface{}) bool { //nolint:unparam
+func mustIdleAdd(f interface{}, args ...interface{}) {
 	handle, err := glib.IdleAdd(f, args...)
-	log.Println("IdleAdd:", handle, err)
-	return shouldf(err, "IdleAdd(%#v)", f)
+	mustf(err, "IdleAdd(%#v)", f)
+	log.Println("IdleAdd:", handle)
 }
 
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {
@@ -68,9 +68,7 @@ func Dialog(mType gtk.MessageType, msg string, options ...DialogOption) gtk.Resp
 	defer dlg.Destroy()
 	for _, opt := range options {
 		_, err := dlg.AddButton(opt.Text, opt.Response)
-		if !shouldf(err, "add button %q", opt.Text) {
-			return options[0].Response
-		}
+		mustf(err, "add button %q", opt.Text)
 		if opt.IsDefault {
 			dlg.SetDefaultResponse(opt.Response)
 		}
