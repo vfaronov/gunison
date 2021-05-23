@@ -535,8 +535,9 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 	if li == nil || li.Length() != 1 {
 		return false // only show tooltip when a single row is selected
 	}
+	var markup string
 	if iter, item, ok := selectedItem(li); ok {
-		tip.SetMarkup(fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>action</b>:\t%s",
+		markup = fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>action</b>:\t%s",
 			html.EscapeString(item.Path),
 			html.EscapeString(core.Left),
 			html.EscapeString(describeContentFull(item.Left)),
@@ -545,13 +546,19 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 			html.EscapeString(describeContentFull(item.Right)),
 			html.EscapeString(item.Right.Props),
 			actionDescriptions[item.Action()],
-		))
+		)
+		if item.Action() != item.Recommendation {
+			markup += fmt.Sprintf("\n<b>Unison’s recommendation</b>: %s",
+				actionDescriptions[item.Recommendation],
+			)
+		}
 	} else {
-		tip.SetMarkup(fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>action</b>:\t%s",
+		markup = fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>action</b>:\t%s",
 			html.EscapeString(pathAt(iter)),
 			actionDescriptions[actionAt(iter)],
-		))
+		)
 	}
+	tip.SetMarkup(markup)
 	return true
 }
 
