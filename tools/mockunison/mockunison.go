@@ -4,10 +4,12 @@
 //	go build -o unison mockunison.go
 //	PATH=$PWD:$PATH gunison
 //
+// See -help for more.
 package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -17,19 +19,29 @@ import (
 )
 
 func main() {
+	var withLookingForChanges, withPropagatingUpdates bool
+	flag.BoolVar(&withLookingForChanges, "looking-for-changes", false,
+		`simulate a lengthy "looking for changes" stage`)
+	flag.BoolVar(&withPropagatingUpdates, "propagating-updates", false,
+		`simulate a lengthy "propagating updates" stage`)
+	flag.Bool("dumbtty", false, "no effect; required because Gunison passes it")
+	flag.Parse()
+
 	paths := genPaths(10000)
 
-	fmt.Print("Looking for changes\n")
-	spinner := []string{`|`, `/`, `-`, `\`}
-	for i := 0; i < 300; i++ {
-		if paths[i] == "" {
-			continue
+	if withLookingForChanges {
+		fmt.Print("Looking for changes\n")
+		spinner := []string{`|`, `/`, `-`, `\`}
+		for i := 0; i < 300; i++ {
+			if paths[i] == "" {
+				continue
+			}
+			if i > 0 {
+				fmt.Print("\r", strings.Repeat(" ", 2+len(paths[i-1])), "\r")
+			}
+			fmt.Print(spinner[i%len(spinner)], " ", paths[i])
+			time.Sleep(30 * time.Millisecond)
 		}
-		if i > 0 {
-			fmt.Print("\r", strings.Repeat(" ", 2+len(paths[i-1])), "\r")
-		}
-		fmt.Print(spinner[i%len(spinner)], " ", paths[i])
-		time.Sleep(30 * time.Millisecond)
 	}
 
 	i := 0
@@ -46,7 +58,7 @@ loop:
 		case "n", "/", "<", ">", "m":
 			i++
 		case "y":
-			runUpdates()
+			runUpdates(withPropagatingUpdates)
 			break loop
 		case "q":
 			break loop
@@ -85,14 +97,16 @@ func printPlan(paths []string) {
 	}
 }
 
-func runUpdates() {
-	fmt.Print("\nPropagating updates\n")
-	for p := 1; p <= 100; p++ {
-		if p > 1 {
-			fmt.Print("\r               \r")
+func runUpdates(withProgress bool) {
+	if withProgress {
+		fmt.Print("\nPropagating updates\n")
+		for p := 1; p <= 100; p++ {
+			if p > 1 {
+				fmt.Print("\r               \r")
+			}
+			fmt.Printf("%3d%%  01:00 ETA", p)
+			time.Sleep(100 * time.Millisecond)
 		}
-		fmt.Printf("%3d%%  01:00 ETA", p)
-		time.Sleep(100 * time.Millisecond)
 	}
 	fmt.Print("\nSynchronization complete at 00:00:00  (...)\n")
 }
