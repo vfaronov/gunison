@@ -26,8 +26,7 @@ func main() {
 	window, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	check(err)
 	window.SetDefaultSize(500, 500)
-	_, err = window.Connect("destroy", func() { gtk.MainQuit() })
-	check(err)
+	window.Connect("destroy", func() { gtk.MainQuit() })
 
 	vbox, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 0)
 	check(err)
@@ -69,7 +68,7 @@ func main() {
 	button, err := gtk.ButtonNew()
 	check(err)
 	button.SetLabel("Modify")
-	_, err = button.Connect("clicked", func() {
+	button.Connect("clicked", func() {
 		for li := selection.GetSelectedRows(store); li != nil; li = li.Next() {
 			iter, err := store.GetIter(li.Data().(*gtk.TreePath))
 			check(err)
@@ -81,7 +80,6 @@ func main() {
 			check(store.SetValue(iter, 0, name.(string)+"'"))
 		}
 	})
-	check(err)
 	vbox.PackEnd(button, false, false, 0)
 
 	window.ShowAll()

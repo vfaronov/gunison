@@ -333,7 +333,7 @@ func TestSetActionAsIfOriginal(t *testing.T) {
 
 func forEachNode(f func(*gtk.TreeIter)) {
 	treestore.ForEach(gtk.TreeModelForeachFunc(
-		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter, _ ...interface{}) bool {
+		func(_ *gtk.TreeModel, _ *gtk.TreePath, iter *gtk.TreeIter) bool {
 			f(iter)
 			return false // means "continue ForEach"
 		},

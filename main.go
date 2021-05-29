@@ -15,6 +15,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -61,8 +62,6 @@ var (
 	wantQuit bool
 
 	collapsed = map[string]bool{} // TODO: use a more efficient structure for this, like a trie?
-
-	success = errors.New("success")
 )
 
 func init() {
@@ -137,11 +136,11 @@ func watchUnison() {
 			copy(data, buf[:n])
 			// TODO: use a different mechanism for communicating with the main thread:
 			// see https://discourse.gnome.org/t/g-idle-add-ordering/6088
-			mustIdleAdd(recvOutput, data)
+			glib.IdleAdd(func() { recvOutput(data) })
 		}
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				mustIdleAdd(recvError, err)
+				glib.IdleAdd(func() { recvError(err) })
 			}
 			break
 		}
@@ -150,10 +149,7 @@ func watchUnison() {
 
 	e := unison.Wait()
 	log.Println("Unison exit:", e)
-	if e == nil {
-		e = success // nil doesn't seem to work with IdleAdd
-	}
-	mustIdleAdd(recvExit, e)
+	glib.IdleAdd(func() { recvExit(e) })
 }
 
 func setupWidgets() {
@@ -161,32 +157,32 @@ func setupWidgets() {
 	mustf(err, "load GtkBuilder")
 
 	window = mustGetObject(builder, "window").(*gtk.Window)
-	mustConnect(window, "delete-event", onWindowDeleteEvent)
-	mustConnect(window, "destroy", gtk.MainQuit)
+	window.Connect("delete-event", onWindowDeleteEvent)
+	window.Connect("destroy", gtk.MainQuit)
 
 	infobar = mustGetObject(builder, "infobar").(*gtk.InfoBar)
-	mustConnect(infobar, "response", onInfobarResponse)
+	infobar.Connect("response", onInfobarResponse)
 
 	infobarLabel = mustGetObject(builder, "infobar-label").(*gtk.Label)
 
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
-	mustConnect(treeview, "popup-menu", onTreeviewPopupMenu)
-	mustConnect(treeview, "button-press-event", onTreeviewButtonPressEvent)
-	mustConnect(treeview, "query-tooltip", onTreeviewQueryTooltip)
-	mustConnect(treeview, "row-expanded", onTreeviewRowExpanded)
-	mustConnect(treeview, "row-collapsed", onTreeviewRowCollapsed)
+	treeview.Connect("popup-menu", onTreeviewPopupMenu)
+	treeview.Connect("button-press-event", onTreeviewButtonPressEvent)
+	treeview.Connect("query-tooltip", onTreeviewQueryTooltip)
+	treeview.Connect("row-expanded", onTreeviewRowExpanded)
+	treeview.Connect("row-collapsed", onTreeviewRowCollapsed)
 
 	treeSelection = mustGetObject(builder, "tree-selection").(*gtk.TreeSelection)
-	mustConnect(treeSelection, "changed", onTreeSelectionChanged)
+	treeSelection.Connect("changed", onTreeSelectionChanged)
 
 	treestore = mustGetObject(builder, "treestore").(*gtk.TreeStore)
 	pathColumn = mustGetObject(builder, "path-column").(*gtk.TreeViewColumn)
-	mustConnect(pathColumn, "clicked", onPathColumnClicked)
+	pathColumn.Connect("clicked", onPathColumnClicked)
 	leftColumn = mustGetObject(builder, "left-column").(*gtk.TreeViewColumn)
 	actionColumn = mustGetObject(builder, "action-column").(*gtk.TreeViewColumn)
-	mustConnect(actionColumn, "clicked", onActionColumnClicked)
+	actionColumn.Connect("clicked", onActionColumnClicked)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
 	// Pin down the original order of columns (before the user reorders them) for loadUIState/saveUIState.
 	for li := treeview.GetColumns(); li != nil; li = li.Next() {
@@ -195,17 +191,17 @@ func setupWidgets() {
 
 	itemMenu = mustGetObject(builder, "item-menu").(*gtk.Menu)
 	leftToRightMenuItem = mustGetObject(builder, "left-to-right-menuitem").(*gtk.MenuItem)
-	mustConnect(leftToRightMenuItem, "activate", onLeftToRightMenuItemActivate)
+	leftToRightMenuItem.Connect("activate", onLeftToRightMenuItemActivate)
 	rightToLeftMenuItem = mustGetObject(builder, "right-to-left-menuitem").(*gtk.MenuItem)
-	mustConnect(rightToLeftMenuItem, "activate", onRightToLeftMenuItemActivate)
+	rightToLeftMenuItem.Connect("activate", onRightToLeftMenuItemActivate)
 	mergeMenuItem = mustGetObject(builder, "merge-menuitem").(*gtk.MenuItem)
-	mustConnect(mergeMenuItem, "activate", onMergeMenuItemActivate)
+	mergeMenuItem.Connect("activate", onMergeMenuItemActivate)
 	skipMenuItem = mustGetObject(builder, "skip-menuitem").(*gtk.MenuItem)
-	mustConnect(skipMenuItem, "activate", onSkipMenuItemActivate)
+	skipMenuItem.Connect("activate", onSkipMenuItemActivate)
 	revertMenuItem = mustGetObject(builder, "revert-menuitem").(*gtk.MenuItem)
-	mustConnect(revertMenuItem, "activate", onRevertMenuItemActivate)
+	revertMenuItem.Connect("activate", onRevertMenuItemActivate)
 	diffMenuItem = mustGetObject(builder, "diff-menuitem").(*gtk.MenuItem)
-	mustConnect(diffMenuItem, "activate", onDiffMenuItemActivate)
+	diffMenuItem.Connect("activate", onDiffMenuItemActivate)
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
@@ -220,16 +216,16 @@ func setupWidgets() {
 	progressbar = mustGetObject(builder, "progressbar").(*gtk.ProgressBar)
 
 	syncButton = mustGetObject(builder, "sync-button").(*gtk.Button)
-	mustConnect(syncButton, "clicked", onSyncButtonClicked)
+	syncButton.Connect("clicked", onSyncButtonClicked)
 
 	abortButton = mustGetObject(builder, "abort-button").(*gtk.Button)
-	mustConnect(abortButton, "clicked", onAbortButtonClicked)
+	abortButton.Connect("clicked", onAbortButtonClicked)
 
 	killButton = mustGetObject(builder, "kill-button").(*gtk.Button)
-	mustConnect(killButton, "clicked", onKillButtonClicked)
+	killButton.Connect("clicked", onKillButtonClicked)
 
 	closeButton = mustGetObject(builder, "close-button").(*gtk.Button)
-	mustConnect(closeButton, "clicked", exit)
+	closeButton.Connect("clicked", exit)
 
 	update(Update{})
 }
@@ -245,9 +241,6 @@ func recvError(err error) {
 }
 
 func recvExit(e error) {
-	if e == success {
-		e = nil
-	}
 	code := 0
 	if ee, ok := e.(*exec.ExitError); ok {
 		code = ee.ExitCode()
@@ -307,7 +300,7 @@ func update(upd Update) {
 	// during normal quit, due to the brief delay between sending "q" to Unison and receiving its exit.
 	if offerKill := func() bool { return wantQuit && core.Kill != nil }; offerKill() {
 		if !killButton.GetVisible() {
-			mustIdleAdd(func() { killButton.SetVisible(offerKill()) })
+			glib.IdleAddPriority(glib.PRIORITY_LOW, func() { killButton.SetVisible(offerKill()) })
 		}
 	} else {
 		killButton.SetVisible(false)

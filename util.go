@@ -42,21 +42,6 @@ func SliceString(data []byte, idx []int) []string {
 	return ss
 }
 
-type Connector interface {
-	Connect(string, interface{}, ...interface{}) (glib.SignalHandle, error)
-}
-
-func mustConnect(obj Connector, detailedSignal string, f interface{}, userData ...interface{}) { //nolint:unparam
-	_, err := obj.Connect(detailedSignal, f, userData...)
-	mustf(err, "Connect(%#v, %#v)", detailedSignal, f)
-}
-
-func mustIdleAdd(f interface{}, args ...interface{}) {
-	handle, err := glib.IdleAdd(f, args...)
-	mustf(err, "IdleAdd(%#v)", f)
-	log.Println("IdleAdd:", handle)
-}
-
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {
 	obj, err := b.GetObject(name)
 	mustf(err, "GetObject(%#v)", name)
