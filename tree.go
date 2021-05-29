@@ -407,16 +407,31 @@ func onTreeSelectionChanged() {
 }
 
 func updateMenuItems() {
-	nsel := treeSelection.CountSelectedRows()
+	selected := false
+	multiple := false
+	onlyFiles := true
 
-	allowAction := core.Sync != nil && nsel > 0
-	leftToRightMenuItem.SetSensitive(allowAction)
-	rightToLeftMenuItem.SetSensitive(allowAction)
-	mergeMenuItem.SetSensitive(allowAction) // TODO: for files only
-	skipMenuItem.SetSensitive(allowAction)
-	revertMenuItem.SetSensitive(allowAction)
+	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+		if selected {
+			multiple = true
+		}
+		selected = true
+		iter, item, _ := selectedItem(li)
+		if item == nil { // parent node always contains multiple items
+			multiple = true
+		}
+		onlyFiles = onlyFiles && onlyFilesAt(iter)
+		if multiple && !onlyFiles { // further nodes won't change anything
+			break
+		}
+	}
 
-	diffMenuItem.SetSensitive(core.Diff != nil && nsel == 1) // TODO: for files only
+	leftToRightMenuItem.SetSensitive(core.Sync != nil && selected)
+	rightToLeftMenuItem.SetSensitive(core.Sync != nil && selected)
+	mergeMenuItem.SetSensitive(core.Sync != nil && selected && onlyFiles)
+	skipMenuItem.SetSensitive(core.Sync != nil && selected)
+	revertMenuItem.SetSensitive(core.Sync != nil && selected)
+	diffMenuItem.SetSensitive(core.Diff != nil && selected && !multiple && onlyFiles)
 }
 
 func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
@@ -654,4 +669,18 @@ func actionAt(iter *gtk.TreeIter) Action {
 
 func isOverriddenAt(iter *gtk.TreeIter) bool {
 	return MustGetColumn(treestore, iter, colActionColor).(string) == overriddenColor
+}
+
+func onlyFilesAt(iter *gtk.TreeIter) bool {
+	only := true
+	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
+		item := core.Items[idx]
+		only = item.Left.Type == File && item.Right.Type == File
+	} else {
+		child, _ := treestore.GetIterFirst()
+		for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
+			only = only && onlyFilesAt(child)
+		}
+	}
+	return only
 }
