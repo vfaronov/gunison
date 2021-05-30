@@ -19,11 +19,13 @@ import (
 )
 
 func main() {
-	var withLookingForChanges, withPropagatingUpdates bool
+	var withLookingForChanges, withPropagatingUpdates, withLargeDiff bool
 	flag.BoolVar(&withLookingForChanges, "looking-for-changes", false,
 		`simulate a lengthy "looking for changes" stage`)
 	flag.BoolVar(&withPropagatingUpdates, "propagating-updates", false,
 		`simulate a lengthy "propagating updates" stage`)
+	flag.BoolVar(&withLargeDiff, "large-diff", false,
+		"simulate a large diff")
 	flag.Bool("dumbtty", false, "no effect; required because Gunison passes it")
 	flag.Parse()
 
@@ -57,6 +59,8 @@ loop:
 			i = 0
 		case "n", "/", "<", ">", "m":
 			i++
+		case "d":
+			printDiff(withLargeDiff)
 		case "y":
 			runUpdates(withPropagatingUpdates)
 			break loop
@@ -94,6 +98,19 @@ func printPlan(paths []string) {
 		fmt.Print(action, "    ", path, "  \n")
 		fmt.Print("alpha        : changed file       modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
 		fmt.Print("beta         : unchanged file     modified on 2021-02-07 at  1:50:31  size 1146      rw-r--r--\n")
+	}
+}
+
+func printDiff(large bool) {
+	fmt.Print("\nmockdiff 'left' 'right'\n\n")
+	n := 1
+	if large {
+		n = 4000
+	}
+	for i := 0; i < n; i++ {
+		fmt.Print(`
+- Maiores qui aspernatur rerum cupiditate blanditiis harum quo temporibus. Facilis vel maiores aspernatur culpa. Ea doloremque quis quia maiores ea qui vitae dolores. Dolore inventore delectus id molestiae beatae molestiae. Modi nulla distinctio in sunt odio omnis ab. Vel quia voluptatibus error aut explicabo vel officia reiciendis. Autem voluptatem est impedit suscipit qui hic. Perspiciatis maxime in minus sint sunt nemo voluptatem ut. Vel omnis omnis illo quae alias itaque corporis. Possimus voluptatem provident ut corporis illo sint.
++ Nesciunt eum aut ipsa harum odio suscipit facilis. Voluptatum iusto quibusdam vel earum incidunt. Temporibus ut officiis quo quas. Iure sed et deserunt temporibus consequatur voluptatem doloribus. Laboriosam molestias illum eius modi rerum asperiores dolorem. Magnam cum voluptatem enim et nulla aut itaque. Ea at eligendi sint aliquid nisi voluptas. Ipsam natus quam sed rem. Porro et rerum aperiam ipsa non quam non. Commodi sint sit non.`)
 	}
 }
 
