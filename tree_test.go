@@ -51,7 +51,7 @@ func TestDisplayItems(t *testing.T) {
 	displayItems()
 
 	cols := []int{colName, colAction}
-	assertEqual(t, probeRow(t, "0", cols...), []interface{}{"", "→"})
+	assertEqual(t, probeRow(t, "0", cols...), []interface{}{"entire replica", "→"})
 	assertEqual(t, probeRow(t, "1", cols...), []interface{}{"foo/baz/789", "←?→"})
 	assertEqual(t, probeRow(t, "2", cols...), []interface{}{"bar", "→"})
 	assertEqual(t, probeRow(t, "3", cols...), []interface{}{"foo/123", "←"})
@@ -201,6 +201,7 @@ func TestDisplayItemsNamesPaths(t *testing.T) {
 			var names []string
 			for iter1 := iter; ; {
 				name := MustGetColumn(treestore, iter1, colName).(string)
+				name = strings.ReplaceAll(name, "entire replica", "")
 				names = append([]string{name}, names...)
 				parent, _ := treestore.GetIterFirst() // must be a valid TreeIter for the following call
 				if !treestore.IterParent(parent, iter1) {

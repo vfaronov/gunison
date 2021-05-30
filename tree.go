@@ -12,6 +12,7 @@ import (
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/gotk3/gotk3/pango"
 )
 
 const (
@@ -21,6 +22,7 @@ const (
 	colRight
 	colAction
 	colIconName
+	colNameStyle
 	colActionColor
 	colPath
 )
@@ -141,11 +143,15 @@ func displayItems() {
 		}
 
 		// Finally, display the item itself.
-		iter := treestore.Append(parent.iter)
-		name := strings.TrimLeft(path[len(parent.prefix):], "/")
 		// TODO: here and elsewhere: optimization opportunities that need more bindings in gotk3:
 		// - set multiple columns in one cgo call to gtk_tree_store_set
-		// - reuse GValues for left, right, icon-name, instead of allocating them anew for each node
+		// - reuse GValues for left, right, icon-name, etc., instead of allocating them anew for each node
+		iter := treestore.Append(parent.iter)
+		name := strings.TrimLeft(path[len(parent.prefix):], "/")
+		if path == "" {
+			name = "entire replica"
+			mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
+		}
 		mustf(treestore.SetValue(iter, colName, name), "set name column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
@@ -561,8 +567,12 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 	}
 	var markup string
 	if iter, item, ok := selectedItem(li); ok {
+		path := html.EscapeString(item.Path)
+		if item.Path == "" {
+			path = "<i>entire replica</i>"
+		}
 		markup = fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>action</b>:\t%s",
-			html.EscapeString(item.Path),
+			path,
 			html.EscapeString(core.Left),
 			html.EscapeString(describeContentFull(item.Left)),
 			html.EscapeString(item.Left.Props),
@@ -601,7 +611,11 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 
 	switch column.Native() {
 	case pathColumn.Native():
-		tip.SetText(pathAt(iter))
+		if path := pathAt(iter); path == "" {
+			tip.SetMarkup("<i>entire replica</i>")
+		} else {
+			tip.SetText(path)
+		}
 
 	case actionColumn.Native():
 		tip.SetText(actionDescriptions[actionAt(iter)])

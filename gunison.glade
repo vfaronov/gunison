@@ -73,6 +73,8 @@
       <column type="gchararray"/>
       <!-- column-name icon-name -->
       <column type="gchararray"/>
+      <!-- column-name name-style -->
+      <column type="PangoStyle"/>
       <!-- column-name action-color -->
       <column type="gchararray"/>
       <!-- column-name path -->
@@ -140,6 +142,7 @@
                       <object class="GtkCellRendererText" id="path-renderer"/>
                       <attributes>
                         <attribute name="text">1</attribute>
+                        <attribute name="style">6</attribute>
                       </attributes>
                     </child>
                   </object>
@@ -172,7 +175,7 @@
                         <property name="scale">1.3</property>
                       </object>
                       <attributes>
-                        <attribute name="foreground">6</attribute>
+                        <attribute name="foreground">7</attribute>
                         <attribute name="text">4</attribute>
                       </attributes>
                     </child>
