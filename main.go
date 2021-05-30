@@ -121,13 +121,7 @@ func startUnison(args ...string) {
 }
 
 func watchUnison() {
-	// When a large diff is being pumped through this buffer, after each Read the core will run its
-	// regexp on the *entire* diff received so far (until eventually it finds the diff's end).
-	// The smaller the buffer, the smaller the diffs we can handle until drowning in these regexp runs.
-	// TODO: This could be solved by postponing core.ProcOutput until we get a short read or a timeout
-	// (i.e. probably no more data is coming from Unison), but I'm not sure this is worthwhile,
-	// because it's more convenient to use a visual -diff (such as Meld) anyway.
-	var buf [65536]byte
+	var buf [65536]byte // has to be rather large due to https://github.com/vfaronov/gunison/issues/1
 	for {
 		n, err := unisonR.Read(buf[:])
 		log.Printf("Unison output: %d bytes: %q %v", n, buf[:n], err)
