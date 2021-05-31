@@ -352,7 +352,7 @@ var (
 
 	patProceedUpdates             = lineBgn + "Proceed with propagating updates\\?" + patPrompt
 	patPropagatingUpdates         = line("(Propagating updates)")
-	patStartedFinishedPropagating = line("UNISON [0-9.]+ \\(OCAML [0-9.]+\\) (?:started|finished) propagating changes at .*?")
+	patStartedFinishedPropagating = line("(UNISON|Unison) [0-9.]+ \\((OCAML|ocaml) [0-9.]+\\) (?:started|finished) propagating changes at .*?")
 	patSyncThreadStatus           = line("\\[(?:BGN|END|CONFLICT)\\] .*?")
 	patSyncProgress               = lineBgn + " *([0-9]+)%  (?:[0-9]+:[0-9]{2}|--:--) ETA"
 	patMergeNoise                 = line("(?:Merge command: .*?" +
