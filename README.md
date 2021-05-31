@@ -38,12 +38,20 @@ try installing `ssh-askpass-gnome`.
 [`SSH_ASKPASS`]: https://man.openbsd.org/ssh#SSH_ASKPASS
 
 
+### Gunison pre-built
+
+If you use Linux x86_64, try the [pre-built binary][].
+
+[pre-built binary]: https://github.com/vfaronov/gunison/releases
+
+
 ### Gunison from source
 
+On other platforms, or if the pre-built binary doesn't work, build from source.
 You need [Go][] 1.16+ and Git, as well as GTK 3 and the associated C toolchain.
 `go install github.com/vfaronov/gunison@latest` will download and compile
 Gunison and its dependencies, and install the `gunison` (or `gunison.exe`)
-executable in `$GOBIN`. Alternatively, `go install` in a source checkout.
+executable in `$GOBIN`. Alternatively, `go install .` in a source checkout.
 
 Here's a complete recipe for Debian/Ubuntu:
 
