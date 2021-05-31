@@ -347,7 +347,7 @@ var (
 	patItemHeader      = line(patItem)
 	patItemSideInfo    = " : (?:(absent|deleted)|" + AnyOf(parseTypeStatus) + "  (.*?))"
 
-	// Unison prepends diff output with a blank line, the command line, and two more blank lines.
+	// Unison prefixes diff output with a blank line, the command line, and two more blank lines.
 	patDiffHeader = lineBgn + "\r?\n.+?\r?\n\r?\n"
 
 	patProceedUpdates             = lineBgn + "Proceed with propagating updates\\?" + patPrompt
@@ -834,7 +834,7 @@ func makeExpecter(raw bool, patterns ...*string,
 
 var (
 	expWarning = regexp.MustCompile(`(?i)^(?:warning|synchronization incomplete|merge result)`)
-	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |failed|uncaught|invalid)`)
+	expError   = regexp.MustCompile(`(?i)^((?:fatal )?error|can't |cannot |failed|uncaught|invalid|bad )`)
 )
 
 func echo(output string, minImportance Importance) Update {

@@ -277,7 +277,7 @@ func TestDisplayItemsSorted(t *testing.T) {
 			var cur interface{}
 			switch currentSort.column {
 			case pathColumn:
-				cur = MustGetColumn(treestore, iter, colPath)
+				cur = pathAt(iter)
 			case actionColumn:
 				cur = actionAt(iter)
 			}

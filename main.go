@@ -82,7 +82,7 @@ func main() {
 	loadUIState()
 	window.Show()
 	startUnison(os.Args[1:]...)
-	log.Print("starting main loop")
+	log.Println("starting main loop")
 	gtk.Main()
 	// saveUIState is not called here (unlike loadUIState), because it needs the current window size,
 	// which is not available when the window has already been destroyed.
@@ -265,7 +265,7 @@ func update(upd Update) {
 		displayItems()
 		treeview.SetVisible(true)
 		treeview.GrabFocus()
-		_ = ClearCursor(treeview)
+		shouldf(ClearCursor(treeview), "clear treeview cursor")
 	}
 
 	updateMenuItems()
@@ -294,7 +294,7 @@ func update(upd Update) {
 	// during normal quit, due to the brief delay between sending "q" to Unison and receiving its exit.
 	if offerKill := func() bool { return wantQuit && core.Kill != nil }; offerKill() {
 		if !killButton.GetVisible() {
-			glib.IdleAddPriority(glib.PRIORITY_LOW, func() { killButton.SetVisible(offerKill()) })
+			glib.TimeoutAdd(1000, func() { killButton.SetVisible(offerKill()) })
 		}
 	} else {
 		killButton.SetVisible(false)
@@ -308,14 +308,14 @@ func update(upd Update) {
 	}
 
 	if upd.Interrupt {
-		log.Print("interrupting Unison")
+		log.Println("interrupting Unison")
 		if err := unison.Process.Signal(os.Interrupt); err != nil {
 			recvError(fmt.Errorf("Failed to interrupt Unison: %w", err))
 		}
 	}
 
 	if upd.Kill {
-		log.Print("killing Unison")
+		log.Println("killing Unison")
 		if err := unison.Process.Kill(); err != nil {
 			recvError(fmt.Errorf("Failed to kill Unison: %w", err))
 		}
@@ -522,7 +522,7 @@ func loadUIState() {
 		column.SetFixedWidth(state.ColumnWidth[i])
 	}
 
-	collapsed = map[string]bool{}
+	collapsed = make(map[string]bool, len(state.Collapsed))
 	for _, path := range state.Collapsed {
 		collapsed[path] = true
 	}
@@ -574,8 +574,8 @@ func saveUIState() {
 	}
 	sort.Strings(state.Collapsed)
 
-	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnWidth:%v",
-		state.Width, state.Height, state.Maximized, state.ColumnWidth)
+	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnOrder:%v ColumnWidth:%v",
+		state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")

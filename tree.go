@@ -368,7 +368,7 @@ func setSort(rule sortRule) {
 	currentSort = rule
 	if rule != (sortRule{}) {
 		sort.SliceStable(core.Items, func(i, j int) bool {
-			// TODO: remember the original order as produced by Unison, fall back to it on equals,
+			// TODO: Remember the original order as produced by Unison, fall back to it on equals,
 			// and allow the user to return to that original order.
 			switch rule {
 			case sortRule{pathColumn, gtk.SORT_ASCENDING}:
@@ -413,16 +413,17 @@ func onTreeSelectionChanged() {
 }
 
 func updateMenuItems() {
-	selected := false
+	// What has been selected?
+	some := false
 	multiple := false
 	onlyFiles := true
 
 	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
-		if selected {
+		if some {
 			multiple = true
 		}
-		selected = true
-		iter, item, _ := selectedItem(li)
+		some = true
+		iter, item := selected(li)
 		if item == nil { // parent node always contains multiple items
 			multiple = true
 		}
@@ -432,12 +433,12 @@ func updateMenuItems() {
 		}
 	}
 
-	leftToRightMenuItem.SetSensitive(core.Sync != nil && selected)
-	rightToLeftMenuItem.SetSensitive(core.Sync != nil && selected)
-	mergeMenuItem.SetSensitive(core.Sync != nil && selected && onlyFiles)
-	skipMenuItem.SetSensitive(core.Sync != nil && selected)
-	revertMenuItem.SetSensitive(core.Sync != nil && selected)
-	diffMenuItem.SetSensitive(core.Diff != nil && selected && !multiple && onlyFiles)
+	leftToRightMenuItem.SetSensitive(core.Sync != nil && some)
+	rightToLeftMenuItem.SetSensitive(core.Sync != nil && some)
+	mergeMenuItem.SetSensitive(core.Sync != nil && some && onlyFiles)
+	skipMenuItem.SetSensitive(core.Sync != nil && some)
+	revertMenuItem.SetSensitive(core.Sync != nil && some)
+	diffMenuItem.SetSensitive(core.Diff != nil && some && !multiple && onlyFiles)
 }
 
 func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
@@ -490,8 +491,7 @@ func setActionInner(
 	mustf(err, "get tree iter for %s", treepath)
 
 	// Set the new action on the node and its corresponding plan item (if any).
-	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
-		item := &core.Items[idx]
+	if item := itemAt(iter); item != nil {
 		item.Override = act
 		displayAction(iter, item.Action(), item.IsOverridden())
 		updated[treepath.String()] = true
@@ -544,7 +544,7 @@ func onDiffMenuItemActivate() {
 		return
 	}
 	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
-		if _, item, ok := selectedItem(li); ok {
+		if _, item := selected(li); item != nil {
 			update(core.Diff(item.Path))
 			return
 		}
@@ -564,7 +564,7 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 		return false // only show tooltip when a single row is selected
 	}
 	var markup string
-	if iter, item, ok := selectedItem(li); ok {
+	if iter, item := selected(li); item != nil {
 		path := html.EscapeString(item.Path)
 		if item.Path == "" {
 			path = "<i>entire replica</i>"
@@ -619,11 +619,10 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		tip.SetText(actionDescriptions[actionAt(iter)])
 
 	case leftColumn.Native(), rightColumn.Native():
-		idx := MustGetColumn(treestore, iter, colIdx).(int)
-		if idx == invalid {
+		item := itemAt(iter)
+		if item == nil {
 			return false
 		}
-		item := core.Items[idx]
 		side, content := core.Left, item.Left
 		if column.Native() == rightColumn.Native() {
 			side, content = core.Right, item.Right
@@ -661,14 +660,18 @@ func maybeExpandRow(iter *gtk.TreeIter) {
 	treeview.ExpandRow(treepath, false)
 }
 
-func selectedItem(li *glib.List) (*gtk.TreeIter, *Item, bool) {
+func selected(li *glib.List) (*gtk.TreeIter, *Item) {
 	iter, err := treestore.GetIter(li.Data().(*gtk.TreePath))
 	mustf(err, "get tree iter")
+	return iter, itemAt(iter)
+}
+
+func itemAt(iter *gtk.TreeIter) *Item {
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
 	if idx == invalid {
-		return iter, nil, false
+		return nil
 	}
-	return iter, &core.Items[idx], true
+	return &core.Items[idx]
 }
 
 func pathAt(iter *gtk.TreeIter) string {
@@ -685,12 +688,11 @@ func isOverriddenAt(iter *gtk.TreeIter) bool {
 
 func onlyFilesAt(iter *gtk.TreeIter) bool {
 	only := true
-	if idx := MustGetColumn(treestore, iter, colIdx).(int); idx != invalid {
-		item := core.Items[idx]
+	if item := itemAt(iter); item != nil {
 		only = item.Left.Type == File && item.Right.Type == File
 	} else {
 		child, _ := treestore.GetIterFirst()
-		for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
+		for ok := treestore.IterChildren(iter, child); ok && only; ok = treestore.IterNext(child) {
 			only = only && onlyFilesAt(child)
 		}
 	}

@@ -1,8 +1,8 @@
 # Gunison
 
 Gunison is a new GUI (GTK 3) frontend for the [Unison][] file synchronizer.
-Unison already has a built-in GTK 2 frontend, but Gunison is nicer and more 
-convenient (see below). Gunison works by wrapping Unison's *console* frontend 
+Unison already has a built-in GTK 2 frontend, but Gunison is nicer and more
+convenient. Gunison works by wrapping Unison's *console* frontend
 in an [expect][]-like fashion.
 
 **WARNING:** Although I use Gunison daily, it has not been tested widely; and
@@ -27,7 +27,7 @@ For comparison, the built-in `unison-gtk2`:
 
 ### Prerequisites
 
-You need the [`unison`][] program on your `$PATH`, and GTK 3 runtime 
+You need the [`unison`][] program on your `$PATH`, and GTK 3 runtime
 libraries installed in your system.
 
 If you use SSH with passwords, you will also need an [`SSH_ASKPASS`][]
@@ -43,8 +43,7 @@ try installing `ssh-askpass-gnome`.
 You need [Go][] 1.16+ and Git, as well as GTK 3 and the associated C toolchain.
 `go install github.com/vfaronov/gunison@latest` will download and compile
 Gunison and its dependencies, and install the `gunison` (or `gunison.exe`)
-executable in `$GOBIN`. Alternatively, `go build` in a source checkout will
-produce the same executable in `$PWD`.
+executable in `$GOBIN`. Alternatively, `go install` in a source checkout.
 
 Here's a complete recipe for Debian/Ubuntu:
 
@@ -81,7 +80,7 @@ Keyboard navigation is via common GTK features:
   Shift+Right to expand with all its children
 * press Ctrl+F1 to toggle a tooltip with details for the selected file
 * press Menu or Shift+F10 to pop up an action menu for the selected files
-* use mnemonics (underlined keys) to access buttons and menu items, 
+* use mnemonics (underlined keys) to access buttons and menu items,
   e.g. Alt+S for Sync
 
 At exit, Gunison saves some UI state (collapsed directories, window geometry,

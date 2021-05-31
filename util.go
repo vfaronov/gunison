@@ -31,6 +31,23 @@ func shouldf(err error, format string, args ...interface{}) bool {
 	return true
 }
 
+// AnyOf returns a regexp pattern that matches and captures any of the keys in m,
+// which must be a map with string keys.
+func AnyOf(m interface{}) string {
+	pat := "("
+	first := true
+	iter := reflect.ValueOf(m).MapRange()
+	for iter.Next() {
+		if !first {
+			pat += "|"
+		}
+		first = false
+		pat += regexp.QuoteMeta(iter.Key().Interface().(string))
+	}
+	pat += ")"
+	return pat
+}
+
 // SliceString returns slices of data between pairs of indices given in idx, ignoring -1.
 func SliceString(data []byte, idx []int) []string {
 	ss := make([]string, len(idx)/2)
@@ -77,13 +94,9 @@ const (
 
 func MustGetColumn(store *gtk.TreeStore, iter *gtk.TreeIter, column int) interface{} {
 	gv, err := store.GetValue(iter, column)
-	if err != nil {
-		panic(fmt.Sprintf("failed to get value from column %v: %s", column, err))
-	}
+	mustf(err, "get value from column %v", column)
 	v, err := gv.GoValue()
-	if err != nil {
-		panic(fmt.Sprintf("failed to get Go value from column %v value %v: %s", column, v, err))
-	}
+	mustf(err, "get Go value from column %v value %v", column, v)
 	return v
 }
 
@@ -139,21 +152,4 @@ func Iter(head *glib.List) (li *glib.List, next func() *glib.List) {
 		li = li.Next()
 		return li
 	}
-}
-
-// AnyOf returns a regexp pattern that matches and captures any of the keys in m,
-// which must be a map with string keys.
-func AnyOf(m interface{}) string {
-	pat := "("
-	first := true
-	iter := reflect.ValueOf(m).MapRange()
-	for iter.Next() {
-		if !first {
-			pat += "|"
-		}
-		first = false
-		pat += regexp.QuoteMeta(iter.Key().Interface().(string))
-	}
-	pat += ")"
-	return pat
 }

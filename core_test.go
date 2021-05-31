@@ -516,7 +516,7 @@ func TestDiffBadCommand(t *testing.T) { // unison -diff 'diff --bad-option'
 	assert.Zero(t, c.ProcOutput([]byte("Try 'diff --help' for more information.\n")))
 	assertEqual(t, c.ProcOutput([]byte("\ndiff --bad-option '/home/vasiliy/tmp/gunison/left/one' '/home/vasiliy/tmp/gunison/right/one'\n\n\n\nchanged  ---->            one  [f] ")),
 		Update{Messages: []Message{
-			// Unison prepends diff output with a blank line, the command line, and two more blank lines.
+			// Unison prefixes diff output with a blank line, the command line, and two more blank lines.
 			// This means that anything printed after the prompt but before a blank line is definitely *not*
 			// normal diff output.
 			{"diff: unrecognized option '--bad-option'\ndiff: Try 'diff --help' for more information.", Warning},
