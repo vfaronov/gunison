@@ -5,6 +5,7 @@ import (
 	"log"
 	"reflect"
 	"regexp"
+	"runtime"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -122,10 +123,21 @@ func DetachModel(treeview *gtk.TreeView) func() {
 
 // DisplaySort makes view display a sort indicator (only) on column for order.
 func DisplaySort(view *gtk.TreeView, column *gtk.TreeViewColumn, order gtk.SortType) {
-	for li := view.GetColumns(); li != nil; li = li.Next() {
+	for li, next := Iter(view.GetColumns()); li != nil; li = next() {
 		col := li.Data().(*gtk.TreeViewColumn)
 		col.SetSortIndicator(column != nil && col.Native() == column.Native())
 		col.SetSortOrder(order)
+	}
+}
+
+// Iter helps iterating over a glib.List while keeping its head alive, preventing the finalizer
+// from firing prematurely. See the comment on gtk.(*TreeSelection).GetSelectedRows.
+func Iter(head *glib.List) (li *glib.List, next func() *glib.List) {
+	li = head
+	return li, func() *glib.List {
+		runtime.KeepAlive(head)
+		li = li.Next()
+		return li
 	}
 }
 

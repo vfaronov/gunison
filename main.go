@@ -179,7 +179,7 @@ func setupWidgets() {
 	actionColumn.Connect("clicked", onActionColumnClicked)
 	rightColumn = mustGetObject(builder, "right-column").(*gtk.TreeViewColumn)
 	// Pin down the original order of columns (before the user reorders them) for loadUIState/saveUIState.
-	for li := treeview.GetColumns(); li != nil; li = li.Next() {
+	for li, next := Iter(treeview.GetColumns()); li != nil; li = next() {
 		columns = append(columns, li.Data().(*gtk.TreeViewColumn))
 	}
 
@@ -549,13 +549,15 @@ func saveUIState() {
 	}
 
 	state.ColumnOrder = make([]int, len(columns))
-	for ord, li := 0, treeview.GetColumns(); li != nil; ord, li = ord+1, li.Next() {
+	ord := 0
+	for li, next := Iter(treeview.GetColumns()); li != nil; li = next() {
 		for i, column := range columns {
 			if column.Native() == li.Data().(*gtk.TreeViewColumn).Native() {
 				state.ColumnOrder[i] = ord
 				break
 			}
 		}
+		ord++
 	}
 
 	for _, column := range columns {

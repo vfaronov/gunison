@@ -417,7 +417,7 @@ func updateMenuItems() {
 	multiple := false
 	onlyFiles := true
 
-	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
 		if selected {
 			multiple = true
 		}
@@ -447,15 +447,13 @@ func onSkipMenuItemActivate()        { setAction(Skip) }
 func onRevertMenuItemActivate()      { setAction(NoAction) }
 
 func setAction(act Action) {
-	// TODO: this crashes when many (thousands) items are selected: see tools/treecrash
-
 	// Keep track of visited nodes (as sets of gtk_tree_path_to_string) to avoid repeating work.
 	updated := map[string]bool{}       // nodes for which we directly set the new action
 	invalidated := []map[string]bool{} // ancestors of updated nodes, sorted into groups by tree depth
 
 	// Recursively set the new action on all selected nodes and their descendants,
 	// while assembling a list of ancestors to refresh.
-	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
 		invalidated = setActionInner(li.Data().(*gtk.TreePath), act, updated, invalidated)
 	}
 
@@ -545,7 +543,7 @@ func onDiffMenuItemActivate() {
 		update(Update{})
 		return
 	}
-	for li := treeSelection.GetSelectedRows(treestore); li != nil; li = li.Next() {
+	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
 		if _, item, ok := selectedItem(li); ok {
 			update(core.Diff(item.Path))
 			return
