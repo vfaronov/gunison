@@ -480,7 +480,9 @@ type uiState struct {
 }
 
 func uiStatePath() string {
-	return filepath.Join(unisonDir(), "gunison.state.json")
+	base, err := os.UserConfigDir()
+	mustf(err, "get user config dir")
+	return filepath.Join(base, "gunison", "state.json")
 }
 
 func loadUIState() {
@@ -529,6 +531,9 @@ func loadUIState() {
 func saveUIState() {
 	statePath := uiStatePath()
 	log.Println("saving UI state to", statePath)
+	if !shouldf(os.MkdirAll(filepath.Dir(statePath), 0755), "create UI state directory") {
+		return
+	}
 	f, err := os.Create(statePath)
 	if !shouldf(err, "create UI state file") {
 		return
@@ -573,15 +578,6 @@ func saveUIState() {
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
 	shouldf(enc.Encode(state), "encode UI state JSON")
-}
-
-func unisonDir() string {
-	if dir := os.Getenv("UNISON"); dir != "" {
-		return dir
-	}
-	home, err := os.UserHomeDir()
-	mustf(err, "get user home directory")
-	return filepath.Join(home, ".unison")
 }
 
 func checkf(err error, format string, args ...interface{}) bool {

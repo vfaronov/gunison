@@ -85,9 +85,9 @@ Keyboard navigation is via common GTK features:
   e.g. Alt+S for Sync
 
 At exit, Gunison saves some UI state (collapsed directories, window geometry,
-column order) to a file named `gunison.state.json` in your `~/.unison`
-(or `$UNISON`) directory. You can prevent this by symlinking that file 
-to `/dev/null`.
+column order) to a file named `state.json` in a platform-dependent config
+directory, such as `~/.config/gunison` on Unix. You can prevent this by
+symlinking that file to `/dev/null`.
 
 [prefs]: https://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#prefs
 [Meld]: https://meldmerge.org/
