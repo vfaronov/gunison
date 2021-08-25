@@ -309,14 +309,14 @@ func update(upd Update) {
 
 	if upd.Interrupt {
 		log.Println("interrupting Unison")
-		if err := unison.Process.Signal(os.Interrupt); err != nil {
+		if err := SignalGroup(unison.Process, os.Interrupt); err != nil {
 			recvError(fmt.Errorf("Failed to interrupt Unison: %w", err))
 		}
 	}
 
 	if upd.Kill {
 		log.Println("killing Unison")
-		if err := unison.Process.Kill(); err != nil {
+		if err := SignalGroup(unison.Process, os.Kill); err != nil {
 			recvError(fmt.Errorf("Failed to kill Unison: %w", err))
 		}
 	}

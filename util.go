@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -58,6 +59,17 @@ func SliceString(data []byte, idx []int) []string {
 		ss[i] = string(data[idx[2*i]:idx[2*i+1]])
 	}
 	return ss
+}
+
+// SignalGroup tries to send sig to the process group whose leader is p,
+// falling back on just p if this fails.
+func SignalGroup(p *os.Process, sig os.Signal) error {
+	if pg, err := os.FindProcess(-p.Pid); err == nil {
+		if pg.Signal(sig) == nil {
+			return nil
+		}
+	}
+	return p.Signal(sig)
 }
 
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {
