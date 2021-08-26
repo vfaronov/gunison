@@ -48,7 +48,7 @@ If you use Linux x86_64, try the [pre-built binary][].
 ### Gunison from source
 
 On other platforms, or if the pre-built binary doesn't work, build from source.
-You need [Go][] 1.16+ and Git, as well as GTK 3 and the associated C toolchain.
+You need [Go][] 1.17+ and Git, as well as GTK 3 and the associated C toolchain.
 `go install github.com/vfaronov/gunison@latest` will download and compile
 Gunison and its dependencies, and install the `gunison` (or `gunison.exe`)
 executable in `$GOBIN`. Alternatively, `go install .` in a source checkout.
@@ -57,8 +57,8 @@ Here's a complete recipe for Debian/Ubuntu:
 
 ```
 sudo apt install build-essential git libgtk-3-dev
-wget https://golang.org/dl/go1.16.3.linux-amd64.tar.gz
-tar -xzf go1.16.3.linux-amd64.tar.gz
+wget https://golang.org/dl/go1.17.linux-amd64.tar.gz
+tar -xzf go1.17.linux-amd64.tar.gz
 GOBIN=$PWD go/bin/go install -v github.com/vfaronov/gunison@latest
 ./gunison
 ```

@@ -1,4 +1,4 @@
-// +build aix android darwin dragonfly freebsd illumos ios linux netbsd openbsd solaris
+//go:build !(js || plan9 || windows)
 
 package main
 
