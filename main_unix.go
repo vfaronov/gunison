@@ -6,7 +6,10 @@ import "syscall"
 
 func init() {
 	sysProcAttr = &syscall.SysProcAttr{
-		// Without this, ssh prompts for password on the terminal instead of popping up an askpass GUI.
+		// This has two effects:
+		// 1. makes ssh pop up an askpass GUI instead of trying to prompt for password on the terminal;
+		// 2. establishes a process group, enabling Gunison to send signals to ssh and other children
+		//    along with Unison itself.
 		Setsid: true,
 	}
 }

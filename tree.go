@@ -271,7 +271,7 @@ func describeContentFull(c Content) string {
 }
 
 var (
-	// TODO: Action glyphs and colors should be user-customizable (but beware unActionGlyphs).
+	// TODO: Action glyphs and colors should be user-customizable (but beware glyphActions).
 	actionGlyphs = map[Action]string{
 		Skip:               "←?→",
 		LeftToRight:        "→",
@@ -281,7 +281,7 @@ var (
 		Merge:              "←M→",
 		Mixed:              "•••",
 	}
-	unActionGlyphs = map[string]Action{} // filled in init below
+	glyphActions = map[string]Action{} // filled in init below
 	actionColors   = map[Action]string{
 		LeftToRight:        "#60C1F8",
 		RightToLeft:        "#B980FF",
@@ -305,7 +305,7 @@ var (
 
 func init() {
 	for action, glyph := range actionGlyphs {
-		unActionGlyphs[glyph] = action
+		glyphActions[glyph] = action
 	}
 }
 
@@ -679,7 +679,7 @@ func pathAt(iter *gtk.TreeIter) string {
 }
 
 func actionAt(iter *gtk.TreeIter) Action {
-	return unActionGlyphs[MustGetColumn(treestore, iter, colAction).(string)]
+	return glyphActions[MustGetColumn(treestore, iter, colAction).(string)]
 }
 
 func isOverriddenAt(iter *gtk.TreeIter) bool {

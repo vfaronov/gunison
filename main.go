@@ -141,6 +141,11 @@ func watchUnison() {
 	}
 	shouldf(unisonR.Close(), "close unisonR pipe")
 
+	// TODO: This is incorrect. This normally works because unisonR automatically EOFs when all
+	// descriptors for its write end are closed, i.e. when Unison and its children (that inherit
+	// stdout/stderr, such as ssh) exit. This is how pipes work on Linux, at least. But if Unison
+	// leaks its end of the pipe to some process that doesn't exit, or if we run on a platform
+	// where pipes work differently, we might never get to this line.
 	e := unison.Wait()
 	log.Println("Unison exit:", e)
 	glib.IdleAdd(func() { recvExit(e) })
