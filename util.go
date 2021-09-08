@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"strings"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -70,6 +71,16 @@ func SignalGroup(p *os.Process, sig os.Signal) error {
 		}
 	}
 	return p.Signal(sig)
+}
+
+// Prefix iterates over successively longer prefixes of path. Prefix(path, 0) returns the first one
+// and the index to be passed back to Prefix for the next one.
+func Prefix(path string, i int) (string, int) {
+	pos := strings.IndexByte(path[i:], '/')
+	if pos == -1 {
+		return "", -1
+	}
+	return path[:i+pos], i + pos + 1
 }
 
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {

@@ -46,11 +46,7 @@ func displayItems() {
 		path := item.Path
 		// Each item must be a leaf node, so need to prevent deriving a parent node for the same path.
 		covers[path] = span{end: invalid}
-		for j := 1; j < len(path); j++ { // Iterate over all prefixes of the path.
-			if path[j] != '/' {
-				continue
-			}
-			prefix := path[:j]
+		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
 			cover, ok := covers[prefix]
 			switch {
 			case !ok: // new prefix
@@ -111,11 +107,7 @@ func displayItems() {
 		path := item.Path
 		var lastPrefix string
 		lastCover := span{end: invalid}
-		for j := 1; j < len(path); j++ { // Iterate over all prefixes of the path.
-			if path[j] != '/' {
-				continue
-			}
-			prefix := path[:j]
+		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
 			cover := covers[prefix]
 			if cover.start != i || cover.end <= i {
 				continue
@@ -282,7 +274,7 @@ var (
 		Mixed:              "•••",
 	}
 	glyphActions = map[string]Action{} // filled in init below
-	actionColors   = map[Action]string{
+	actionColors = map[Action]string{
 		LeftToRight:        "#60C1F8",
 		RightToLeft:        "#B980FF",
 		Merge:              "#FDB363",
