@@ -1500,13 +1500,6 @@ func TestKill(t *testing.T) {
 	assert.Nil(t, c.Kill)
 }
 
-// assertEqual is just assert.Equal with arguments swapped,
-// which makes for more readable code in places.
-func assertEqual(t *testing.T, actual, expected interface{}) bool { //nolint:unparam
-	t.Helper()
-	return assert.Equal(t, expected, actual)
-}
-
 func initCoreMinimalReady(t *testing.T) *Core { //nolint:thelper
 	c := NewCore()
 	c.ProcStart()

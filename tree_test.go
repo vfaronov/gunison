@@ -11,74 +11,182 @@ import (
 	"pgregory.net/rapid"
 )
 
+// TestDisplayItems is a table-driven test for displayItems.
 func TestDisplayItems(t *testing.T) {
-	core.Items = []Item{
+	cases := []struct {
+		id       string
+		items    []Item
+		expected []interface{}
+	}{
 		{
-			Path:           "", // entire replica
-			Left:           Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
-			Right:          Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Recommendation: LeftToRight,
+			id:       lineno(),
+			items:    []Item{},
+			expected: []interface{}{},
 		},
 		{
-			Path:           "foo/baz/789",
-			Left:           Content{File, Created, "modified on 2021-02-06 at 18:41:58  size 1146      rw-r--r--"},
-			Right:          Content{Directory, Created, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Recommendation: Skip,
+			id: lineno(),
+			items: []Item{
+				ltr("foo"),
+			},
+			expected: []interface{}{
+				o, "foo", "→",
+			},
 		},
-		ltr("bar"),
-		rtl("foo/123/456/789"),
-		rtl("foo/123/456/000"),
-		rtl("foo/123/abc"),
-		ltr("foo/bar/baz"),
-		rtl("foo/bar/qux"),
-		ltr("foo/baz/123"),
 		{
-			Path:           "foo/baz/456",
-			Left:           Content{Directory, PropsChanged, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
-			Right:          Content{Directory, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwxr-xr-x"},
-			Recommendation: LeftToRight,
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar/baz"),
+			},
+			expected: []interface{}{
+				o, "foo/bar/baz", "→",
+			},
 		},
-		ltr("foo/baz/456/file1"),
-		ltr("foo/baz/456/file2"),
-		rtl("foo/baz/xyzzy/a"),
-		rtl("foo/baz/xyzzy/b"),
-		ltr("foo/qux/123"),
-		ltr("foo/qux/456"),
-		ltr("foo/qux/789/subdir/a"),
-		ltr("foo/qux/789/subdir/b"),
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo"),
+				ltr("foo/bar"),
+			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o, "foo/bar", "→",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar"),
+				ltr("foo/baz"),
+			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar", "→",
+				o__o, "baz", "→",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar"),
+				ltr("foo/bar/baz"),
+			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar", "→",
+				o__o, "bar/baz", "→",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar"),
+				ltr("foo/bar/baz"),
+				ltr("foo/bar/qux"),
+			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar", "→",
+				o__o, "bar/baz", "→",
+				o__o, "bar/qux", "→",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar"),
+				rtl("foo/baz"),
+			},
+			expected: []interface{}{
+				o, "foo", "•••",
+				o__o, "bar", "→",
+				o__o, "baz", "←",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				{
+					Path:           "",
+					Left:           Content{Directory, PropsChanged, "modified on 2021-02-26 at 17:06:22  size 0         rwx------"},
+					Right:          Content{Directory, PropsChanged, "modified on 2021-02-25 at 17:06:22  size 0         rwxr-xr-x"},
+					Recommendation: LeftToRight,
+				},
+				ltr("foo"),
+			},
+			expected: []interface{}{
+				o, "entire replica", "→",
+				o, "foo", "→",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar/baz"),
+				ltr("foo/bar/qux"),
+			},
+			expected: []interface{}{
+				o, "foo/bar", "→",
+				o__o, "baz", "→",
+				o__o, "qux", "→",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				rtl("foo/bar/1"),
+				rtl("foo/bar/2"),
+				rtl("foo/baz"),
+			},
+			expected: []interface{}{
+				o, "foo", "←",
+				o__o, "bar", "←",
+				o__o__o, "1", "←",
+				o__o__o, "2", "←",
+				o__o, "baz", "←",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				ltr("foo/bar/1"),
+				ltr("foo/bar/2"),
+				rtl("foo/baz/3"),
+				rtl("foo/baz/4"),
+			},
+			expected: []interface{}{
+				o, "foo", "•••",
+				o__o, "bar", "→",
+				o__o__o, "1", "→",
+				o__o__o, "2", "→",
+				o__o, "baz", "←",
+				o__o__o, "3", "←",
+				o__o__o, "4", "←",
+			},
+		},
+		{
+			id: lineno(),
+			items: []Item{
+				rtl("foo/bar/1"),
+				rtl("foo/baz"),
+				rtl("foo/bar/2"),
+			},
+			expected: []interface{}{
+				// Can't derive a parent for "bar" because it is split in two by "baz".
+				o, "foo", "←",
+				o__o, "bar/1", "←",
+				o__o, "baz", "←",
+				o__o, "bar/2", "←",
+			},
+		},
 	}
 
-	displayItems()
-
-	cols := []int{colName, colAction}
-	assertEqual(t, probeRow(t, "0", cols...), []interface{}{"entire replica", "→"})
-	assertEqual(t, probeRow(t, "1", cols...), []interface{}{"foo/baz/789", "←?→"})
-	assertEqual(t, probeRow(t, "2", cols...), []interface{}{"bar", "→"})
-	assertEqual(t, probeRow(t, "3", cols...), []interface{}{"foo/123", "←"})
-	assertEqual(t, probeRow(t, "3:0", cols...), []interface{}{"456", "←"})
-	assertEqual(t, probeRow(t, "3:0:0", cols...), []interface{}{"789", "←"})
-	assertEqual(t, probeRow(t, "3:0:1", cols...), []interface{}{"000", "←"})
-	assertEqual(t, probeRow(t, "3:1", cols...), []interface{}{"abc", "←"})
-	assertEqual(t, probeRow(t, "4", cols...), []interface{}{"foo/bar", "•••"})
-	assertEqual(t, probeRow(t, "4:0", cols...), []interface{}{"baz", "→"})
-	assertEqual(t, probeRow(t, "4:1", cols...), []interface{}{"qux", "←"})
-	assertEqual(t, probeRow(t, "5", cols...), []interface{}{"foo/baz/123", "→"})
-	assertEqual(t, probeRow(t, "6", cols...), []interface{}{"foo/baz/456", "→"})
-	assertEqual(t, probeRow(t, "7", cols...), []interface{}{"foo/baz/456/file1", "→"})
-	assertEqual(t, probeRow(t, "8", cols...), []interface{}{"foo/baz/456/file2", "→"})
-	assertEqual(t, probeRow(t, "9", cols...), []interface{}{"foo/baz/xyzzy", "←"})
-	assertEqual(t, probeRow(t, "9:0", cols...), []interface{}{"a", "←"})
-	assertEqual(t, probeRow(t, "9:1", cols...), []interface{}{"b", "←"})
-	assertEqual(t, probeRow(t, "10", cols...), []interface{}{"foo/qux", "→"})
-	assertEqual(t, probeRow(t, "10:0", cols...), []interface{}{"123", "→"})
-	assertEqual(t, probeRow(t, "10:1", cols...), []interface{}{"456", "→"})
-	assertEqual(t, probeRow(t, "10:2", cols...), []interface{}{"789/subdir", "→"})
-	assertEqual(t, probeRow(t, "10:2:0", cols...), []interface{}{"a", "→"})
-	assertEqual(t, probeRow(t, "10:2:1", cols...), []interface{}{"b", "→"})
-
-	total := 0
-	forEachNode(func(*gtk.TreeIter) { total++ })
-	assertEqual(t, total, 24)
+	for _, c := range cases {
+		t.Run(c.id, func(t *testing.T) {
+			core.Items = c.items
+			displayItems()
+			assertTree(t, treestore, []int{colName, colAction}, c.expected...)
+		})
+	}
 }
 
 var dontCare = Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"}
@@ -99,22 +207,6 @@ func rtl(path string) Item {
 		Right:          dontCare,
 		Recommendation: RightToLeft,
 	}
-}
-
-func probeRow(t *testing.T, path string, cols ...int) []interface{} {
-	t.Helper()
-	p, err := gtk.TreePathNewFromString(path)
-	require.NoError(t, err)
-	iter, err := treestore.GetIter(p)
-	require.NoError(t, err)
-
-	row := make([]interface{}, len(cols))
-	for i, col := range cols {
-		v, err := treestore.GetValue(iter, col)
-		require.NoError(t, err)
-		row[i], _ = v.GetString()
-	}
-	return row
 }
 
 func genItems(t *rapid.T) []Item {
