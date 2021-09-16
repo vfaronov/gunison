@@ -119,8 +119,6 @@ func displayItems() {
 			}
 			if currentSort.column == pathColumn && currentSort.order == gtk.SORT_DESCENDING {
 				// A parent node's path is necessarily "less than" all of its children's.
-				// TODO: Does sorting by path like this even make sense,
-				// given that the column actually shows names, not paths?
 				continue
 			}
 

@@ -51,7 +51,7 @@ const (
 	o__o__o
 )
 
-// lineno returns "line123" when called from line 123: a convenient identifier for table-driven subtests.
+// lineno returns "line123" when called from line 123: a convenient name for table-driven subtests.
 //go:noinline
 func lineno() string {
 	_, _, line, ok := runtime.Caller(1)

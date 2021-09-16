@@ -14,17 +14,18 @@ import (
 // TestDisplayItems is a table-driven test for displayItems.
 func TestDisplayItems(t *testing.T) {
 	cases := []struct {
-		id       string
+		name     string
 		items    []Item
+		sort     sortRule
 		expected []interface{}
 	}{
 		{
-			id:       lineno(),
+			name:     lineno(),
 			items:    []Item{},
 			expected: []interface{}{},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo"),
 			},
@@ -33,7 +34,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar/baz"),
 			},
@@ -42,7 +43,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo"),
 				ltr("foo/bar"),
@@ -53,7 +54,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar"),
 				ltr("foo/baz"),
@@ -65,7 +66,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar"),
 				ltr("foo/bar/baz"),
@@ -77,7 +78,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar"),
 				ltr("foo/bar/baz"),
@@ -91,7 +92,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar"),
 				rtl("foo/baz"),
@@ -103,7 +104,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				{
 					Path:           "",
@@ -119,7 +120,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar/baz"),
 				ltr("foo/bar/qux"),
@@ -131,7 +132,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				rtl("foo/bar/1"),
 				rtl("foo/bar/2"),
@@ -146,7 +147,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				ltr("foo/bar/1"),
 				ltr("foo/bar/2"),
@@ -164,11 +165,12 @@ func TestDisplayItems(t *testing.T) {
 			},
 		},
 		{
-			id: lineno(),
+			name: lineno(),
 			items: []Item{
 				rtl("foo/bar/1"),
 				rtl("foo/baz"),
 				rtl("foo/bar/2"),
+				rtl("foo/bar/3"),
 			},
 			expected: []interface{}{
 				// Can't derive a parent for "bar" because it is split in two by "baz".
@@ -176,13 +178,48 @@ func TestDisplayItems(t *testing.T) {
 				o__o, "bar/1", "←",
 				o__o, "baz", "←",
 				o__o, "bar/2", "←",
+				o__o, "bar/3", "←",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				ltr("foo/1"),
+				ltr("foo/2"),
+				ltr("foo/3"),
+			},
+			sort: sortRule{pathColumn, gtk.SORT_ASCENDING},
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "1", "→",
+				o__o, "2", "→",
+				o__o, "3", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				ltr("foo/3"),
+				ltr("foo/2"),
+				ltr("foo/1"),
+			},
+			sort: sortRule{pathColumn, gtk.SORT_DESCENDING},
+			expected: []interface{}{
+				// Can't derive a parent for "foo" because it would appear
+				// before "foo/3" in the tree and thus violate the sort rule.
+				// TODO: Does sorting by path like this even make sense,
+				// considering that the column actually shows names, not paths?
+				o, "foo/3", "→",
+				o, "foo/2", "→",
+				o, "foo/1", "→",
 			},
 		},
 	}
 
 	for _, c := range cases {
-		t.Run(c.id, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			core.Items = c.items
+			currentSort = c.sort
 			displayItems()
 			assertTree(t, treestore, []int{colName, colAction}, c.expected...)
 		})
