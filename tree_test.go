@@ -16,6 +16,7 @@ func TestDisplayItems(t *testing.T) {
 	cases := []struct {
 		name     string
 		items    []Item
+		squash   bool
 		sort     sortRule
 		expected []interface{}
 	}{
@@ -38,6 +39,18 @@ func TestDisplayItems(t *testing.T) {
 			items: []Item{
 				ltr("foo/bar/baz"),
 			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar", "→",
+				o__o__o, "baz", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				ltr("foo/bar/baz"),
+			},
+			squash: true,
 			expected: []interface{}{
 				o, "foo/bar/baz", "→",
 			},
@@ -69,8 +82,34 @@ func TestDisplayItems(t *testing.T) {
 			name: lineno(),
 			items: []Item{
 				ltr("foo/bar"),
+				ltr("foo/baz"),
+			},
+			squash: true,
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar", "→",
+				o__o, "baz", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				ltr("foo/bar"),
 				ltr("foo/bar/baz"),
 			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar", "→",
+				o__o, "bar/baz", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				ltr("foo/bar"),
+				ltr("foo/bar/baz"),
+			},
+			squash: true,
 			expected: []interface{}{
 				o, "foo", "→",
 				o__o, "bar", "→",
@@ -125,6 +164,7 @@ func TestDisplayItems(t *testing.T) {
 				ltr("foo/bar/baz"),
 				ltr("foo/bar/qux"),
 			},
+			squash: true,
 			expected: []interface{}{
 				o, "foo/bar", "→",
 				o__o, "baz", "→",
@@ -172,6 +212,24 @@ func TestDisplayItems(t *testing.T) {
 				rtl("foo/bar/2"),
 				rtl("foo/bar/3"),
 			},
+			expected: []interface{}{
+				// Can't derive a parent for "bar" because it is split in two by "baz".
+				o, "foo", "←",
+				o__o, "bar/1", "←",
+				o__o, "baz", "←",
+				o__o, "bar/2", "←",
+				o__o, "bar/3", "←",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				rtl("foo/bar/1"),
+				rtl("foo/baz"),
+				rtl("foo/bar/2"),
+				rtl("foo/bar/3"),
+			},
+			squash: true,
 			expected: []interface{}{
 				// Can't derive a parent for "bar" because it is split in two by "baz".
 				o, "foo", "←",
@@ -256,6 +314,7 @@ func TestDisplayItems(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			core.Items = c.items
+			squash = c.squash
 			currentSort = c.sort
 			displayItems()
 			assertTree(t, treestore, []int{colName, colAction}, c.expected...)
@@ -339,6 +398,7 @@ func genItems(t *rapid.T) []Item {
 func TestDisplayItemsContiguous(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
 		currentSort = sortRule{}
 		displayItems()
 		cur := 0
@@ -361,6 +421,7 @@ func TestDisplayItemsContiguous(t *testing.T) {
 func TestDisplayItemsNamesPaths(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
 		currentSort = sortRule{}
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
@@ -391,6 +452,7 @@ func TestDisplayItemsNamesPaths(t *testing.T) {
 func TestDisplayItemsAncestors(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
 		currentSort = sortRule{}
 		displayItems()
 		forEachNode(func(iter1 *gtk.TreeIter) {
@@ -411,11 +473,12 @@ func TestDisplayItemsAncestors(t *testing.T) {
 }
 
 // TestDisplayItemsMultipleChildren checks the following property:
-// displayItems generates parent nodes only for multiple children
-// (because if there's only one child, it can be subsumed into the parent).
+// When squash == true, displayItems generates parent nodes only for multiple children
+// (because if there's only one child, it can be squashed into the parent).
 func TestDisplayItemsMultipleChildren(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = true
 		currentSort = sortRule{}
 		displayItems()
 		forEachNode(func(iter *gtk.TreeIter) {
@@ -430,6 +493,7 @@ func TestDisplayItemsMultipleChildren(t *testing.T) {
 func TestDisplayItemsSorted(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
 		var allSortRules = []sortRule{
 			{pathColumn, gtk.SORT_ASCENDING},
 			{pathColumn, gtk.SORT_DESCENDING},
@@ -466,6 +530,7 @@ func TestDisplayItemsSorted(t *testing.T) {
 func TestSetActionAsIfOriginal(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
 		currentSort = sortRule{}
 
 		displayItems()

@@ -35,6 +35,7 @@ var (
 	headerbar           *gtk.HeaderBar
 	infobar             *gtk.InfoBar
 	infobarLabel        *gtk.Label
+	scrolledWindow      *gtk.ScrolledWindow
 	treeview            *gtk.TreeView
 	treeSelection       *gtk.TreeSelection
 	treestore           *gtk.TreeStore
@@ -50,6 +51,7 @@ var (
 	skipMenuItem        *gtk.MenuItem
 	revertMenuItem      *gtk.MenuItem
 	diffMenuItem        *gtk.MenuItem
+	squashMenuItem      *gtk.CheckMenuItem
 	statusLabel         *gtk.Label
 	spinner             *gtk.Spinner
 	progressbar         *gtk.ProgressBar
@@ -166,6 +168,8 @@ func setupWidgets() {
 
 	headerbar = mustGetObject(builder, "headerbar").(*gtk.HeaderBar)
 
+	scrolledWindow = mustGetObject(builder, "scrolled-window").(*gtk.ScrolledWindow)
+
 	treeview = mustGetObject(builder, "treeview").(*gtk.TreeView)
 	treeview.Connect("popup-menu", onTreeviewPopupMenu)
 	treeview.Connect("button-press-event", onTreeviewButtonPressEvent)
@@ -201,6 +205,8 @@ func setupWidgets() {
 	revertMenuItem.Connect("activate", onRevertMenuItemActivate)
 	diffMenuItem = mustGetObject(builder, "diff-menuitem").(*gtk.MenuItem)
 	diffMenuItem.Connect("activate", onDiffMenuItemActivate)
+	squashMenuItem = mustGetObject(builder, "squash-menuitem").(*gtk.CheckMenuItem)
+	onSquashMenuItemToggledHandle = squashMenuItem.Connect("toggled", onSquashMenuItemToggled)
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
@@ -477,6 +483,7 @@ func onKillButtonClicked() {
 }
 
 type uiState struct {
+	Squash        bool
 	Width, Height int
 	Maximized     bool
 	ColumnOrder   []int // indices match var columns
@@ -498,13 +505,20 @@ func loadUIState() {
 		return
 	}
 	defer f.Close()
-	var state uiState
+
+	state := uiState{
+		// This option was absent in 0.1, but the behavior was equivalent to it being true.
+		// Preserve that behavior if the option is missing from the JSON.
+		Squash: true,
+	}
 	if err := json.NewDecoder(f).Decode(&state); !shouldf(err, "decode UI state JSON") {
 		return
 	}
 
-	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnOrder:%v ColumnWidth:%v",
-		state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
+	log.Printf("state: Squash:%v Width:%v Height:%v Maximized:%v ColumnOrder:%v ColumnWidth:%v",
+		state.Squash, state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
+
+	squash = state.Squash
 
 	window.SetDefaultSize(state.Width, state.Height)
 	if state.Maximized {
@@ -544,7 +558,10 @@ func saveUIState() {
 		return
 	}
 	defer f.Close()
-	var state uiState
+
+	state := uiState{
+		Squash: squash,
+	}
 
 	if window.IsMaximized() {
 		state.Maximized = true
@@ -579,8 +596,8 @@ func saveUIState() {
 	}
 	sort.Strings(state.Collapsed)
 
-	log.Printf("state: Width:%v Height:%v Maximized:%v ColumnOrder:%v ColumnWidth:%v",
-		state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
+	log.Printf("state: Squash:%v Width:%v Height:%v Maximized:%v ColumnOrder:%v ColumnWidth:%v",
+		state.Squash, state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")

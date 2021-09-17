@@ -103,13 +103,13 @@ func displayItems() {
 
 		// Open new parents for prefixes that begin at this item and cover multiple items.
 		// But postpone opening a parent until we see a prefix with a shorter span,
-		// because if several prefixes cover the same span, we collapse them into one parent.
+		// because if several prefixes cover the same span, we may squash them into one parent.
 		path := item.Path
 		var lastPrefix string
 		lastCover := span{end: invalid}
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
 			cover := covers[prefix]
-			if cover.start != i || cover.end <= i {
+			if cover.start != i {
 				continue
 			}
 
@@ -122,13 +122,13 @@ func displayItems() {
 				continue
 			}
 
-			if lastCover.end > cover.end {
+			if lastCover.end != invalid && (lastCover.end > cover.end || !squash) {
 				openParent(lastPrefix)
 			}
 			lastPrefix = prefix
 			lastCover = cover
 		}
-		if lastCover.end != invalid {
+		if lastCover.end != invalid && (lastCover.end > lastCover.start || !squash) {
 			openParent(lastPrefix)
 		}
 
@@ -332,12 +332,15 @@ func iconName(item Item) string {
 	}
 }
 
+var (
+	squash      = false
+	currentSort sortRule
+)
+
 type sortRule struct {
 	column *gtk.TreeViewColumn
 	order  gtk.SortType
 }
-
-var currentSort sortRule
 
 func onPathColumnClicked()   { cycleSort(pathColumn) }
 func onActionColumnClicked() { cycleSort(actionColumn) }
@@ -407,21 +410,14 @@ func updateMenuItems() {
 	some := false
 	multiple := false
 	onlyFiles := true
-
-	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
+	forEachSelectedItem(func(_ *gtk.TreePath, _ *gtk.TreeIter, item *Item) bool {
 		if some {
 			multiple = true
 		}
 		some = true
-		iter, item := selected(li)
-		if item == nil { // parent node always contains multiple items
-			multiple = true
-		}
-		onlyFiles = onlyFiles && onlyFilesAt(iter)
-		if multiple && !onlyFiles { // further nodes won't change anything
-			break
-		}
-	}
+		onlyFiles = onlyFiles && item.Left.Type == File && item.Right.Type == File
+		return !(multiple && !onlyFiles) // stop iterating when neither flag can change with more items
+	})
 
 	leftToRightMenuItem.SetSensitive(core.Sync != nil && some)
 	rightToLeftMenuItem.SetSensitive(core.Sync != nil && some)
@@ -429,6 +425,10 @@ func updateMenuItems() {
 	skipMenuItem.SetSensitive(core.Sync != nil && some)
 	revertMenuItem.SetSensitive(core.Sync != nil && some)
 	diffMenuItem.SetSensitive(core.Diff != nil && some && !multiple && onlyFiles)
+
+	squashMenuItem.HandlerBlock(onSquashMenuItemToggledHandle)
+	squashMenuItem.SetActive(squash)
+	squashMenuItem.HandlerUnblock(onSquashMenuItemToggledHandle)
 }
 
 func onLeftToRightMenuItemActivate() { setAction(LeftToRight) }
@@ -438,24 +438,36 @@ func onSkipMenuItemActivate()        { setAction(Skip) }
 func onRevertMenuItemActivate()      { setAction(NoAction) }
 
 func setAction(act Action) {
-	// Keep track of visited nodes (as sets of gtk_tree_path_to_string) to avoid repeating work.
-	updated := map[string]bool{}       // nodes for which we directly set the new action
-	invalidated := []map[string]bool{} // ancestors of updated nodes, sorted into groups by tree depth
+	// Keep track of ancestor nodes for which we'll need to refresh combined actions,
+	// as sets of gtk_tree_path_to_string sorted into groups by tree depth.
+	invalidated := []map[string]bool{}
 
-	// Recursively set the new action on all selected nodes and their descendants,
-	// while assembling a list of ancestors to refresh.
-	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
-		invalidated = setActionInner(li.Data().(*gtk.TreePath), act, updated, invalidated)
-	}
+	forEachSelectedItem(func(treepath *gtk.TreePath, iter *gtk.TreeIter, item *Item) bool {
+		item.Override = act
+		displayAction(iter, item.Action(), item.IsOverridden())
+		for treepath.Up() { // invalidate all ancestors
+			depth := treepath.GetDepth()
+			if depth < 1 {
+				break
+			}
+			for len(invalidated) < depth {
+				invalidated = append(invalidated, map[string]bool{})
+			}
+			treepathS := treepath.String()
+			if invalidated[depth-1][treepathS] {
+				break
+			}
+			invalidated[depth-1][treepathS] = true
+		}
+		return true
+	})
 
 	// Refresh combined actions on all ancestor nodes that have been invalidated,
 	// beginning with the deepest ones and moving up the tree
 	// (recomputing a node's action can affect its ancestors but not its descendants).
 	for i := len(invalidated) - 1; i >= 0; i-- {
 		for treepathS := range invalidated[i] {
-			if !updated[treepathS] {
-				refreshParentAction(treepathS)
-			}
+			refreshParentAction(treepathS)
 		}
 	}
 
@@ -464,55 +476,6 @@ func setAction(act Action) {
 	if currentSort.column == actionColumn {
 		setSort(sortRule{})
 	}
-}
-
-func setActionInner(
-	treepath *gtk.TreePath,
-	act Action,
-	updated map[string]bool,
-	invalidated []map[string]bool,
-) []map[string]bool {
-	// Avoid repeated work when both a node and its child have been selected by the user.
-	if updated[treepath.String()] {
-		return invalidated
-	}
-
-	iter, err := treestore.GetIter(treepath)
-	mustf(err, "get tree iter for %s", treepath)
-
-	// Set the new action on the node and its corresponding plan item (if any).
-	if item := itemAt(iter); item != nil {
-		item.Override = act
-		displayAction(iter, item.Action(), item.IsOverridden())
-		updated[treepath.String()] = true
-	} else if act != NoAction { // For parent nodes, this only works if we're actually *setting* action,
-		// not resetting to Unison's recommendation, because we don't have a parent node's recommendation
-		// precomputed. Instead, that will be updated in refreshParentAction.
-		displayAction(iter, act, true)
-		updated[treepath.String()] = true
-	}
-
-	// Invalidate all ancestors of the node.
-	for treepath.Up() {
-		depth := treepath.GetDepth()
-		if depth < 1 {
-			break
-		}
-		for len(invalidated) < depth {
-			invalidated = append(invalidated, map[string]bool{})
-		}
-		invalidated[depth-1][treepath.String()] = true
-	}
-
-	// Recursively update children, if any.
-	child, _ := treestore.GetIterFirst()
-	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
-		treepath, err := treestore.GetPath(child)
-		mustf(err, "get tree path")
-		invalidated = setActionInner(treepath, act, updated, invalidated)
-	}
-
-	return invalidated
 }
 
 func refreshParentAction(treepathS string) {
@@ -533,12 +496,21 @@ func onDiffMenuItemActivate() {
 		update(Update{})
 		return
 	}
-	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
-		if _, item := selected(li); item != nil {
-			update(core.Diff(item.Path))
-			return
-		}
-	}
+	forEachSelectedItem(func(_ *gtk.TreePath, _ *gtk.TreeIter, item *Item) bool {
+		update(core.Diff(item.Path))
+		return false // stop after the first item
+	})
+}
+
+// TODO: This variable would not be needed if gotk3 had bindings for g_signal_handlers_block_by_func
+// or g_signal_handler_find.
+var onSquashMenuItemToggledHandle glib.SignalHandle
+
+func onSquashMenuItemToggled() {
+	squash = squashMenuItem.GetActive()
+	// Let the user immediately see the effect on whichever nodes they were looking at.
+	PreserveScroll(scrolledWindow.GetVAdjustment())
+	displayItems()
 }
 
 func onTreeviewQueryTooltip(_ *gtk.TreeView, x, y int, keyboardMode bool, tip *gtk.Tooltip) bool {
@@ -553,8 +525,10 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 	if li == nil || li.Length() != 1 {
 		return false // only show tooltip when a single row is selected
 	}
+	iter, err := treestore.GetIter(li.Data().(*gtk.TreePath))
+	mustf(err, "get tree iter")
 	var markup string
-	if iter, item := selected(li); item != nil {
+	if item := itemAt(iter); item != nil {
 		path := html.EscapeString(item.Path)
 		if item.Path == "" {
 			path = "<i>entire replica</i>"
@@ -650,12 +624,6 @@ func maybeExpandRow(iter *gtk.TreeIter) {
 	treeview.ExpandRow(treepath, false)
 }
 
-func selected(li *glib.List) (*gtk.TreeIter, *Item) {
-	iter, err := treestore.GetIter(li.Data().(*gtk.TreePath))
-	mustf(err, "get tree iter")
-	return iter, itemAt(iter)
-}
-
 func itemAt(iter *gtk.TreeIter) *Item {
 	idx := MustGetColumn(treestore, iter, colIdx).(int)
 	if idx == invalid {
@@ -676,15 +644,46 @@ func isOverriddenAt(iter *gtk.TreeIter) bool {
 	return MustGetColumn(treestore, iter, colActionColor).(string) == overriddenColor
 }
 
-func onlyFilesAt(iter *gtk.TreeIter) bool {
-	only := true
-	if item := itemAt(iter); item != nil {
-		only = item.Left.Type == File && item.Right.Type == File
-	} else {
+// forEachSelectedItem calls f for each Item that is itself selected or contained in a selected
+// ancestor node, until f returns false.
+func forEachSelectedItem(f func(*gtk.TreePath, *gtk.TreeIter, *Item) bool) {
+	visited := map[string]bool{}
+
+	var recur func(*gtk.TreePath, *gtk.TreeIter) bool
+	recur = func(treepath *gtk.TreePath, iter *gtk.TreeIter) bool {
+		var err error
+		if treepath == nil {
+			treepath, err = treestore.GetPath(iter)
+		} else if iter == nil {
+			iter, err = treestore.GetIter(treepath)
+		}
+		mustf(err, "resolve treepath and iter from %v and %v", treepath, iter)
+
+		treepathS := treepath.String()
+		if visited[treepathS] {
+			return true
+		}
+		visited[treepathS] = true
+
+		if item := itemAt(iter); item != nil {
+			if !f(treepath, iter, item) {
+				return false
+			}
+		}
+
 		child, _ := treestore.GetIterFirst()
-		for ok := treestore.IterChildren(iter, child); ok && only; ok = treestore.IterNext(child) {
-			only = only && onlyFilesAt(child)
+		for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
+			if !recur(nil, child) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	for li, next := Iter(treeSelection.GetSelectedRows(nil)); li != nil; li = next() {
+		if !recur(li.Data().(*gtk.TreePath), nil) {
+			break
 		}
 	}
-	return only
 }

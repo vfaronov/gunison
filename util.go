@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"reflect"
 	"regexp"
@@ -175,4 +176,16 @@ func Iter(head *glib.List) (li *glib.List, next func() *glib.List) {
 		li = li.Next()
 		return li
 	}
+}
+
+// PreserveScroll computes the relative (percent) value of adj and
+// schedules it to be restored on the next iteration of the GLib main loop.
+// (It can't be restored on the same iteration because, at least in case of
+// a treeview scroll, it will only be updated at the end.)
+func PreserveScroll(adj *gtk.Adjustment) {
+	relvalue := (adj.GetValue() - adj.GetLower()) / (adj.GetUpper() - adj.GetLower())
+	if math.IsNaN(relvalue) { // all zero, nothing to restore
+		return
+	}
+	glib.IdleAdd(func() { adj.SetValue(relvalue * (adj.GetUpper() - adj.GetLower())) })
 }
