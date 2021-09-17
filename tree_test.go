@@ -214,6 +214,43 @@ func TestDisplayItems(t *testing.T) {
 				o, "foo/1", "→",
 			},
 		},
+		{
+			name: lineno(),
+			items: []Item{
+				ltr("foo/qux/1"),
+				rtl("foo/qux/2"),
+				rtl("foo/xyzzy"),
+				rtl("bar/1"),
+				rtl("bar/2"),
+				rtl("baz/1"),
+				{
+					Path:           "baz/2",
+					Left:           dontCare,
+					Right:          dontCare,
+					Recommendation: RightToLeft,
+					Override:       Skip,
+				},
+			},
+			sort: sortRule{actionColumn, gtk.SORT_ASCENDING},
+			expected: []interface{}{
+				// Can't derive "foo" and "qux" parent nodes because they would have "•••" in the action
+				// column, which sorts after "→" (Mixed > LeftToRight) and would thus violate the current
+				// sort rule. We could make Mixed < LeftToRight and then fix this particular case,
+				// but it would require a bunch of extra code, and would still not work for "baz" below,
+				// nor with descending sort order, so we don't bother for now.
+				// TODO: Again, is this too cautious? Would it be more useful to make derived notes
+				// exempt from the sort rule altogether?
+				o, "foo/qux/1", "→",
+				o, "foo/qux/2", "←",
+				o, "foo/xyzzy", "←",
+				o, "bar", "←",
+				o__o, "1", "←",
+				o__o, "2", "←",
+				// Same with "baz" here: can't insert a "•••" between two "←".
+				o, "baz/1", "←",
+				o, "baz/2", "←?→",
+			},
+		},
 	}
 
 	for _, c := range cases {
