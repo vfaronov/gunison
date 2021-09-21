@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path"
 	"strings"
 	"testing"
@@ -28,7 +29,7 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo"),
+				item("foo"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
@@ -37,7 +38,7 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar/baz"),
+				item("foo/bar/baz"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
@@ -48,7 +49,7 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar/baz"),
+				item("foo/bar/baz"),
 			},
 			squash: true,
 			expected: []interface{}{
@@ -58,8 +59,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo"),
-				ltr("foo/bar"),
+				item("foo", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo/bar"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
@@ -69,8 +70,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar"),
-				ltr("foo/baz"),
+				item("foo/bar"),
+				item("foo/baz"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
@@ -81,8 +82,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar"),
-				ltr("foo/baz"),
+				item("foo/bar"),
+				item("foo/baz"),
 			},
 			squash: true,
 			expected: []interface{}{
@@ -94,8 +95,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar"),
-				ltr("foo/bar/baz"),
+				item("foo/bar", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo/bar/baz"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
@@ -106,8 +107,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar"),
-				ltr("foo/bar/baz"),
+				item("foo/bar", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo/bar/baz"),
 			},
 			squash: true,
 			expected: []interface{}{
@@ -119,9 +120,9 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar"),
-				ltr("foo/bar/baz"),
-				ltr("foo/bar/qux"),
+				item("foo/bar", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo/bar/baz"),
+				item("foo/bar/qux"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
@@ -133,8 +134,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar"),
-				rtl("foo/baz"),
+				item("foo/bar"),
+				item("foo/baz", RightToLeft),
 			},
 			expected: []interface{}{
 				o, "foo", "•••",
@@ -145,13 +146,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				{
-					Path:           "",
-					Left:           Content{Directory, PropsChanged, "modified on 2021-02-26 at 17:06:22  size 0         rwx------"},
-					Right:          Content{Directory, PropsChanged, "modified on 2021-02-25 at 17:06:22  size 0         rwxr-xr-x"},
-					Recommendation: LeftToRight,
-				},
-				ltr("foo"),
+				item("", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo"),
 			},
 			expected: []interface{}{
 				o, "entire replica", "→",
@@ -161,8 +157,8 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar/baz"),
-				ltr("foo/bar/qux"),
+				item("foo/bar/baz"),
+				item("foo/bar/qux"),
 			},
 			squash: true,
 			expected: []interface{}{
@@ -174,9 +170,9 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				rtl("foo/bar/1"),
-				rtl("foo/bar/2"),
-				rtl("foo/baz"),
+				item("foo/bar/1", RightToLeft),
+				item("foo/bar/2", RightToLeft),
+				item("foo/baz", RightToLeft),
 			},
 			expected: []interface{}{
 				o, "foo", "←",
@@ -189,10 +185,10 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/bar/1"),
-				ltr("foo/bar/2"),
-				rtl("foo/baz/3"),
-				rtl("foo/baz/4"),
+				item("foo/bar/1"),
+				item("foo/bar/2"),
+				item("foo/baz/3", RightToLeft),
+				item("foo/baz/4", RightToLeft),
 			},
 			expected: []interface{}{
 				o, "foo", "•••",
@@ -207,10 +203,10 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				rtl("foo/bar/1"),
-				rtl("foo/baz"),
-				rtl("foo/bar/2"),
-				rtl("foo/bar/3"),
+				item("foo/bar/1", RightToLeft),
+				item("foo/baz", RightToLeft),
+				item("foo/bar/2", RightToLeft),
+				item("foo/bar/3", RightToLeft),
 			},
 			expected: []interface{}{
 				// Can't derive a parent for "bar" because it is split in two by "baz".
@@ -224,10 +220,10 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				rtl("foo/bar/1"),
-				rtl("foo/baz"),
-				rtl("foo/bar/2"),
-				rtl("foo/bar/3"),
+				item("foo/bar/1", RightToLeft),
+				item("foo/baz", RightToLeft),
+				item("foo/bar/2", RightToLeft),
+				item("foo/bar/3", RightToLeft),
 			},
 			squash: true,
 			expected: []interface{}{
@@ -242,9 +238,9 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/1"),
-				ltr("foo/2"),
-				ltr("foo/3"),
+				item("foo/1"),
+				item("foo/2"),
+				item("foo/3"),
 			},
 			sort: sortRule{pathColumn, gtk.SORT_ASCENDING},
 			expected: []interface{}{
@@ -257,9 +253,9 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/3"),
-				ltr("foo/2"),
-				ltr("foo/1"),
+				item("foo/3"),
+				item("foo/2"),
+				item("foo/1"),
 			},
 			sort: sortRule{pathColumn, gtk.SORT_DESCENDING},
 			expected: []interface{}{
@@ -275,19 +271,13 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
-				ltr("foo/qux/1"),
-				rtl("foo/qux/2"),
-				rtl("foo/xyzzy"),
-				rtl("bar/1"),
-				rtl("bar/2"),
-				rtl("baz/1"),
-				{
-					Path:           "baz/2",
-					Left:           dontCare,
-					Right:          dontCare,
-					Recommendation: RightToLeft,
-					Override:       Skip,
-				},
+				item("foo/qux/1"),
+				item("foo/qux/2", RightToLeft),
+				item("foo/xyzzy", RightToLeft),
+				item("bar/1", RightToLeft),
+				item("bar/2", RightToLeft),
+				item("baz/1", RightToLeft),
+				item("baz/2", RightToLeft, Skip),
 			},
 			sort: sortRule{actionColumn, gtk.SORT_ASCENDING},
 			expected: []interface{}{
@@ -322,24 +312,34 @@ func TestDisplayItems(t *testing.T) {
 	}
 }
 
-var dontCare = Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"}
-
-func ltr(path string) Item {
-	return Item{
+func item(path string, opts ...interface{}) Item {
+	it := Item{
 		Path:           path,
-		Left:           dontCare,
-		Right:          dontCare,
+		Left:           Content{File, Modified, "modified on 2021-02-06 at 18:41:58  size 0         rwx------"},
+		Right:          Content{File, Unchanged, "modified on 2021-02-05 at 18:41:58  size 0         rwx------"},
 		Recommendation: LeftToRight,
 	}
-}
-
-func rtl(path string) Item {
-	return Item{
-		Path:           path,
-		Left:           dontCare,
-		Right:          dontCare,
-		Recommendation: RightToLeft,
+	side := &it.Left
+	action := &it.Recommendation
+	for _, opt := range opts {
+		switch opt := opt.(type) {
+		case Content:
+			*side = opt
+		case Type:
+			side.Type = opt
+		case Status:
+			side.Status = opt
+		case string:
+			side.Props = opt
+		case Action:
+			*action = opt
+			side = &it.Right
+			action = &it.Override
+		default:
+			panic(fmt.Sprintf("unhandled item option: %#v", opt))
+		}
 	}
+	return it
 }
 
 func genItems(t *rapid.T) []Item {
@@ -381,12 +381,7 @@ func genItems(t *rapid.T) []Item {
 		}
 		seen[newpath] = true
 
-		items[i] = Item{
-			Path:           newpath,
-			Left:           dontCare,
-			Right:          dontCare,
-			Recommendation: rapid.SampledFrom(actions).Draw(t, "action").(Action),
-		}
+		items[i] = item(newpath, rapid.SampledFrom(actions).Draw(t, "action"))
 	}
 	return items
 }
