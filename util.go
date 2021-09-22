@@ -74,14 +74,30 @@ func SignalGroup(p *os.Process, sig os.Signal) error {
 	return p.Signal(sig)
 }
 
-// Prefix iterates over successively longer prefixes of path. Prefix(path, 0) returns the first one
-// and the index to be passed back to Prefix for the next one.
+// Prefix iterates over successively longer prefixes of path consisting of whole numbers of segments.
+// Prefix(path, 0) returns the first prefix and an index to be passed back for the next iteration.
+// At the end, Prefix returns "", -1.
 func Prefix(path string, i int) (string, int) {
-	pos := strings.IndexByte(path[i:], '/')
-	if pos == -1 {
+	if i > len(path) {
 		return "", -1
 	}
-	return path[:i+pos], i + pos + 1
+	prefix := path[:i]
+	var next int
+	if i < len(path) {
+		if j := strings.IndexByte(path[i+1:], '/'); j != -1 {
+			next = i + 1 + j
+		} else {
+			next = len(path)
+		}
+	} else {
+		next = len(path) + 1
+	}
+	return prefix, next
+}
+
+// PathIsAncestor returns true if p1 is an ancestor of p2.
+func PathIsAncestor(p1, p2 string) bool {
+	return strings.HasPrefix(p2, p1+"/") || (p2 != "" && p1 == "")
 }
 
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {

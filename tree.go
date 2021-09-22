@@ -41,11 +41,9 @@ func displayItems() {
 		action     Action
 		overridden bool
 	}
-	covers := make(map[string]span, 2*len(core.Items)) // at least one entry per item, plus some prefixes
+	covers := make(map[string]span)
 	for i, item := range core.Items {
 		path := item.Path
-		// Each item must be a leaf node, so need to prevent deriving a parent node for the same path.
-		covers[path] = span{end: invalid}
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
 			cover, ok := covers[prefix]
 			switch {
@@ -53,10 +51,12 @@ func displayItems() {
 				cover.start = i
 				cover.end = i
 				cover.overridden = item.IsOverridden()
+			case prefix == path: // prefix's root item is not the first item covered by the prefix
+				cover.start = invalid
 			case cover.end == i-1: // continuing prefix
 				cover.end = i
 			default: // discontiguous prefix
-				cover.end = invalid
+				cover.start = invalid
 			}
 			cover.action, cover.overridden = combineAction(cover.action, cover.overridden,
 				item.Action(), item.IsOverridden())
@@ -81,11 +81,9 @@ func displayItems() {
 	stack := []frame{}
 	openParent := func(prefix string) {
 		iter := treestore.Append(parent.iter)
-		name := strings.TrimLeft(prefix[len(parent.prefix):], "/")
-		mustf(treestore.SetValue(iter, colName, name), "set name column")
+		displayPathName(iter, prefix, parent.prefix)
 		mustf(treestore.SetValue(iter, colIconName, "folder"), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, invalid), "set idx column")
-		mustf(treestore.SetValue(iter, colPath, prefix), "set path column")
 		displayAction(iter, covers[prefix].action, covers[prefix].overridden)
 		stack = append(stack, parent)
 		parent = frame{prefix, iter, covers[prefix].end}
@@ -101,15 +99,24 @@ func displayItems() {
 			closeParent()
 		}
 
-		// Open new parents for prefixes that begin at this item and cover multiple items.
+		// Open new parents for prefixes that begin at this item.
 		// But postpone opening a parent until we see a prefix with a shorter span,
 		// because if several prefixes cover the same span, we may squash them into one parent.
 		path := item.Path
 		var lastPrefix string
-		lastCover := span{end: invalid}
+		lastCover := span{start: invalid}
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
+			if prefix == "" && path != "" {
+				// There's no point in displaying the "entire replica" folder unless it is
+				// a plan item in itself.
+				continue
+			}
+
 			cover := covers[prefix]
 			if cover.start != i {
+				continue
+			}
+			if cover.end == i && prefix == path { // leaf node, not a parent
 				continue
 			}
 
@@ -122,13 +129,13 @@ func displayItems() {
 				continue
 			}
 
-			if lastCover.end != invalid && (lastCover.end > cover.end || !squash) {
+			if lastCover.start != invalid && (lastCover.end > cover.end || !squash) {
 				openParent(lastPrefix)
 			}
 			lastPrefix = prefix
 			lastCover = cover
 		}
-		if lastCover.end != invalid && (lastCover.end > lastCover.start || !squash) {
+		if lastCover.start != invalid && (lastCover.end > lastCover.start || !squash) {
 			openParent(lastPrefix)
 		}
 
@@ -136,19 +143,22 @@ func displayItems() {
 		// TODO: here and elsewhere: optimization opportunities that need more bindings in gotk3:
 		// - set multiple columns in one cgo call to gtk_tree_store_set
 		// - reuse GValues for left, right, icon-name, etc., instead of allocating them anew for each node
-		iter := treestore.Append(parent.iter)
-		name := strings.TrimLeft(path[len(parent.prefix):], "/")
-		if path == "" {
-			name = "entire replica"
-			mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
+		var iter *gtk.TreeIter
+		if parent.prefix == path && parent.iter != nil {
+			// This node is also a folder containing child items, which has been opened above.
+			iter = parent.iter
+			action, overridden := combineAction(item.Action(), item.IsOverridden(),
+				covers[path].action, covers[path].overridden)
+			displayAction(iter, action, overridden)
+		} else {
+			iter = treestore.Append(parent.iter)
+			displayPathName(iter, path, parent.prefix)
+			mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
+			displayAction(iter, item.Action(), item.IsOverridden())
 		}
-		mustf(treestore.SetValue(iter, colName, name), "set name column")
 		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
 		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
-		mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
-		mustf(treestore.SetValue(iter, colPath, path), "set path column")
-		displayAction(iter, item.Action(), item.IsOverridden())
 	}
 
 	reattachModel()
@@ -157,6 +167,16 @@ func displayItems() {
 	for iter, ok := treestore.GetIterFirst(); ok; ok = treestore.IterNext(iter) {
 		maybeExpandRow(iter)
 	}
+}
+
+func displayPathName(iter *gtk.TreeIter, path, parent string) {
+	name := strings.TrimLeft(path[len(parent):], "/")
+	if path == "" {
+		name = "entire replica"
+		mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
+	}
+	mustf(treestore.SetValue(iter, colName, name), "set name column")
+	mustf(treestore.SetValue(iter, colPath, path), "set path column")
 }
 
 func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
@@ -487,6 +507,9 @@ func refreshParentAction(treepathS string) {
 	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
 		action, overridden = combineAction(action, overridden, actionAt(child), isOverriddenAt(child))
 	}
+	if item := itemAt(iter); item != nil {
+		action, overridden = combineAction(action, overridden, item.Action(), item.IsOverridden())
+	}
 	displayAction(iter, action, overridden)
 }
 
@@ -548,6 +571,9 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 				actionDescriptions[item.Recommendation],
 			)
 		}
+		if item.Action() != actionAt(iter) {
+			markup += "\n<i>also contains other actions</i>"
+		}
 	} else {
 		markup = fmt.Sprintf("%s\n<small>directory containing items</small>\n<b>action</b>:\t%s",
 			html.EscapeString(pathAt(iter)),
@@ -580,7 +606,16 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 		}
 
 	case actionColumn.Native():
-		tip.SetText(actionDescriptions[actionAt(iter)])
+		var markup string
+		if item := itemAt(iter); item != nil {
+			markup = actionDescriptions[item.Action()]
+			if item.Action() != actionAt(iter) {
+				markup += "\n<i>also contains other actions</i>"
+			}
+		} else {
+			markup = actionDescriptions[actionAt(iter)]
+		}
+		tip.SetMarkup(markup)
 
 	case leftColumn.Native(), rightColumn.Native():
 		item := itemAt(iter)

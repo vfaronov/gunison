@@ -200,6 +200,28 @@ var templates = map[string]template{
 		},
 	},
 
+	"directories-items": {
+		create: func(root string) {
+			put(p(root, "one", "two"), smallText)
+			put(p(root, "three", "four"), smallText)
+			put(p(root, "three", "five"), smallText)
+			put(p(root, "six", "seven"), smallText)
+		},
+		changeLeft: func(root string) {
+			chmod(p(root))
+			chmod(p(root, "one"))
+			tweak(p(root, "one", "two"), 100)
+			chmod(p(root, "three"))
+			tweak(p(root, "six", "seven"), 100)
+		},
+		changeRight: func(root string) {
+			chmod777(p(root))
+			tweak(p(root, "three", "four"), 100)
+			tweak(p(root, "three", "five"), 100)
+			rm(p(root, "six"))
+		},
+	},
+
 	"unchanged": {
 		create: func(root string) {
 			put(p(root, "one"), smallText)
@@ -277,6 +299,10 @@ func mkdir(path string) {
 
 func chmod(path string) {
 	must(os.Chmod(path, 0700))
+}
+
+func chmod777(path string) {
+	must(os.Chmod(path, 0777))
 }
 
 func tweak(path string, pos int) {

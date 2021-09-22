@@ -80,6 +80,10 @@ It's best to set the `diff` preference to a GUI tool that produces no console
 output, such as [`meld`][Meld]. Otherwise, diffs will be opened as temporary
 files in your operating system, but loading large diffs [may be slow][].
 
+To make the tree more compact, right-click it (or Shift+F10) and enable *Squash
+single-item folders*. To sort the list, click the *Path* or *Action* column
+header. To rearrange columns, drag them by their headers.
+
 Keyboard navigation is via common GTK features:
 
 * press - (minus) or Shift+Left to collapse a directory
@@ -90,10 +94,10 @@ Keyboard navigation is via common GTK features:
 * use mnemonics (underlined keys) to access buttons and menu items,
   e.g. Alt+S for Sync
 
-At exit, Gunison saves some UI state (collapsed directories, window geometry,
-column order) to a file named `state.json` in a platform-dependent config
-directory, such as `~/.config/gunison` on Unix. You can prevent this by
-symlinking that file to `/dev/null`.
+At exit, Gunison saves some UI state (collapsed directories, window geometry, 
+etc.) to a file named `state.json` in a platform-dependent config directory, 
+such as `~/.config/gunison` on Unix. You can prevent this by symlinking that
+file to `/dev/null`.
 
 [prefs]: https://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#prefs
 [Meld]: https://meldmerge.org/
