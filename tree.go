@@ -23,6 +23,7 @@ const (
 	colAction
 	colIconName
 	colNameStyle
+	colNameStrike
 	colActionColor
 	colPath
 )
@@ -81,7 +82,7 @@ func displayItems() {
 	stack := []frame{}
 	openParent := func(prefix string) {
 		iter := treestore.Append(parent.iter)
-		displayPathName(iter, prefix, parent.prefix)
+		displayPathName(iter, prefix, parent.prefix, false)
 		mustf(treestore.SetValue(iter, colIconName, "folder"), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, invalid), "set idx column")
 		displayAction(iter, covers[prefix].action, covers[prefix].overridden)
@@ -152,7 +153,7 @@ func displayItems() {
 			displayAction(iter, action, overridden)
 		} else {
 			iter = treestore.Append(parent.iter)
-			displayPathName(iter, path, parent.prefix)
+			displayPathName(iter, path, parent.prefix, isDeleted(item))
 			mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
 			displayAction(iter, item.Action(), item.IsOverridden())
 		}
@@ -169,11 +170,14 @@ func displayItems() {
 	}
 }
 
-func displayPathName(iter *gtk.TreeIter, path, parent string) {
+func displayPathName(iter *gtk.TreeIter, path, parent string, deleted bool) {
 	name := strings.TrimLeft(path[len(parent):], "/")
 	if path == "" {
 		name = "entire replica"
 		mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
+	}
+	if deleted {
+		mustf(treestore.SetValue(iter, colNameStrike, true), "set name-strike column")
 	}
 	mustf(treestore.SetValue(iter, colName, name), "set name column")
 	mustf(treestore.SetValue(iter, colPath, path), "set path column")
@@ -278,6 +282,13 @@ func describeContentFull(c Content) string {
 		return "absent"
 	}
 	panic(fmt.Sprintf("impossible replica content: %+v", c))
+}
+
+func isDeleted(item Item) bool {
+	left := item.Left.Status
+	right := item.Right.Status
+	return (left == Deleted && (right == Deleted || right == Unchanged)) ||
+		(right == Deleted && (left == Deleted || left == Unchanged))
 }
 
 var (
