@@ -217,6 +217,22 @@ func TestDisplayItems(t *testing.T) {
 		{
 			name: lineno(),
 			items: []Item{
+				item("foo/bar/baz/1"),
+				item("foo/bar/baz/2"),
+				item("foo/qux"),
+			},
+			squash: true,
+			expected: []interface{}{
+				o, "foo", "→",
+				o__o, "bar/baz", "→",
+				o__o__o, "1", "→",
+				o__o__o, "2", "→",
+				o__o, "qux", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
 				item("foo/bar/1", RightToLeft),
 				item("foo/bar/2", RightToLeft),
 				item("foo/baz", RightToLeft),
