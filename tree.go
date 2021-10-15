@@ -35,33 +35,65 @@ const invalid = -1
 // possibly arranging them in a tree and generating parent nodes as appropriate.
 // It satisfies several properties defined in tree_test.go.
 func displayItems() {
-	// First, we do a pass over all items to find path prefixes (directories)
-	// covering contiguous runs of items, which we will group into parent nodes.
-	// We will also determine combined actions to be displayed on these parent nodes.
+	// First, we do a pass over all items to find path prefixes covering contiguous runs of items.
+	// A prefix covering multiple items may be extracted into a parent node.
+	// Also determine combined actions to be displayed on these parent nodes.
 	type span struct {
+		root       int
 		start, end int
 		action     Action
 		overridden bool
+		sealed     bool
 	}
-	covers := make(map[string]span)
+	covers := make(map[string]span, 2*len(core.Items)) // at least one entry per item, plus some parents
 	for i, item := range core.Items {
 		path := item.Path
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
-			cover, ok := covers[prefix]
+			cover, seen := covers[prefix]
 			switch {
-			case !ok: // new prefix
-				cover.start = i
+			// Any item is the first item covered by its full path. (Usually also the last, but
+			// sometimes a directory item contains other items -- that will be handled below.)
+			case prefix == path:
+				cover.root = i
+				cover.start, cover.end = i, i
+				cover.action, cover.overridden = item.Action(), item.IsOverridden()
+				if seen {
+					// Can't cover the preceding items with this prefix,
+					// so must not cover any following items with this prefix, either.
+					cover.sealed = true
+				}
+
+			// The rest of the cases deal with parent prefixes.
+
+			// Firstly, if the list is sorted by path descending, inserting any parent node would violate
+			// the sort order, because a parent path is necessarily "less than" all of its children.
+			case currentSort.column == pathColumn && currentSort.order == gtk.SORT_DESCENDING:
+				cover.start, cover.end = invalid, invalid
+
+			// If we have not seen the prefix before, it starts here.
+			case !seen:
+				cover.root = invalid
+				cover.start, cover.end = i, i
+				cover.action, cover.overridden = item.Action(), item.IsOverridden()
+
+			// If the cover is sealed (see above), it must not be touched.
+			case cover.sealed:
+
+			// If the cover extends up to the preceding item, we can extend it further, unless
+			// doing so would change its node's action to mixed (•••) and violate the sort order.
+			case cover.end == i-1 && (cover.action == item.Action() || currentSort.column != actionColumn):
 				cover.end = i
-				cover.overridden = item.IsOverridden()
-			case prefix == path: // prefix's root item is not the first item covered by the prefix
-				cover.start = invalid
-			case cover.end == i-1: // continuing prefix
-				cover.end = i
-			default: // discontiguous prefix
-				cover.start = invalid
+				cover.action, cover.overridden = combineAction(cover.action, cover.overridden,
+					item.Action(), item.IsOverridden())
+
+			// If the prefix is discontiguous, shrink it back to its root item (if any).
+			default:
+				cover.start, cover.end = cover.root, cover.root
+				if cover.root != invalid {
+					item := core.Items[cover.root]
+					cover.action, cover.overridden = item.Action(), item.IsOverridden()
+				}
 			}
-			cover.action, cover.overridden = combineAction(cover.action, cover.overridden,
-				item.Action(), item.IsOverridden())
 			covers[prefix] = cover
 		}
 	}
@@ -79,88 +111,70 @@ func displayItems() {
 		iter   *gtk.TreeIter
 		end    int
 	}
-	parent := frame{end: len(core.Items) - 1}
+	top := frame{end: len(core.Items) - 1}
 	stack := []frame{}
-	openParent := func(prefix string) {
-		iter := treestore.Append(parent.iter)
-		displayPathName(iter, prefix, parent.prefix, false)
+	openNode := func(prefix string) {
+		iter := treestore.Append(top.iter)
+		name := strings.TrimLeft(prefix[len(top.prefix):], "/")
+		if prefix == "" {
+			name = "entire replica"
+			mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
+		}
+		mustf(treestore.SetValue(iter, colName, name), "set name column")
+		mustf(treestore.SetValue(iter, colPath, prefix), "set path column")
 		mustf(treestore.SetValue(iter, colIconName, "folder"), "set icon-name column")
 		mustf(treestore.SetValue(iter, colIdx, invalid), "set idx column")
 		displayAction(iter, covers[prefix].action, covers[prefix].overridden)
-		stack = append(stack, parent)
-		parent = frame{prefix, iter, covers[prefix].end}
+		stack = append(stack, top)
+		top = frame{prefix, iter, covers[prefix].end}
 	}
-	closeParent := func() {
-		parent = stack[len(stack)-1]
+	closeNode := func() {
+		top = stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 	}
 
 	// Walk the items and generate a node for each.
 	for i, item := range core.Items {
-		for i > parent.end { // Pop stack frames for prefixes that are over.
-			closeParent()
+		for i > top.end { // Pop stack frames for prefixes that are over.
+			closeNode()
 		}
 
-		// Open new parents for prefixes that begin at this item.
-		// But postpone opening a parent until we see a prefix with a shorter span,
-		// because if several prefixes cover the same span, we may squash them into one parent.
+		// Open new nodes for prefixes that begin at this item.
+		// But postpone opening a node until we see a prefix with a shorter span,
+		// because if several prefixes cover the same span, we may squash them into one node.
 		path := item.Path
 		var lastPrefix string
 		lastCover := span{start: invalid}
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
-			if prefix == "" && path != "" {
-				// There's no point in displaying the "entire replica" folder unless it is
-				// a plan item in itself.
+			if prefix == "" {
+				// There's no point in displaying the "entire replica" node unless it is
+				// a plan item in itself (in which case it will be displayed below).
 				continue
 			}
-
 			cover := covers[prefix]
 			if cover.start != i {
 				continue
 			}
-			if cover.end == i && prefix == path { // leaf node, not a parent
-				continue
-			}
-
-			// Make sure that the selected sort order is respected.
-			if currentSort.column == actionColumn && cover.action != item.Action() {
-				continue
-			}
-			if currentSort.column == pathColumn && currentSort.order == gtk.SORT_DESCENDING {
-				// A parent node's path is necessarily "less than" all of its children's.
-				continue
-			}
-
 			if lastCover.start != invalid && (lastCover.end > cover.end || !squash) {
-				openParent(lastPrefix)
+				openNode(lastPrefix)
 			}
 			lastPrefix = prefix
 			lastCover = cover
-		}
-		if lastCover.start != invalid && (lastCover.end > lastCover.start || !squash) {
-			openParent(lastPrefix)
 		}
 
 		// Finally, display the item itself.
 		// TODO: here and elsewhere: optimization opportunities that need more bindings in gotk3:
 		// - set multiple columns in one cgo call to gtk_tree_store_set
 		// - reuse GValues for left, right, icon-name, etc., instead of allocating them anew for each node
-		var iter *gtk.TreeIter
-		if parent.prefix == path && parent.iter != nil {
-			// This node is also a folder containing child items, which has been opened above.
-			iter = parent.iter
-			action, overridden := combineAction(item.Action(), item.IsOverridden(),
-				covers[path].action, covers[path].overridden)
-			displayAction(iter, action, overridden)
-		} else {
-			iter = treestore.Append(parent.iter)
-			displayPathName(iter, path, parent.prefix, isDeleted(item))
-			mustf(treestore.SetValue(iter, colIconName, iconName(item)), "set icon-name column")
-			displayAction(iter, item.Action(), item.IsOverridden())
+		openNode(path)
+		mustf(treestore.SetValue(top.iter, colIdx, i), "set idx column")
+		mustf(treestore.SetValue(top.iter, colIconName, iconName(item)), "set icon-name column")
+		mustf(treestore.SetValue(top.iter, colLeft, describeContent(item.Left)), "set left column")
+		mustf(treestore.SetValue(top.iter, colRight, describeContent(item.Right)), "set right column")
+		if isDeleted(item) {
+			mustf(treestore.SetValue(top.iter, colNameStrike, true), "set name-strike column")
+			mustf(treestore.SetValue(top.iter, colNameColor, "#606060"), "set name-color column")
 		}
-		mustf(treestore.SetValue(iter, colLeft, describeContent(item.Left)), "set left column")
-		mustf(treestore.SetValue(iter, colRight, describeContent(item.Right)), "set right column")
-		mustf(treestore.SetValue(iter, colIdx, i), "set idx column")
 	}
 
 	reattachModel()
@@ -169,20 +183,6 @@ func displayItems() {
 	for iter, ok := treestore.GetIterFirst(); ok; ok = treestore.IterNext(iter) {
 		maybeExpandRow(iter)
 	}
-}
-
-func displayPathName(iter *gtk.TreeIter, path, parent string, deleted bool) {
-	name := strings.TrimLeft(path[len(parent):], "/")
-	if path == "" {
-		name = "entire replica"
-		mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
-	}
-	if deleted {
-		mustf(treestore.SetValue(iter, colNameStrike, true), "set name-strike column")
-		mustf(treestore.SetValue(iter, colNameColor, "#606060"), "set name-color column")
-	}
-	mustf(treestore.SetValue(iter, colName, name), "set name column")
-	mustf(treestore.SetValue(iter, colPath, path), "set path column")
 }
 
 func displayAction(iter *gtk.TreeIter, act Action, overridden bool) {
