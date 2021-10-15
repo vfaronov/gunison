@@ -24,6 +24,7 @@ const (
 	colIconName
 	colNameStyle
 	colNameStrike
+	colNameColor
 	colActionColor
 	colPath
 )
@@ -178,6 +179,7 @@ func displayPathName(iter *gtk.TreeIter, path, parent string, deleted bool) {
 	}
 	if deleted {
 		mustf(treestore.SetValue(iter, colNameStrike, true), "set name-strike column")
+		mustf(treestore.SetValue(iter, colNameColor, "#606060"), "set name-color column")
 	}
 	mustf(treestore.SetValue(iter, colName, name), "set name column")
 	mustf(treestore.SetValue(iter, colPath, path), "set path column")
