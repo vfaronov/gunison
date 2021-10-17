@@ -598,6 +598,23 @@ func TestDisplayItemsSorted(t *testing.T) {
 	})
 }
 
+// TestDisplayItemsMixed checks the following property:
+// If a tree node's action is mixed (•••), it has at least one child.
+func TestDisplayItemsMixed(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
+		currentSort = sortRule{}
+		displayItems()
+		forEachNode(func(iter *gtk.TreeIter) {
+			if MustGetColumn(treestore, iter, colAction) == "•••" {
+				assert.NotZero(t, treestore.IterNChildren(iter),
+					MustGetColumn(treestore, iter, colPath))
+			}
+		})
+	})
+}
+
 // TestSetActionAsIfOriginal checks the following property:
 // After selecting some nodes and setting some action for them, the tree shows all the same actions
 // as if they were the plan originally, before displayItems().
