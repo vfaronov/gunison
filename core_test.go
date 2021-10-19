@@ -1557,3 +1557,9 @@ func initCoreMinimalSyncing(t *testing.T) *Core { //nolint:thelper
 
 	return c
 }
+
+// assertEqual is assert.Equal with arguments swapped, which makes this particular file much more readable.
+func assertEqual(t *testing.T, actual, expected interface{}, msgAndArgs ...interface{}) bool { //nolint:unparam
+	t.Helper()
+	return assert.Equal(t, expected, actual, msgAndArgs...)
+}

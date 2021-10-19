@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"path"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -370,7 +371,7 @@ func TestDisplayItems(t *testing.T) {
 			squash = c.squash
 			currentSort = c.sort
 			displayItems()
-			assertTree(t, treestore, []int{colName, colAction}, c.expected...)
+			assertTree(t, []int{colName, colAction}, c.expected...)
 		})
 	}
 }
@@ -661,4 +662,49 @@ func forEachNode(f func(*gtk.TreeIter)) {
 			return false // means "continue ForEach"
 		},
 	))
+}
+
+// assertTree checks that treestore contains expected, which must be structured as follows:
+// row depth (1-based), then one element for each of columns, this all repeated for each row.
+func assertTree(t *testing.T, columns []int, expected ...interface{}) { //nolint:thelper
+	// t.Helper is useless here due to GTK cgo frames intervening between here and the main test function.
+	stride := 1 + len(columns)
+	require.Equal(t, 0, len(expected)%stride)
+	i := 0
+	treestore.ForEach(gtk.TreeModelForeachFunc(
+		func(_ *gtk.TreeModel, treepath *gtk.TreePath, iter *gtk.TreeIter) bool {
+			msg := fmt.Sprintf("wrong row %s", treepath)
+			if !assert.Less(t, (i+1)*stride-1, len(expected), msg) {
+				return true // means "break ForEach"
+			}
+			assertEqual(t, treepath.GetDepth(), expected[i*stride], msg)
+			for j, column := range columns {
+				gv, err := treestore.GetValue(iter, column)
+				require.NoError(t, err, msg)
+				value, err := gv.GoValue()
+				require.NoError(t, err, msg)
+				assertEqual(t, value, expected[i*stride+1+j], msg)
+			}
+			i++
+			return false // means "continue ForEach"
+		},
+	))
+	assertEqual(t, i, len(expected)/stride, "not all expected rows found")
+}
+
+// Visual representations of tree depth, for use with assertTree.
+const (
+	o = 1 + iota
+	o__o
+	o__o__o
+)
+
+// lineno returns "line123" when called from line 123: a convenient name for table-driven subtests.
+//go:noinline
+func lineno() string {
+	_, _, line, ok := runtime.Caller(1)
+	if !ok {
+		panic("lineno: failed to find Caller")
+	}
+	return fmt.Sprintf("line%d", line)
 }
