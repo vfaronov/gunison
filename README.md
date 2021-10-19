@@ -5,9 +5,10 @@ Unison already has a built-in GTK 2 frontend, but Gunison is nicer and more
 convenient. Gunison works by wrapping Unison's *console* frontend
 in an [expect][]-like fashion.
 
-**WARNING:** Although I use Gunison daily, it has not been tested widely; and
-due to its very nature (parsing human-readable output from Unison), it will
-never be as reliable as Unison itself. Expect severe bugs.
+**Caution:** Although I use Gunison daily, it is less reliable than Unison
+itself (and will always be, if only because it parses Unison’s human-readable
+output). There are [known bugs](https://github.com/vfaronov/gunison/issues)
+and probably unknown ones, too.
 
 Gunison looks like this:
 
@@ -66,7 +67,7 @@ GOBIN=$PWD go/bin/go install -v github.com/vfaronov/gunison@latest
 [Go]: https://golang.org/
 
 
-## Usage
+## Basic usage
 
 Run `gunison` with the same command-line arguments as you would run `unison`
 (they will be passed on). Unlike `unison-gtk2`, Gunison will not offer
@@ -80,25 +81,52 @@ It's best to set the `diff` preference to a GUI tool that produces no console
 output, such as [`meld`][Meld]. Otherwise, diffs will be opened as temporary
 files in your operating system, but loading large diffs [may be slow][].
 
-To make the tree more compact, right-click it (or Shift+F10) and enable *Squash
-single-item folders*. To sort the list, click the *Path* or *Action* column
-header. To rearrange columns, drag them by their headers.
 
-Keyboard navigation is via common GTK features:
+## Working with the sync plan
 
-* press - (minus) or Shift+Left to collapse a directory
-* press + (plus) to expand a directory,
-  Shift+Right to expand with all its children
-* press Ctrl+F1 to toggle a tooltip with details for the selected file
-* press Menu or Shift+F10 to pop up an action menu for the selected files
-* use mnemonics (underlined keys) to access buttons and menu items,
+Bring up the menu by right-clicking on the tree or pressing the Menu
+or Shift+F10 keys. This menu lets you set the action to be performed on items,
+as well as view differences between files. You can select multiple items
+or folders at once and operate on them all together.
+
+Gunison remembers which directories you have collapsed in the tree — very
+useful for `.git` directories, for example. But, this doesn’t distinguish 
+profiles or roots: if you collapse a `Documents/work` directory in one profile,
+this may affect an unrelated `Documents/work` directory in another.
+
+If the tree is too bushy for your liking, try enabling the *Squash
+single-item folders* option in the menu. This will display `dir1/file.txt`
+in one line when `dir1` contains only `file.txt`.
+
+By clicking on the column headers, you can sort items by path or action.
+Sorting by action in both directions (click twice) is a quick way to check if
+all actions are the same.
+
+You can also rearrange and resize columns by dragging them, as usual.
+This will be remembered for subsequent runs.
+
+
+## Keyboard shortcuts
+
+There are currently no shortcuts specific to Gunison, but you can use 
+the common GTK shortcuts, which [by default][bindings] are:
+
+* \- (minus) or Shift+Left to collapse a folder
+* \+ (plus) to expand a folder, Shift+Right to expand with all its children
+* Ctrl+F1 to toggle a tooltip with details for the selected item
+* Menu or Shift+F10 to pop up the context menu
+* mnemonics (underlined keys) to access buttons and menu entries,
   e.g. Alt+S for Sync
 
-At exit, Gunison saves some UI state (collapsed directories, window geometry, 
-etc.) to a file named `state.json` in a platform-dependent config directory, 
-such as `~/.config/gunison` on Unix. You can prevent this by symlinking that
-file to `/dev/null`.
+
+## Configuration files
+
+Gunison saves your UI options, as well as the list of collapsed directories,
+to a file named `state.json` in a platform-dependent config directory —
+usually `~/.config/gunison` on Unix. You can edit this file by hand. Or,
+by symlinking it do `/dev/null`, you can prevent Gunison from saving anything.
 
 [prefs]: https://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#prefs
 [Meld]: https://meldmerge.org/
 [may be slow]: https://github.com/vfaronov/gunison/issues/1
+[bindings]: https://docs.gtk.org/gtk3/key-bindings.html
