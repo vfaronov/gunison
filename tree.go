@@ -38,14 +38,14 @@ func displayItems() {
 	// First, we do a pass over all items to find path prefixes covering contiguous runs of items.
 	// A prefix covering multiple items may be extracted into a parent node.
 	// Also determine combined actions to be displayed on these parent nodes.
-	type span struct {
+	type cover struct {
 		root       int
 		start, end int
 		action     Action
 		overridden bool
 		sealed     bool
 	}
-	covers := make(map[string]span, 2*len(core.Items)) // at least one entry per item, plus some parents
+	covers := make(map[string]cover, 2*len(core.Items)) // at least one entry per item, plus some parents
 	for i, item := range core.Items {
 		path := item.Path
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
@@ -144,7 +144,7 @@ func displayItems() {
 		// because if several prefixes cover the same span, we may squash them into one node.
 		path := item.Path
 		var lastPrefix string
-		lastCover := span{start: invalid}
+		lastCover := cover{start: invalid}
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
 			if prefix == "" {
 				// There's no point in displaying the "entire replica" node unless it is
@@ -405,9 +405,10 @@ func setSort(rule sortRule) {
 				return core.Items[i].Action() < core.Items[j].Action()
 			case sortRule{actionColumn, gtk.SORT_DESCENDING}:
 				return core.Items[i].Action() > core.Items[j].Action()
-			}
 			// XXX: When adding new sort rules, don't forget to update TestDisplayItemsSorted.
-			panic("impossible case")
+			default:
+				panic("impossible case")
+			}
 		})
 		displayItems()
 	}

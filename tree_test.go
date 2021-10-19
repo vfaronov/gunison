@@ -350,7 +350,7 @@ func TestDisplayItems(t *testing.T) {
 				// sort rule. We could make Mixed < LeftToRight and then fix this particular case,
 				// but it would require a bunch of extra code, and would still not work for "baz" below,
 				// nor with descending sort order, so we don't bother for now.
-				// TODO: Again, is this too cautious? Would it be more useful to make derived notes
+				// TODO: Again, is this too cautious? Would it be more useful to make derived nodes
 				// exempt from the sort rule altogether?
 				o, "foo/qux/1", "→",
 				o, "foo/qux/2", "←",
@@ -627,7 +627,7 @@ func TestSetActionAsIfOriginal(t *testing.T) {
 
 		displayItems()
 		treeview.ExpandAll() // nodes whose parents are collapsed cannot be selected
-		for i := 0; i < 3; i++ {
+		for i := 0; i < 2; i++ {
 			treeSelection.UnselectAll()
 			forEachNode(func(iter *gtk.TreeIter) {
 				if rapid.Bool().Draw(t, "selected").(bool) {
