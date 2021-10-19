@@ -486,11 +486,9 @@ func setAction(act Action) {
 			for len(invalidated) < depth {
 				invalidated = append(invalidated, map[string]bool{})
 			}
-			treepathS := treepath.String()
-			if invalidated[depth-1][treepathS] {
+			if Seen(invalidated[depth-1], treepath.String()) {
 				break
 			}
-			invalidated[depth-1][treepathS] = true
 		}
 		return true
 	})
@@ -707,11 +705,9 @@ func forEachSelectedItem(f func(*gtk.TreePath, *gtk.TreeIter, *Item) bool) {
 		}
 		mustf(err, "resolve treepath and iter from %v and %v", treepath, iter)
 
-		treepathS := treepath.String()
-		if visited[treepathS] {
+		if Seen(visited, treepath.String()) {
 			return true
 		}
-		visited[treepathS] = true
 
 		if item := itemAt(iter); item != nil {
 			if !f(treepath, iter, item) {

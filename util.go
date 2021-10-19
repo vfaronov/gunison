@@ -95,6 +95,15 @@ func Prefix(path string, i int) (string, int) {
 	return prefix, next
 }
 
+// Seen returns true if k has already been passed to it with the same m.
+func Seen(m map[string]bool, k string) bool {
+	if m[k] {
+		return true
+	}
+	m[k] = true
+	return false
+}
+
 // PathIsAncestor returns true if p1 is an ancestor of p2.
 func PathIsAncestor(p1, p2 string) bool {
 	return strings.HasPrefix(p2, p1+"/") || (p2 != "" && p1 == "")
