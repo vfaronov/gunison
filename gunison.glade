@@ -73,6 +73,14 @@
         <property name="use_underline">True</property>
       </object>
     </child>
+    <child>
+      <object class="GtkCheckMenuItem" id="show-root-menuitem">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">_Always show root node</property>
+        <property name="use_underline">True</property>
+      </object>
+    </child>
   </object>
   <object class="GtkTreeStore" id="treestore">
     <columns>
@@ -160,10 +168,10 @@
                     <child>
                       <object class="GtkCellRendererText" id="path-renderer"/>
                       <attributes>
-                        <attribute name="text">1</attribute>
-                        <attribute name="style">6</attribute>
-                        <attribute name="strikethrough">7</attribute>
                         <attribute name="foreground">8</attribute>
+                        <attribute name="strikethrough">7</attribute>
+                        <attribute name="style">6</attribute>
+                        <attribute name="text">1</attribute>
                       </attributes>
                     </child>
                   </object>
@@ -348,8 +356,23 @@
                     <property name="ellipsize">middle</property>
                   </object>
                   <packing>
-                    <property name="pack_type">start</property>
                     <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="abort-button">
+                    <property name="label" translatable="yes">_Abort</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="valign">center</property>
+                    <property name="use_underline">True</property>
+                    <style>
+                      <class name="destructive-action"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="pack_type">end</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
                 <child>
@@ -367,22 +390,6 @@
                   <packing>
                     <property name="pack_type">end</property>
                     <property name="position">3</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkButton" id="abort-button">
-                    <property name="label" translatable="yes">_Abort</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="valign">center</property>
-                    <property name="use_underline">True</property>
-                    <style>
-                      <class name="destructive-action"/>
-                    </style>
-                  </object>
-                  <packing>
-                    <property name="pack_type">end</property>
-                    <property name="position">2</property>
                   </packing>
                 </child>
                 <child>

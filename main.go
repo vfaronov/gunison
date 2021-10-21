@@ -52,6 +52,7 @@ var (
 	revertMenuItem      *gtk.MenuItem
 	diffMenuItem        *gtk.MenuItem
 	squashMenuItem      *gtk.CheckMenuItem
+	showRootMenuItem      *gtk.CheckMenuItem
 	statusLabel         *gtk.Label
 	spinner             *gtk.Spinner
 	progressbar         *gtk.ProgressBar
@@ -207,6 +208,8 @@ func setupWidgets() {
 	diffMenuItem.Connect("activate", onDiffMenuItemActivate)
 	squashMenuItem = mustGetObject(builder, "squash-menuitem").(*gtk.CheckMenuItem)
 	onSquashMenuItemToggledHandle = squashMenuItem.Connect("toggled", onSquashMenuItemToggled)
+	showRootMenuItem = mustGetObject(builder, "show-root-menuitem").(*gtk.CheckMenuItem)
+	onShowRootMenuItemToggledHandle = showRootMenuItem.Connect("toggled", onShowRootMenuItemToggled)
 
 	// For some reason GTK/Glade think xalign has a default of 0.5, so Glade optimizes it away from
 	// the XML file upon saving.
@@ -484,6 +487,7 @@ func onKillButtonClicked() {
 
 type uiState struct {
 	Squash        bool
+	ShowRoot bool
 	Width, Height int
 	Maximized     bool
 	ColumnOrder   []int // indices match var columns
@@ -519,6 +523,7 @@ func loadUIState() {
 		state.Squash, state.Width, state.Height, state.Maximized, state.ColumnOrder, state.ColumnWidth)
 
 	squash = state.Squash
+	showRoot = state.ShowRoot
 
 	window.SetDefaultSize(state.Width, state.Height)
 	if state.Maximized {
@@ -561,6 +566,7 @@ func saveUIState() {
 
 	state := uiState{
 		Squash: squash,
+		ShowRoot: showRoot,
 	}
 
 	if window.IsMaximized() {

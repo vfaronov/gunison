@@ -117,7 +117,7 @@ func displayItems() {
 		iter := treestore.Append(top.iter)
 		name := strings.TrimLeft(prefix[len(top.prefix):], "/")
 		if prefix == "" {
-			name = "entire replica"
+			name = "root"
 			mustf(treestore.SetValue(iter, colNameStyle, pango.STYLE_ITALIC), "set name-style column")
 		}
 		mustf(treestore.SetValue(iter, colName, name), "set name column")
@@ -146,16 +146,16 @@ func displayItems() {
 		var lastPrefix string
 		lastCover := cover{start: invalid}
 		for prefix, k := Prefix(path, 0); k != -1; prefix, k = Prefix(path, k) {
-			if prefix == "" {
-				// There's no point in displaying the "entire replica" node unless it is
-				// a plan item in itself (in which case it will be displayed below).
+			if prefix == "" && !showRoot {
+				// There's no point in displaying the root unless it is a plan item in itself
+				// (in which case it will be displayed below) or "always show root" is enabled.
 				continue
 			}
 			cover := covers[prefix]
 			if cover.start != i {
 				continue
 			}
-			if lastCover.start != invalid && (lastCover.end > cover.end || !squash) {
+			if lastCover.start != invalid && (lastCover.end > cover.end || !squash || lastPrefix == "") {
 				openNode(lastPrefix)
 			}
 			lastPrefix = prefix
@@ -367,12 +367,22 @@ func iconName(item Item) string {
 
 var (
 	squash      = false
+	showRoot    = false
 	currentSort sortRule
 )
 
 type sortRule struct {
 	column *gtk.TreeViewColumn
 	order  gtk.SortType
+}
+
+func allSortRules() []sortRule {
+	return []sortRule{
+		{pathColumn, gtk.SORT_ASCENDING},
+		{pathColumn, gtk.SORT_DESCENDING},
+		{actionColumn, gtk.SORT_ASCENDING},
+		{actionColumn, gtk.SORT_DESCENDING},
+	}
 }
 
 func onPathColumnClicked()   { cycleSort(pathColumn) }
@@ -537,14 +547,18 @@ func onDiffMenuItemActivate() {
 	})
 }
 
-// TODO: This variable would not be needed if gotk3 had bindings for g_signal_handlers_block_by_func
+// TODO: These variables would not be needed if gotk3 had bindings for g_signal_handlers_block_by_func
 // or g_signal_handler_find.
-var onSquashMenuItemToggledHandle glib.SignalHandle
+var onSquashMenuItemToggledHandle, onShowRootMenuItemToggledHandle glib.SignalHandle
 
 func onSquashMenuItemToggled() {
 	squash = squashMenuItem.GetActive()
-	// Let the user immediately see the effect on whichever nodes they were looking at.
 	PreserveScroll(scrolledWindow.GetVAdjustment())
+	displayItems()
+}
+
+func onShowRootMenuItemToggled() {
+	showRoot = showRootMenuItem.GetActive()
 	displayItems()
 }
 
@@ -566,7 +580,7 @@ func treeTooltip(tip *gtk.Tooltip) bool {
 	if item := itemAt(iter); item != nil {
 		path := html.EscapeString(item.Path)
 		if item.Path == "" {
-			path = "<i>entire replica</i>"
+			path = "<i>root</i>"
 		}
 		markup = fmt.Sprintf("%s\n<b>%s</b>:\t%s\t%s\n<b>%s</b>:\t%s\t%s\n<b>action</b>:\t%s",
 			path,
@@ -612,7 +626,7 @@ func treeTooltipAt(tip *gtk.Tooltip, x, y int) bool {
 	switch column.Native() {
 	case pathColumn.Native():
 		if path := pathAt(iter); path == "" {
-			tip.SetMarkup("<i>entire replica</i>")
+			tip.SetMarkup("<i>root</i>")
 		} else {
 			tip.SetText(path)
 		}

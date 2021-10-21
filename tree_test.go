@@ -19,6 +19,7 @@ func TestDisplayItems(t *testing.T) {
 		name     string
 		items    []Item
 		squash   bool
+		showRoot bool
 		sort     sortRule
 		expected []interface{}
 	}{
@@ -28,12 +29,53 @@ func TestDisplayItems(t *testing.T) {
 			expected: []interface{}{},
 		},
 		{
+			name:     lineno(),
+			items:    []Item{},
+			showRoot: true,
+			expected: []interface{}{},
+		},
+		{
 			name: lineno(),
 			items: []Item{
 				item("foo"),
 			},
 			expected: []interface{}{
 				o, "foo", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				item("foo"),
+			},
+			showRoot: true,
+			expected: []interface{}{
+				o, "root", "→",
+				o__o, "foo", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				item("foo"),
+				item("bar", RightToLeft),
+			},
+			expected: []interface{}{
+				o, "foo", "→",
+				o, "bar", "←",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				item("foo"),
+				item("bar", RightToLeft),
+			},
+			showRoot: true,
+			expected: []interface{}{
+				o, "root", "•••",
+				o__o, "foo", "→",
+				o__o, "bar", "←",
 			},
 		},
 		{
@@ -134,10 +176,38 @@ func TestDisplayItems(t *testing.T) {
 				item("foo/bar", Directory, PropsChanged, LeftToRight, Directory),
 				item("foo/bar/baz"),
 			},
+			showRoot: true,
+			expected: []interface{}{
+				o, "root", "→",
+				o__o, "foo", "→",
+				o__o__o, "bar", "→",
+				o__o__o__o, "baz", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				item("foo/bar", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo/bar/baz"),
+			},
 			squash: true,
 			expected: []interface{}{
 				o, "foo/bar", "→",
 				o__o, "baz", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				item("foo/bar", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo/bar/baz"),
+			},
+			squash:   true,
+			showRoot: true,
+			expected: []interface{}{
+				o, "root", "→",
+				o__o, "foo/bar", "→",
+				o__o__o, "baz", "→",
 			},
 		},
 		{
@@ -185,7 +255,19 @@ func TestDisplayItems(t *testing.T) {
 				item("foo"),
 			},
 			expected: []interface{}{
-				o, "entire replica", "→",
+				o, "root", "→",
+				o__o, "foo", "→",
+			},
+		},
+		{
+			name: lineno(),
+			items: []Item{
+				item("", Directory, PropsChanged, LeftToRight, Directory),
+				item("foo"),
+			},
+			showRoot: true,
+			expected: []interface{}{
+				o, "root", "→",
 				o__o, "foo", "→",
 			},
 		},
@@ -198,7 +280,7 @@ func TestDisplayItems(t *testing.T) {
 			},
 			expected: []interface{}{
 				o, "foo", "←M→",
-				o, "entire replica", "←",
+				o, "root", "←",
 				o, "foo/bar", "→",
 			},
 		},
@@ -369,6 +451,7 @@ func TestDisplayItems(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			core.Items = c.items
 			squash = c.squash
+			showRoot = c.showRoot
 			currentSort = c.sort
 			displayItems()
 			assertTree(t, []int{colName, colAction}, c.expected...)
@@ -432,7 +515,7 @@ func genItems(t *rapid.T) []Item {
 				}
 			}
 		}
-		if rapid.IntRange(0, 99).Draw(t, "empty").(int) > 0 { // Path may be empty ("entire replica").
+		if rapid.IntRange(0, 99).Draw(t, "empty").(int) > 0 { // Path may be empty (root).
 			for ngrow := rapid.IntRange(1, 5).Draw(t, "ngrow").(int); ngrow > 0; ngrow-- {
 				segment := rapid.StringMatching(`[a-z]{1,2}`).Draw(t, "segment").(string)
 				newpath = path.Join(newpath, segment)
@@ -486,7 +569,7 @@ func TestDisplayItemsNamesPaths(t *testing.T) {
 			var names []string
 			for iter1 := iter; ; {
 				name := MustGetColumn(treestore, iter1, colName).(string)
-				name = strings.ReplaceAll(name, "entire replica", "")
+				name = strings.ReplaceAll(name, "root", "")
 				names = append([]string{name}, names...)
 				parent, _ := treestore.GetIterFirst() // must be a valid TreeIter for the following call
 				if !treestore.IterParent(parent, iter1) {
@@ -569,13 +652,7 @@ func TestDisplayItemsSorted(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
 		squash = rapid.Bool().Draw(t, "squash").(bool)
-		var allSortRules = []sortRule{
-			{pathColumn, gtk.SORT_ASCENDING},
-			{pathColumn, gtk.SORT_DESCENDING},
-			{actionColumn, gtk.SORT_ASCENDING},
-			{actionColumn, gtk.SORT_DESCENDING},
-		}
-		setSort(rapid.SampledFrom(allSortRules).Draw(t, "sortRule").(sortRule)) // calls displayItems
+		setSort(rapid.SampledFrom(allSortRules()).Draw(t, "sortRule").(sortRule)) // calls displayItems
 
 		var last interface{}
 		forEachNode(func(iter *gtk.TreeIter) {
@@ -613,6 +690,28 @@ func TestDisplayItemsMixed(t *testing.T) {
 					MustGetColumn(treestore, iter, colPath))
 			}
 		})
+	})
+}
+
+// TestDisplayItemsShowRoot checks the following property:
+// When "always show root" is enabled, and items are not sorted by path descending, the tree always
+// contains a node corresponding to the root (empty) path. It need not be the tree's root node.
+func TestDisplayItemsShowRoot(t *testing.T) {
+	rapid.Check(t, func(t *rapid.T) {
+		core.Items = rapid.Custom(genItems).Draw(t, "items").([]Item)
+		squash = rapid.Bool().Draw(t, "squash").(bool)
+		showRoot = true
+		sortRule := rapid.SampledFrom(allSortRules()).
+			Filter(func(r sortRule) bool { return r != sortRule{pathColumn, gtk.SORT_DESCENDING} }).
+			Draw(t, "sortRule").(sortRule)
+		setSort(sortRule) // calls displayItem
+		hasRoot := false
+		forEachNode(func(iter *gtk.TreeIter) {
+			if MustGetColumn(treestore, iter, colPath) == "" {
+				hasRoot = true
+			}
+		})
+		assert.True(t, hasRoot)
 	})
 }
 
@@ -697,6 +796,7 @@ const (
 	o = 1 + iota
 	o__o
 	o__o__o
+	o__o__o__o
 )
 
 // lineno returns "line123" when called from line 123: a convenient name for table-driven subtests.
