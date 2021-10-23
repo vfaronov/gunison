@@ -95,7 +95,7 @@ func Prefix(path string, i int) (string, int) {
 	return prefix, next
 }
 
-// Seen returns true if k has already been passed to it with the same m.
+// Seen returns true if Seen(m, k) has been called before.
 func Seen(m map[string]bool, k string) bool {
 	if m[k] {
 		return true

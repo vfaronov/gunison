@@ -677,19 +677,19 @@ func assertTree(t *testing.T, columns []int, expected ...interface{}) { //nolint
 			if !assert.Less(t, (i+1)*stride-1, len(expected), msg) {
 				return true // means "break ForEach"
 			}
-			assertEqual(t, treepath.GetDepth(), expected[i*stride], msg)
+			assert.Equal(t, expected[i*stride], treepath.GetDepth(), msg)
 			for j, column := range columns {
 				gv, err := treestore.GetValue(iter, column)
 				require.NoError(t, err, msg)
 				value, err := gv.GoValue()
 				require.NoError(t, err, msg)
-				assertEqual(t, value, expected[i*stride+1+j], msg)
+				assert.Equal(t, expected[i*stride+1+j], value, msg)
 			}
 			i++
 			return false // means "continue ForEach"
 		},
 	))
-	assertEqual(t, i, len(expected)/stride, "not all expected rows found")
+	assert.Equal(t, len(expected)/stride, i, "not all expected rows found")
 }
 
 // Visual representations of tree depth, for use with assertTree.

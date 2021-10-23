@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func ExamplePrefix() {
@@ -75,7 +77,7 @@ func TestPrefix(t *testing.T) {
 			for prefix, k := Prefix(c.path, 0); k != -1; prefix, k = Prefix(c.path, k) {
 				actual = append(actual, prefix)
 			}
-			assertEqual(t, actual, c.expected)
+			assert.Equal(t, c.expected, actual)
 		})
 	}
 }
