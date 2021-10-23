@@ -514,7 +514,7 @@ func refreshParentAction(treepathS string) {
 	iter, err := treestore.GetIterFromString(treepathS)
 	mustf(err, "get tree iter for parent from %s", treepathS)
 	var action Action
-	overridden := true
+	overridden := false
 	child, _ := treestore.GetIterFirst()
 	for ok := treestore.IterChildren(iter, child); ok; ok = treestore.IterNext(child) {
 		action, overridden = combineAction(action, overridden, actionAt(child), isOverriddenAt(child))
