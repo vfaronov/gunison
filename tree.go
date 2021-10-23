@@ -202,7 +202,7 @@ func combineAction(act1 Action, overrid1 bool, act2 Action, overrid2 bool) (act 
 	default:
 		act = Mixed
 	}
-	overrid = overrid1 && overrid2
+	overrid = overrid1 || overrid2
 	return
 }
 
