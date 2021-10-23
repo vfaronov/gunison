@@ -96,6 +96,7 @@ func startUnison(args ...string) {
 	args = append(args, "-dumbtty")
 	unison = exec.Command("unison", args...)
 	unison.SysProcAttr = sysProcAttr
+	unison.Env = DeleteEnv(os.Environ(), "PAGER") // otherwise Unison pipes e.g. diff output through it
 
 	unisonW, err = unison.StdinPipe()
 	if err != nil {

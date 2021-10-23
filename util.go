@@ -109,6 +109,30 @@ func PathIsAncestor(p1, p2 string) bool {
 	return strings.HasPrefix(p2, p1+"/") || (p2 != "" && p1 == "")
 }
 
+// DeleteEnv returns vars ("key=value" strings) without the given keys. It does not modify vars.
+func DeleteEnv(vars []string, keys ...string) []string {
+	result := vars
+	copied := false
+varsLoop:
+	for i := 0; i < len(result); {
+		v := result[i]
+		for _, key := range keys {
+			if len(v) >= len(key)+1 && v[:len(key)] == key && v[len(key)] == '=' { // starts with "key="
+				if !copied {
+					result = make([]string, len(vars))
+					copy(result, vars)
+					copied = true
+				}
+				result[i] = result[len(result)-1]
+				result = result[:len(result)-1]
+				continue varsLoop
+			}
+		}
+		i++
+	}
+	return result
+}
+
 func mustGetObject(b *gtk.Builder, name string) glib.IObject {
 	obj, err := b.GetObject(name)
 	mustf(err, "GetObject(%#v)", name)

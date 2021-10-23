@@ -79,3 +79,10 @@ func TestPrefix(t *testing.T) {
 		})
 	}
 }
+
+func ExampleDeleteEnv() {
+	vars := []string{"USER=joe", "UID=1001", "PATH=/bin", "PAGER=less"}
+	vars = DeleteEnv(vars, "UID", "HOME", "PAGER")
+	fmt.Println(vars)
+	// Output: [USER=joe PATH=/bin]
+}
